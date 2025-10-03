@@ -1,13 +1,32 @@
+/* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import ReactFlow, {
+  Node,
+  Edge,
+  addEdge,
+  Connection,
   useNodesState,
   useEdgesState,
+  Controls,
   Background,
   BackgroundVariant,
+  MiniMap,
+  Panel,
 } from "reactflow";
 import "reactflow/dist/style.css";
+
+interface Lead {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  title: string;
+  status: string;
+  lastContact: string;
+}
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,6 +35,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Users, 
   Play, 
@@ -40,34 +60,61 @@ import {
   Phone,
   Mail,
   MessageCircle,
+  ArrowRight,
   Clock,
+  CheckCircle2,
+  XCircle,
   GitBranch,
   PlayCircle,
+  Database,
+  Wand2,
+  MessageSquareText,
   User,
+  Bot,
+  RefreshCw,
   Save,
+  BookOpen,
   Search,
   CreditCard,
   Smartphone,
+  AtSign,
   Linkedin,
   Shield,
+  Key,
+  Bell,
+  Palette,
+  Languages,
+  DollarSign,
+  Building,
+  MapPin,
+  Calendar,
+  FileText,
+  Lock,
+  Unlock,
   EyeOff,
   Plus,
+  Minus,
   ExternalLink,
 } from "lucide-react";
 
 export default function Home() {
-  const [activeApp, setActiveApp] = useState("outbounder");
   const [activeTab, setActiveTab] = useState("leads");
   const [activeSubTab, setActiveSubTab] = useState("upload");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [appSidebarOpen, setAppSidebarOpen] = useState(true);
   const [leadsExpanded, setLeadsExpanded] = useState(true);
   const [sequencerExpanded, setSequencerExpanded] = useState(false);
   const [messagingExpanded, setMessagingExpanded] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [promptText, setPromptText] = useState("You are a sales agent for TechCorp. Your goal is to schedule a demo call with potential customers. Be professional, friendly, and focus on understanding their needs.");
+  const [promptVersions, setPromptVersions] = useState([
+    { id: 1, name: "Version 1.0", content: "You are a sales agent for TechCorp. Your goal is to schedule a demo call with potential customers. Be professional, friendly, and focus on understanding their needs.", isActive: true },
+    { id: 2, name: "Version 1.1", content: "You are a sales agent for TechCorp. Your goal is to schedule a demo call with potential customers. Be professional, friendly, and focus on understanding their needs. Use their company name and industry to personalize your approach.", isActive: false },
+    { id: 3, name: "Version 1.2", content: "You are a sales agent for TechCorp. Your goal is to schedule a demo call with potential customers. Be professional, friendly, and focus on understanding their needs. Use their company name and industry to personalize your approach. If they seem hesitant, offer a free consultation instead.", isActive: false }
+  ]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [webhookEnabled, setWebhookEnabled] = useState(false);
-  const [webhookUrl] = useState("https://api.outbounder.com/webhooks/leads/abc123def456");
-  const [recentWebhookActivity] = useState([
+  const [webhookUrl, setWebhookUrl] = useState("https://api.outbounder.com/webhooks/leads/abc123def456");
+  const [recentWebhookActivity, setRecentWebhookActivity] = useState([
     { id: 1, timestamp: "2024-01-15 14:30:25", source: "CRM Integration", status: "success", leads: 3 },
     { id: 2, timestamp: "2024-01-15 14:25:12", source: "Website Form", status: "success", leads: 1 },
     { id: 3, timestamp: "2024-01-15 14:20:08", source: "API Partner", status: "success", leads: 5 },
@@ -78,16 +125,16 @@ export default function Home() {
   // Settings state
   const [voicePhoneNumber, setVoicePhoneNumber] = useState("+1 (555) 123-4567");
   const [smsPhoneNumber, setSmsPhoneNumber] = useState("+1 (555) 123-4567");
-  const [emailAccounts] = useState([
+  const [emailAccounts, setEmailAccounts] = useState([
     { id: 1, email: "sarah@techcorp.com", provider: "Gmail", status: "connected", isPrimary: true },
     { id: 2, email: "sales@techcorp.com", provider: "Outlook", status: "connected", isPrimary: false }
   ]);
-  const [paymentMethods] = useState([
+  const [paymentMethods, setPaymentMethods] = useState([
     { id: 1, type: "Credit Card", last4: "4242", brand: "Visa", isDefault: true },
     { id: 2, type: "Bank Account", last4: "1234", brand: "Chase", isDefault: false }
   ]);
-  const [linkedinConnected] = useState(false);
-  const [linkedinProfile] = useState({
+  const [linkedinConnected, setLinkedinConnected] = useState(false);
+  const [linkedinProfile, setLinkedinProfile] = useState({
     name: "Sarah Johnson",
     title: "Sales Director",
     company: "TechCorp",
@@ -193,16 +240,16 @@ export default function Home() {
   ]);
 
   // React Flow state
-  const [, ,] = useNodesState([]);
-  const [, ,] = useEdgesState([]);
-  const [, ,] = useNodesState([]);
-  const [, ,] = useEdgesState([]);
-  const [, ,] = useNodesState([]);
-  const [, ,] = useEdgesState([]);
+  const [emailNodes, setEmailNodes, onEmailNodesChange] = useNodesState([]);
+  const [emailEdges, setEmailEdges, onEmailEdgesChange] = useEdgesState([]);
+  const [voiceNodes, setVoiceNodes, onVoiceNodesChange] = useNodesState([]);
+  const [voiceEdges, setVoiceEdges, onVoiceEdgesChange] = useEdgesState([]);
+  const [smsNodes, setSmsNodes, onSmsNodesChange] = useNodesState([]);
+  const [smsEdges, setSmsEdges, onSmsEdgesChange] = useEdgesState([]);
 
   // Custom node types
   const nodeTypes = useMemo(() => ({
-    emailNode: ({ data }: { data: { label: string } }) => (
+    emailNode: ({ data }: any) => (
       <div className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg border-2 border-blue-600">
         <div className="flex items-center gap-2">
           <Mail className="h-4 w-4" />
@@ -210,7 +257,7 @@ export default function Home() {
         </div>
       </div>
     ),
-    voiceNode: ({ data }: { data: { label: string } }) => (
+    voiceNode: ({ data }: any) => (
       <div className="bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg border-2 border-green-600">
         <div className="flex items-center gap-2">
           <Phone className="h-4 w-4" />
@@ -218,7 +265,7 @@ export default function Home() {
         </div>
       </div>
     ),
-    smsNode: ({ data }: { data: { label: string } }) => (
+    smsNode: ({ data }: any) => (
       <div className="bg-purple-500 text-white px-4 py-2 rounded-lg shadow-lg border-2 border-purple-600">
         <div className="flex items-center gap-2">
           <MessageCircle className="h-4 w-4" />
@@ -226,7 +273,7 @@ export default function Home() {
         </div>
       </div>
     ),
-    decisionNode: ({ data }: { data: { label: string } }) => (
+    decisionNode: ({ data }: any) => (
       <div className="bg-yellow-500 text-white px-4 py-2 rounded-lg shadow-lg border-2 border-yellow-600">
         <div className="flex items-center gap-2">
           <GitBranch className="h-4 w-4" />
@@ -234,7 +281,7 @@ export default function Home() {
         </div>
       </div>
     ),
-    startNode: ({ data }: { data: { label: string } }) => (
+    startNode: ({ data }: any) => (
       <div className="bg-gray-500 text-white px-4 py-2 rounded-lg shadow-lg border-2 border-gray-600">
         <div className="flex items-center gap-2">
           <PlayCircle className="h-4 w-4" />
@@ -242,7 +289,7 @@ export default function Home() {
         </div>
       </div>
     ),
-    endNode: ({ data }: { data: { label: string } }) => (
+    endNode: ({ data }: any) => (
       <div className="bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg border-2 border-red-600">
         <div className="flex items-center gap-2">
           <CheckCircle className="h-4 w-4" />
@@ -250,7 +297,7 @@ export default function Home() {
         </div>
       </div>
     ),
-    waitNode: ({ data }: { data: { label: string } }) => (
+    waitNode: ({ data }: any) => (
       <div className="bg-orange-500 text-white px-4 py-2 rounded-lg shadow-lg border-2 border-orange-600">
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4" />
@@ -260,18 +307,18 @@ export default function Home() {
     ),
   }), []);
 
-  // Connection handlers (currently unused)
-  // const onEmailConnect = useCallback((params: Connection) => {
-  //   setEmailEdges((eds) => addEdge(params, eds));
-  // }, [setEmailEdges]);
+  // Connection handlers
+  const onEmailConnect = useCallback((params: Connection) => {
+    setEmailEdges((eds) => addEdge(params, eds));
+  }, [setEmailEdges]);
 
-  // const onVoiceConnect = useCallback((params: Connection) => {
-  //   setVoiceEdges((eds) => addEdge(params, eds));
-  // }, [setVoiceEdges]);
+  const onVoiceConnect = useCallback((params: Connection) => {
+    setVoiceEdges((eds) => addEdge(params, eds));
+  }, [setVoiceEdges]);
 
-  // const onSmsConnect = useCallback((params: Connection) => {
-  //   setSmsEdges((eds) => addEdge(params, eds));
-  // }, [setSmsEdges]);
+  const onSmsConnect = useCallback((params: Connection) => {
+    setSmsEdges((eds) => addEdge(params, eds));
+  }, [setSmsEdges]);
 
   // Dummy lead data
   const dummyLeads = [
@@ -327,53 +374,6 @@ export default function Home() {
     }
   ];
 
-  // Main applications
-  const applications = [
-    { 
-      id: "outbounder", 
-      label: "Outbounder", 
-      icon: Users,
-      description: "Sales outreach automation",
-      color: "blue"
-    },
-    { 
-      id: "inbounder", 
-      label: "Inbounder", 
-      icon: Globe,
-      description: "Lead capture and qualification",
-      color: "green"
-    },
-    { 
-      id: "researcher", 
-      label: "Researcher", 
-      icon: Search,
-      description: "Lead research and enrichment",
-      color: "purple"
-    },
-    { 
-      id: "recruiter", 
-      label: "Recruiter", 
-      icon: User,
-      description: "Talent acquisition tools",
-      color: "orange"
-    },
-    { 
-      id: "keeper", 
-      label: "Keeper", 
-      icon: Shield,
-      description: "Customer retention platform",
-      color: "red"
-    },
-    { 
-      id: "reporter", 
-      label: "Reporter", 
-      icon: BarChart3,
-      description: "Analytics and reporting",
-      color: "indigo"
-    },
-  ];
-
-  // Outbounder tabs
   const tabs = [
     { 
       id: "leads", 
@@ -390,90 +390,7 @@ export default function Home() {
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
-  const renderAppContent = () => {
-    switch (activeApp) {
-      case "outbounder":
-        return renderOutbounderContent();
-      case "inbounder":
-        return renderOutbounderContent();
-      case "researcher":
-        return (
-          <div className="flex items-center justify-center h-full">
-            <Card className="w-full max-w-md">
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-4 p-3 bg-purple-100 rounded-full w-fit">
-                  <Search className="h-8 w-8 text-purple-600" />
-                </div>
-                <CardTitle>Researcher</CardTitle>
-                <CardDescription>Lead research and enrichment tools</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-muted-foreground mb-4">Coming soon...</p>
-                <Button disabled>Under Development</Button>
-              </CardContent>
-            </Card>
-          </div>
-        );
-      case "recruiter":
-        return (
-          <div className="flex items-center justify-center h-full">
-            <Card className="w-full max-w-md">
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-4 p-3 bg-orange-100 rounded-full w-fit">
-                  <User className="h-8 w-8 text-orange-600" />
-                </div>
-                <CardTitle>Recruiter</CardTitle>
-                <CardDescription>Talent acquisition and management</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-muted-foreground mb-4">Coming soon...</p>
-                <Button disabled>Under Development</Button>
-              </CardContent>
-            </Card>
-          </div>
-        );
-      case "keeper":
-        return (
-          <div className="flex items-center justify-center h-full">
-            <Card className="w-full max-w-md">
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-4 p-3 bg-red-100 rounded-full w-fit">
-                  <Shield className="h-8 w-8 text-red-600" />
-                </div>
-                <CardTitle>Keeper</CardTitle>
-                <CardDescription>Customer retention and success platform</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-muted-foreground mb-4">Coming soon...</p>
-                <Button disabled>Under Development</Button>
-              </CardContent>
-            </Card>
-          </div>
-        );
-      case "reporter":
-        return (
-          <div className="flex items-center justify-center h-full">
-            <Card className="w-full max-w-md">
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-4 p-3 bg-indigo-100 rounded-full w-fit">
-                  <BarChart3 className="h-8 w-8 text-indigo-600" />
-                </div>
-                <CardTitle>Reporter</CardTitle>
-                <CardDescription>Advanced analytics and reporting</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-muted-foreground mb-4">Coming soon...</p>
-                <Button disabled>Under Development</Button>
-              </CardContent>
-            </Card>
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
-
-  const renderOutbounderContent = () => {
+  const renderContent = () => {
     switch (activeTab) {
       case "leads":
   return (
@@ -1402,197 +1319,153 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-background">
-      {/* Main Applications Sidebar */}
-      <div className={`${appSidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 bg-card border-r border-border flex flex-col`}>
+      {/* Sidebar */}
+      <div className={`${sidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 bg-card border-r border-border flex flex-col`}>
         {/* Header */}
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between">
-            {appSidebarOpen && (
-              <h1 className="text-xl font-bold text-foreground">248</h1>
+            {sidebarOpen && (
+              <h1 className="text-xl font-bold text-foreground">Outbounder</h1>
             )}
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setAppSidebarOpen(!appSidebarOpen)}
+              onClick={() => setSidebarOpen(!sidebarOpen)}
               className="ml-auto"
             >
-              {appSidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </Button>
           </div>
         </div>
 
-        {/* Applications Navigation */}
+        {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2">
-          {applications.map((app) => {
-            const Icon = app.icon;
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isLeadsTab = tab.id === "leads";
+            const isSequencerTab = tab.id === "sequencer";
+            const isMessagingTab = tab.id === "messaging";
+            const hasSubItems = tab.subItems && tab.subItems.length > 0;
+            
             return (
-              <Button
-                key={app.id}
-                variant={activeApp === app.id ? "default" : "ghost"}
-                className={`w-full justify-start ${appSidebarOpen ? 'px-3' : 'px-2'}`}
-                onClick={() => setActiveApp(app.id)}
-              >
-                <Icon className="h-4 w-4" />
-                {appSidebarOpen && (
-                  <span className="ml-2 font-medium">{app.label}</span>
+              <div key={tab.id} className="space-y-1">
+                <Button
+                  variant={activeTab === tab.id ? "default" : "ghost"}
+                  className={`w-full justify-start ${sidebarOpen ? 'px-3' : 'px-2'}`}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    if (isLeadsTab) {
+                      setActiveSubTab("upload");
+                      setLeadsExpanded(!leadsExpanded);
+                    } else if (isSequencerTab) {
+                      setActiveSubTab("email");
+                      setSequencerExpanded(!sequencerExpanded);
+                    } else if (isMessagingTab) {
+                      setActiveSubTab("email");
+                      setMessagingExpanded(!messagingExpanded);
+                    }
+                  }}
+                >
+                  <Icon className="h-4 w-4" />
+                  {sidebarOpen && (
+                    <>
+                      <span className="ml-2">{tab.label}</span>
+                      {hasSubItems && (
+                        <ChevronDown 
+                          className={`h-4 w-4 ml-auto transition-transform duration-200 ${
+                            (isLeadsTab && leadsExpanded) || (isSequencerTab && sequencerExpanded) || (isMessagingTab && messagingExpanded) ? 'rotate-180' : ''
+                          }`} 
+                        />
+                      )}
+                    </>
+                  )}
+                </Button>
+                
+                {/* Sub-items for leads with animation */}
+                {activeTab === "leads" && isLeadsTab && tab.subItems && sidebarOpen && (
+                  <div 
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      leadsExpanded ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0'
+                    }`}
+                  >
+                    <div className="ml-6 space-y-1">
+                      {tab.subItems.map((subItem) => {
+                        const SubIcon = subItem.icon;
+                        return (
+                          <Button
+                            key={subItem.id}
+                            variant={activeSubTab === subItem.id ? "secondary" : "ghost"}
+                            size="sm"
+                            className="w-full justify-start px-3 text-sm"
+                            onClick={() => setActiveSubTab(subItem.id)}
+                          >
+                            <SubIcon className="h-3 w-3" />
+                            <span className="ml-2">{subItem.label}</span>
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
-              </Button>
+
+                {/* Sub-items for sequencer with animation */}
+                {activeTab === "sequencer" && isSequencerTab && tab.subItems && sidebarOpen && (
+                  <div 
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      sequencerExpanded ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0'
+                    }`}
+                  >
+                    <div className="ml-6 space-y-1">
+                      {tab.subItems.map((subItem) => {
+                        const SubIcon = subItem.icon;
+                        return (
+                          <Button
+                            key={subItem.id}
+                            variant={activeSubTab === subItem.id ? "secondary" : "ghost"}
+                            size="sm"
+                            className="w-full justify-start px-3 text-sm"
+                            onClick={() => setActiveSubTab(subItem.id)}
+                          >
+                            <SubIcon className="h-3 w-3" />
+                            <span className="ml-2">{subItem.label}</span>
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub-items for messaging with animation */}
+                {activeTab === "messaging" && isMessagingTab && tab.subItems && sidebarOpen && (
+                  <div 
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      messagingExpanded ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0'
+                    }`}
+                  >
+                    <div className="ml-6 space-y-1">
+                      {tab.subItems.map((subItem) => {
+                        const SubIcon = subItem.icon;
+                        return (
+                          <Button
+                            key={subItem.id}
+                            variant={activeSubTab === subItem.id ? "secondary" : "ghost"}
+                            size="sm"
+                            className="w-full justify-start px-3 text-sm"
+                            onClick={() => setActiveSubTab(subItem.id)}
+                          >
+                            <SubIcon className="h-3 w-3" />
+                            <span className="ml-2">{subItem.label}</span>
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
       </div>
-
-      {/* Outbounder/Inbounder Sidebar - Only show when Outbounder or Inbounder is active */}
-      {(activeApp === "outbounder" || activeApp === "inbounder") && (
-        <div className={`${sidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 bg-card border-r border-border flex flex-col`}>
-          {/* Header */}
-          <div className="p-4 border-b border-border">
-            <div className="flex items-center justify-between">
-              {sidebarOpen && (
-                <h1 className="text-xl font-bold text-foreground">
-                  {activeApp === "outbounder" ? "Outbounder" : "Inbounder"}
-                </h1>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="ml-auto"
-              >
-                {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-              </Button>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-2">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isLeadsTab = tab.id === "leads";
-              const isSequencerTab = tab.id === "sequencer";
-              const isMessagingTab = tab.id === "messaging";
-              const hasSubItems = tab.subItems && tab.subItems.length > 0;
-              
-              return (
-                <div key={tab.id} className="space-y-1">
-                  <Button
-                    variant={activeTab === tab.id ? "default" : "ghost"}
-                    className={`w-full justify-start ${sidebarOpen ? 'px-3' : 'px-2'}`}
-                    onClick={() => {
-                      setActiveTab(tab.id);
-                      if (isLeadsTab) {
-                        setActiveSubTab("upload");
-                        setLeadsExpanded(!leadsExpanded);
-                      } else if (isSequencerTab) {
-                        setActiveSubTab("email");
-                        setSequencerExpanded(!sequencerExpanded);
-                      } else if (isMessagingTab) {
-                        setActiveSubTab("email");
-                        setMessagingExpanded(!messagingExpanded);
-                      }
-                    }}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {sidebarOpen && (
-                      <>
-                        <span className="ml-2">{tab.label}</span>
-                        {hasSubItems && (
-                          <ChevronDown 
-                            className={`h-4 w-4 ml-auto transition-transform duration-200 ${
-                              (isLeadsTab && leadsExpanded) || (isSequencerTab && sequencerExpanded) || (isMessagingTab && messagingExpanded) ? 'rotate-180' : ''
-                            }`} 
-                          />
-                        )}
-                      </>
-                    )}
-                  </Button>
-                  
-                  {/* Sub-items for leads with animation */}
-                  {activeTab === "leads" && isLeadsTab && tab.subItems && sidebarOpen && (
-                    <div 
-                      className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                        leadsExpanded ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0'
-                      }`}
-                    >
-                      <div className="ml-6 space-y-1">
-                        {tab.subItems.map((subItem) => {
-                          const SubIcon = subItem.icon;
-                          return (
-                            <Button
-                              key={subItem.id}
-                              variant={activeSubTab === subItem.id ? "secondary" : "ghost"}
-                              size="sm"
-                              className="w-full justify-start px-3 text-sm"
-                              onClick={() => setActiveSubTab(subItem.id)}
-                            >
-                              <SubIcon className="h-3 w-3" />
-                              <span className="ml-2">{subItem.label}</span>
-                            </Button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Sub-items for sequencer with animation */}
-                  {activeTab === "sequencer" && isSequencerTab && tab.subItems && sidebarOpen && (
-                    <div 
-                      className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                        sequencerExpanded ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0'
-                      }`}
-                    >
-                      <div className="ml-6 space-y-1">
-                        {tab.subItems.map((subItem) => {
-                          const SubIcon = subItem.icon;
-                          return (
-                            <Button
-                              key={subItem.id}
-                              variant={activeSubTab === subItem.id ? "secondary" : "ghost"}
-                              size="sm"
-                              className="w-full justify-start px-3 text-sm"
-                              onClick={() => setActiveSubTab(subItem.id)}
-                            >
-                              <SubIcon className="h-3 w-3" />
-                              <span className="ml-2">{subItem.label}</span>
-                            </Button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Sub-items for messaging with animation */}
-                  {activeTab === "messaging" && isMessagingTab && tab.subItems && sidebarOpen && (
-                    <div 
-                      className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                        messagingExpanded ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0'
-                      }`}
-                    >
-                      <div className="ml-6 space-y-1">
-                        {tab.subItems.map((subItem) => {
-                          const SubIcon = subItem.icon;
-                          return (
-                            <Button
-                              key={subItem.id}
-                              variant={activeSubTab === subItem.id ? "secondary" : "ghost"}
-                              size="sm"
-                              className="w-full justify-start px-3 text-sm"
-                              onClick={() => setActiveSubTab(subItem.id)}
-                            >
-                              <SubIcon className="h-3 w-3" />
-                              <span className="ml-2">{subItem.label}</span>
-                            </Button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
-        </div>
-      )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -1600,18 +1473,10 @@ export default function Home() {
         <main className="flex-1 overflow-auto p-6">
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-foreground">
-              {(activeApp === "outbounder" || activeApp === "inbounder")
-                ? tabs.find(tab => tab.id === activeTab)?.label
-                : applications.find(app => app.id === activeApp)?.label
-              }
+              {tabs.find(tab => tab.id === activeTab)?.label}
             </h1>
-            {activeApp !== "outbounder" && activeApp !== "inbounder" && (
-              <p className="text-muted-foreground mt-2 text-lg">
-                {applications.find(app => app.id === activeApp)?.description}
-              </p>
-            )}
           </div>
-          {renderAppContent()}
+          {renderContent()}
         </main>
       </div>
     </div>

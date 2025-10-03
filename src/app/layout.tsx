@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Outbounder",
-  description: "Outbound sales automation platform",
+  title: "248",
+  description: "Sales automation platform",
 };
 
 export default function RootLayout({
