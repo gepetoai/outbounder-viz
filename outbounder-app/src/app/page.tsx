@@ -155,36 +155,11 @@ export default function Home() {
 
   // Playbook state
   const [expandedPlays, setExpandedPlays] = useState<number[]>([]);
-  const [salesPlays] = useState([
+  
+  // Outbounder playbook (email-focused)
+  const outbounderPlays = [
     {
       id: 1,
-      name: "Text incoming leads who fill out a contact us form",
-      description: "Automatically text leads who submit contact forms to engage them immediately while their interest is high.",
-      category: "SMS",
-      status: "Active",
-      lastUsed: "2024-01-15",
-      successRate: "78%",
-      totalRuns: 156,
-      sequence: [
-        { id: "start", type: "startNode", label: "Lead submits form", position: { x: 0, y: 0 } },
-        { id: "sms1", type: "smsNode", label: "Send welcome SMS", position: { x: 200, y: 0 } },
-        { id: "wait1", type: "waitNode", label: "Wait 2 hours", position: { x: 400, y: 0 } },
-        { id: "sms2", type: "smsNode", label: "Follow-up SMS", position: { x: 600, y: 0 } },
-        { id: "decision", type: "decisionNode", label: "Response?", position: { x: 800, y: 0 } },
-        { id: "email", type: "emailNode", label: "Send email", position: { x: 1000, y: 0 } },
-        { id: "end", type: "endNode", label: "End", position: { x: 1200, y: 0 } }
-      ],
-      edges: [
-        { id: "e1", source: "start", target: "sms1" },
-        { id: "e2", source: "sms1", target: "wait1" },
-        { id: "e3", source: "wait1", target: "sms2" },
-        { id: "e4", source: "sms2", target: "decision" },
-        { id: "e5", source: "decision", target: "email" },
-        { id: "e6", source: "email", target: "end" }
-      ]
-    },
-    {
-      id: 2,
       name: "Email Kellogg alumni who live in SF",
       description: "Targeted email campaign for Kellogg alumni in San Francisco to leverage shared educational background and local networking opportunities.",
       category: "Email",
@@ -209,35 +184,42 @@ export default function Home() {
         { id: "e5", source: "wait2", target: "email3" },
         { id: "e6", source: "email3", target: "end" }
       ]
-    },
+    }
+  ];
+
+  // Inbounder playbook (text-focused)
+  const inbounderPlays = [
     {
-      id: 3,
-      name: "Call leads who come in through the PPL channel",
-      description: "Immediate phone outreach to high-intent leads from the Pay-Per-Lead channel to capitalize on their demonstrated interest.",
-      category: "Voice",
+      id: 1,
+      name: "Text leads who fill out the Contact Us form",
+      description: "Automatically text leads who submit contact forms to engage them immediately while their interest is high.",
+      category: "SMS",
       status: "Active",
-      lastUsed: "2024-01-13",
-      successRate: "82%",
-      totalRuns: 234,
+      lastUsed: "2024-01-15",
+      successRate: "78%",
+      totalRuns: 156,
       sequence: [
-        { id: "start", type: "startNode", label: "PPL lead received", position: { x: 0, y: 0 } },
-        { id: "call1", type: "voiceNode", label: "Immediate call", position: { x: 200, y: 0 } },
-        { id: "decision1", type: "decisionNode", label: "Call answered?", position: { x: 400, y: 0 } },
-        { id: "voicemail", type: "voiceNode", label: "Leave voicemail", position: { x: 600, y: 100 } },
-        { id: "email1", type: "emailNode", label: "Follow-up email", position: { x: 800, y: 100 } },
-        { id: "call2", type: "voiceNode", label: "Second call", position: { x: 1000, y: 0 } },
+        { id: "start", type: "startNode", label: "Lead submits form", position: { x: 0, y: 0 } },
+        { id: "sms1", type: "smsNode", label: "Send welcome SMS", position: { x: 200, y: 0 } },
+        { id: "wait1", type: "waitNode", label: "Wait 2 hours", position: { x: 400, y: 0 } },
+        { id: "sms2", type: "smsNode", label: "Follow-up SMS", position: { x: 600, y: 0 } },
+        { id: "decision", type: "decisionNode", label: "Response?", position: { x: 800, y: 0 } },
+        { id: "email", type: "emailNode", label: "Send email", position: { x: 1000, y: 0 } },
         { id: "end", type: "endNode", label: "End", position: { x: 1200, y: 0 } }
       ],
       edges: [
-        { id: "e1", source: "start", target: "call1" },
-        { id: "e2", source: "call1", target: "decision1" },
-        { id: "e3", source: "decision1", target: "voicemail" },
-        { id: "e4", source: "decision1", target: "call2" },
-        { id: "e5", source: "voicemail", target: "email1" },
-        { id: "e6", source: "call2", target: "end" }
+        { id: "e1", source: "start", target: "sms1" },
+        { id: "e2", source: "sms1", target: "wait1" },
+        { id: "e3", source: "wait1", target: "sms2" },
+        { id: "e4", source: "sms2", target: "decision" },
+        { id: "e5", source: "decision", target: "email" },
+        { id: "e6", source: "email", target: "end" }
       ]
     }
-  ]);
+  ];
+
+  // Get the appropriate playbook based on active app
+  const salesPlays = activeApp === "outbounder" ? outbounderPlays : inbounderPlays;
 
   // React Flow state
   const [emailNodes, setEmailNodes, onEmailNodesChange] = useNodesState([]);
