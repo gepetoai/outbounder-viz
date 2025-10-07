@@ -64,6 +64,7 @@ export default function Home() {
   const [leadsExpanded, setLeadsExpanded] = useState(true);
   const [sequencerExpanded, setSequencerExpanded] = useState(false);
   const [messagingExpanded, setMessagingExpanded] = useState(false);
+  const [recruiterTab, setRecruiterTab] = useState("job-setup");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [webhookEnabled, setWebhookEnabled] = useState(false);
   const [webhookUrl] = useState("https://api.outbounder.com/webhooks/leads/abc123def456");
@@ -105,6 +106,69 @@ export default function Home() {
   const [showPassword, setShowPassword] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newEmailProvider, setNewEmailProvider] = useState("Gmail");
+  const [jobUrl, setJobUrl] = useState("");
+  const [checklistItems, setChecklistItems] = useState<string[]>([]);
+  const [editingChecklistIndex, setEditingChecklistIndex] = useState<number | null>(null);
+  const [editingChecklistText, setEditingChecklistText] = useState("");
+
+  // Dummy candidate data
+  const dummyCandidates = [
+    {
+      id: 1,
+      name: "Alex Thompson",
+      email: "alex.thompson@email.com",
+      phone: "+1 (555) 234-5678",
+      currentRole: "Senior Software Engineer",
+      currentCompany: "Tech Innovations Inc.",
+      experience: "8 years",
+      status: "New",
+      matchScore: "95%"
+    },
+    {
+      id: 2,
+      name: "Sarah Martinez",
+      email: "sarah.m@email.com",
+      phone: "+1 (555) 345-6789",
+      currentRole: "Product Manager",
+      currentCompany: "StartupCo",
+      experience: "6 years",
+      status: "Contacted",
+      matchScore: "88%"
+    },
+    {
+      id: 3,
+      name: "Michael Chen",
+      email: "mchen@email.com",
+      phone: "+1 (555) 456-7890",
+      currentRole: "Engineering Manager",
+      currentCompany: "Global Tech Solutions",
+      experience: "10 years",
+      status: "Interviewing",
+      matchScore: "92%"
+    },
+    {
+      id: 4,
+      name: "Jessica Williams",
+      email: "j.williams@email.com",
+      phone: "+1 (555) 567-8901",
+      currentRole: "Full Stack Developer",
+      currentCompany: "Digital Ventures",
+      experience: "5 years",
+      status: "New",
+      matchScore: "85%"
+    },
+    {
+      id: 5,
+      name: "David Park",
+      email: "david.park@email.com",
+      phone: "+1 (555) 678-9012",
+      currentRole: "Senior Backend Engineer",
+      currentCompany: "Cloud Systems Inc.",
+      experience: "7 years",
+      status: "Contacted",
+      matchScore: "90%"
+    }
+  ];
 
   // Playbook state
   const [expandedPlays, setExpandedPlays] = useState<number[]>([]);
@@ -365,6 +429,15 @@ export default function Home() {
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
+  // Recruiter tabs
+  const recruiterTabs = [
+    { id: "job-setup", label: "Job Setup", icon: Settings, subItems: [] },
+    { id: "checklist", label: "Checklist", icon: CheckCircle, subItems: [] },
+    { id: "candidates", label: "Candidates", icon: Users, subItems: [] },
+    { id: "outreach", label: "Outreach", icon: MessageSquare, subItems: [] },
+    { id: "analytics", label: "Analytics", icon: BarChart3, subItems: [] },
+  ];
+
   const renderAppContent = () => {
     switch (activeApp) {
       case "outbounder":
@@ -390,23 +463,7 @@ export default function Home() {
           </div>
         );
       case "recruiter":
-        return (
-          <div className="flex items-center justify-center h-full">
-            <Card className="w-full max-w-md">
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-4 p-3 bg-orange-100 rounded-full w-fit">
-                  <User className="h-8 w-8 text-orange-600" />
-                </div>
-                <CardTitle>Recruiter</CardTitle>
-                <CardDescription>Talent acquisition and management</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-muted-foreground mb-4">Coming soon...</p>
-                <Button disabled>Under Development</Button>
-              </CardContent>
-            </Card>
-          </div>
-        );
+        return renderRecruiterContent();
       case "reporter":
         return (
           <div className="flex items-center justify-center h-full">
@@ -1357,6 +1414,249 @@ export default function Home() {
     }
   };
 
+  const renderRecruiterContent = () => {
+    switch (recruiterTab) {
+      case "job-setup":
+        return (
+          <div className="space-y-6">
+            <Card>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="job-url">Job URL</Label>
+                  <Input
+                    id="job-url"
+                    type="url"
+                    placeholder="Paste job posting URL here..."
+                    value={jobUrl}
+                    onChange={(e) => setJobUrl(e.target.value)}
+                    className="font-mono text-sm"
+                  />
+                </div>
+                <Button disabled={!jobUrl} className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Generate Checklist
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      case "checklist":
+        return (
+          <div className="space-y-6">
+            <Card>
+              <CardContent className="space-y-4">
+                {/* Checklist Items */}
+                <div className="space-y-2">
+                  {checklistItems.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <CheckCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>No checklist items yet</p>
+                      <p className="text-sm">Generate a checklist from a job posting to get started</p>
+                    </div>
+                  ) : (
+                    <ul className="space-y-2">
+                      {checklistItems.map((item, index) => (
+                        <li key={index} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
+                          <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                          {editingChecklistIndex === index ? (
+                            <div className="flex-1 flex gap-2">
+                              <Input
+                                value={editingChecklistText}
+                                onChange={(e) => setEditingChecklistText(e.target.value)}
+                                className="flex-1"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    const newItems = [...checklistItems];
+                                    newItems[index] = editingChecklistText;
+                                    setChecklistItems(newItems);
+                                    setEditingChecklistIndex(null);
+                                    setEditingChecklistText("");
+                                  } else if (e.key === 'Escape') {
+                                    setEditingChecklistIndex(null);
+                                    setEditingChecklistText("");
+                                  }
+                                }}
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  const newItems = [...checklistItems];
+                                  newItems[index] = editingChecklistText;
+                                  setChecklistItems(newItems);
+                                  setEditingChecklistIndex(null);
+                                  setEditingChecklistText("");
+                                }}
+                              >
+                                <Save className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditingChecklistIndex(null);
+                                  setEditingChecklistText("");
+                                }}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="text-sm flex-1">{item}</span>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingChecklistIndex(index);
+                                    setEditingChecklistText(item);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700"
+                                  onClick={() => {
+                                    const newItems = checklistItems.filter((_, i) => i !== index);
+                                    setChecklistItems(newItems);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-2 pt-2">
+                  <Button 
+                    variant="outline" 
+                    className="w-full flex items-center gap-2"
+                    onClick={() => {
+                      setChecklistItems([...checklistItems, "New checklist item"]);
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add new checklist item
+                  </Button>
+                  <Button className="w-full flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Find Candidates
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      case "candidates":
+        return (
+          <div className="space-y-6">
+            <Card>
+              <CardContent>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {dummyCandidates.length} candidates found
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="flex items-center gap-2">
+                      <Download className="h-4 w-4" />
+                      Export
+                    </Button>
+                  </div>
+                </div>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Current Role</TableHead>
+                        <TableHead>Company</TableHead>
+                        <TableHead>Experience</TableHead>
+                        <TableHead>Match</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dummyCandidates.map((candidate) => (
+                        <TableRow key={candidate.id}>
+                          <TableCell className="font-medium">
+                            <div>
+                              <div>{candidate.name}</div>
+                              <div className="text-xs text-muted-foreground">{candidate.email}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{candidate.currentRole}</TableCell>
+                          <TableCell>{candidate.currentCompany}</TableCell>
+                          <TableCell>{candidate.experience}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="bg-green-100 text-green-800">
+                              {candidate.matchScore}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              candidate.status === 'New' ? 'bg-blue-100 text-blue-800' :
+                              candidate.status === 'Contacted' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-purple-100 text-purple-800'
+                            }`}>
+                              {candidate.status}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button variant="ghost" size="sm">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm">
+                                <MessageSquare className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      case "outreach":
+        return (
+          <div className="space-y-6">
+            <Card>
+              <CardContent>
+                <p className="text-muted-foreground">Outreach content coming soon...</p>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      case "analytics":
+        return (
+          <div className="space-y-6">
+            <Card>
+              <CardContent>
+                <p className="text-muted-foreground">Analytics content coming soon...</p>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background">
       {/* Main Applications Sidebar */}
@@ -1399,15 +1699,15 @@ export default function Home() {
         </nav>
       </div>
 
-      {/* Outbounder/Inbounder Sidebar - Only show when Outbounder or Inbounder is active */}
-      {(activeApp === "outbounder" || activeApp === "inbounder") && (
+      {/* Outbounder/Inbounder/Recruiter Sidebar - Only show when these apps are active */}
+      {(activeApp === "outbounder" || activeApp === "inbounder" || activeApp === "recruiter") && (
         <div className={`${sidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 bg-card border-r border-border flex flex-col`}>
           {/* Header */}
           <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between">
               {sidebarOpen && (
                 <h1 className="text-xl font-bold text-foreground">
-                  {activeApp === "outbounder" ? "Outbounder" : "Inbounder"}
+                  {activeApp === "outbounder" ? "Outbounder" : activeApp === "inbounder" ? "Inbounder" : "Recruiter"}
                 </h1>
               )}
               <Button
@@ -1423,7 +1723,7 @@ export default function Home() {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-2">
-            {tabs.map((tab) => {
+            {(activeApp === "recruiter" ? recruiterTabs : tabs).map((tab) => {
               const Icon = tab.icon;
               const isLeadsTab = tab.id === "leads";
               const isSequencerTab = tab.id === "sequencer";
@@ -1433,19 +1733,23 @@ export default function Home() {
               return (
                 <div key={tab.id} className="space-y-1">
                   <Button
-                    variant={activeTab === tab.id ? "default" : "ghost"}
+                    variant={activeApp === "recruiter" ? (recruiterTab === tab.id ? "default" : "ghost") : (activeTab === tab.id ? "default" : "ghost")}
                     className={`w-full justify-start ${sidebarOpen ? 'px-3' : 'px-2'}`}
                     onClick={() => {
-                      setActiveTab(tab.id);
-                      if (isLeadsTab) {
-                        setActiveSubTab("upload");
-                        setLeadsExpanded(!leadsExpanded);
-                      } else if (isSequencerTab) {
-                        setActiveSubTab("email");
-                        setSequencerExpanded(!sequencerExpanded);
-                      } else if (isMessagingTab) {
-                        setActiveSubTab("email");
-                        setMessagingExpanded(!messagingExpanded);
+                      if (activeApp === "recruiter") {
+                        setRecruiterTab(tab.id);
+                      } else {
+                        setActiveTab(tab.id);
+                        if (isLeadsTab) {
+                          setActiveSubTab("upload");
+                          setLeadsExpanded(!leadsExpanded);
+                        } else if (isSequencerTab) {
+                          setActiveSubTab("email");
+                          setSequencerExpanded(!sequencerExpanded);
+                        } else if (isMessagingTab) {
+                          setActiveSubTab("email");
+                          setMessagingExpanded(!messagingExpanded);
+                        }
                       }
                     }}
                   >
@@ -1559,10 +1863,12 @@ export default function Home() {
             <h1 className="text-3xl font-bold text-foreground">
               {(activeApp === "outbounder" || activeApp === "inbounder")
                 ? tabs.find(tab => tab.id === activeTab)?.label
+                : activeApp === "recruiter"
+                ? recruiterTabs.find(tab => tab.id === recruiterTab)?.label
                 : applications.find(app => app.id === activeApp)?.label
               }
             </h1>
-            {activeApp !== "outbounder" && activeApp !== "inbounder" && (
+            {activeApp !== "outbounder" && activeApp !== "inbounder" && activeApp !== "recruiter" && (
               <p className="text-muted-foreground mt-2 text-lg">
                 {applications.find(app => app.id === activeApp)?.description}
               </p>
