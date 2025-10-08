@@ -40,6 +40,6 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 ## What you need to do at checkpoints, how to submit a PR via graphite
 in the command line:
 gt create --all --message "insert short message here"
-gt submit
+gt submit -p
 .
 
