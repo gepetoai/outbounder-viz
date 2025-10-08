@@ -1,5 +1,5 @@
 "use client";
-
+//test
 import { useState, useMemo } from "react";
 import ReactFlow, {
   useNodesState,
@@ -10,6 +10,8 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,6 +55,10 @@ import {
   EyeOff,
   Plus,
   ExternalLink,
+  ThumbsUp,
+  ThumbsDown,
+  MapPin,
+  Building2,
 } from "lucide-react";
 
 export default function Home() {
@@ -118,6 +124,13 @@ export default function Home() {
   ]);
   const [editingChecklistIndex, setEditingChecklistIndex] = useState<number | null>(null);
   const [editingChecklistText, setEditingChecklistText] = useState("");
+  const [expandedCandidates, setExpandedCandidates] = useState<{[key: number]: {fit: boolean, outreach: boolean}}>({});
+  const [candidateApprovals, setCandidateApprovals] = useState<{[key: number]: 'approved' | 'rejected' | null}>({});
+  const [editingOutreach, setEditingOutreach] = useState<{[key: number]: boolean}>({});
+  const [editedMessages, setEditedMessages] = useState<{[key: number]: string}>({});
+  const [rejectionDialogOpen, setRejectionDialogOpen] = useState<number | null>(null);
+  const [rejectionFeedback, setRejectionFeedback] = useState<{[key: number]: string}>({});
+  const [currentRejectionText, setCurrentRejectionText] = useState("");
 
   // Dummy candidate data
   const dummyCandidates = [
@@ -126,55 +139,133 @@ export default function Home() {
       name: "Alex Thompson",
       email: "alex.thompson@email.com",
       phone: "+1 (555) 234-5678",
-      currentRole: "Senior Software Engineer",
+      currentRole: "Account Executive",
       currentCompany: "Tech Innovations Inc.",
+      location: "Dallas, TX",
       experience: "8 years",
       status: "New",
-      matchScore: "95%"
+      linkedinUrl: "https://linkedin.com",
+      criteriaMet: 7,
+      totalCriteria: 7,
+      criteriaList: [
+        "Former D1 athlete (Basketball)",
+        "3+ years in direct sales",
+        "President's club member (2024)",
+        "Last role lasted 3 years",
+        "Individual contributor role",
+        "Lives 15 miles from Dallas",
+        "Current industry: SaaS B2B"
+      ],
+      unmetCriteria: [],
+      outreachMessage: "Hi Alex,\n\nI came across your profile and was impressed by your track record in sales, especially your President's Club achievement last year. Your background as a D1 athlete and consistent performance in your current role at Tech Innovations Inc. makes you an ideal fit for our Regional Sales Representative position at SpotOn.\n\nWe're looking for someone with your competitive drive and proven sales success to join our Dallas team. I'd love to chat about how this opportunity could be the next great step in your career.\n\nAre you available for a quick 15-minute call this week?\n\nBest regards,\nSarah Johnson"
     },
     {
       id: 2,
-      name: "Sarah Martinez",
-      email: "sarah.m@email.com",
+      name: "Marcus Williams",
+      email: "marcus.w@email.com",
       phone: "+1 (555) 345-6789",
-      currentRole: "Product Manager",
-      currentCompany: "StartupCo",
+      currentRole: "Senior Sales Representative",
+      currentCompany: "CloudTech Solutions",
+      location: "Fort Worth, TX",
       experience: "6 years",
-      status: "Contacted",
-      matchScore: "88%"
+      status: "New",
+      linkedinUrl: "https://linkedin.com",
+      criteriaMet: 6,
+      totalCriteria: 7,
+      criteriaList: [
+        "Former D1 athlete (Football)",
+        "3+ years in direct sales",
+        "President's club member (2023)",
+        "Last role lasted 4 years",
+        "Individual contributor role",
+        "Lives 35 miles from Dallas"
+      ],
+      unmetCriteria: [
+        {
+          criterion: "Does not work in excluded industries",
+          reason: "Currently works in Enterprise software industry"
+        }
+      ],
+      outreachMessage: "Hi Marcus,\n\nYour impressive sales career and D1 football background caught my attention. With your President's Club achievement and consistent performance at CloudTech Solutions, you're exactly the type of candidate we're seeking for our Regional Sales position at SpotOn.\n\nThis role offers competitive compensation, uncapped commission, and the opportunity to work with one of the fastest-growing payment solutions companies in the region.\n\nWould you be open to learning more?\n\nBest,\nSarah Johnson"
     },
     {
       id: 3,
-      name: "Michael Chen",
-      email: "mchen@email.com",
+      name: "Jessica Rodriguez",
+      email: "j.rodriguez@email.com",
       phone: "+1 (555) 456-7890",
-      currentRole: "Engineering Manager",
-      currentCompany: "Global Tech Solutions",
-      experience: "10 years",
-      status: "Interviewing",
-      matchScore: "92%"
+      currentRole: "Sales Account Manager",
+      currentCompany: "DataCore Systems",
+      location: "Plano, TX",
+      experience: "5 years",
+      status: "New",
+      linkedinUrl: "https://linkedin.com",
+      criteriaMet: 7,
+      totalCriteria: 7,
+      criteriaList: [
+        "Former D1 athlete (Soccer)",
+        "4+ years in direct sales",
+        "President's club member (2024)",
+        "Last role lasted 2.5 years",
+        "Individual contributor role",
+        "Lives 20 miles from Dallas",
+        "Current industry: Technology Services"
+      ],
+      unmetCriteria: [],
+      outreachMessage: "Hi Jessica,\n\nI was really impressed by your sales accomplishments at DataCore Systems and your D1 soccer background. Your recent President's Club achievement demonstrates exactly the kind of drive and results we're looking for at SpotOn.\n\nOur Regional Sales Representative role in Dallas offers an exciting opportunity to leverage your skills in the fast-paced payments industry with excellent growth potential.\n\nInterested in exploring this opportunity?\n\nWarm regards,\nSarah Johnson"
     },
     {
       id: 4,
-      name: "Jessica Williams",
-      email: "j.williams@email.com",
+      name: "Brandon Lee",
+      email: "brandon.lee@email.com",
       phone: "+1 (555) 567-8901",
-      currentRole: "Full Stack Developer",
-      currentCompany: "Digital Ventures",
-      experience: "5 years",
+      currentRole: "Territory Sales Manager",
+      currentCompany: "Premier Solutions",
+      location: "Irving, TX",
+      experience: "7 years",
       status: "New",
-      matchScore: "85%"
+      linkedinUrl: "https://linkedin.com",
+      criteriaMet: 6,
+      totalCriteria: 7,
+      criteriaList: [
+        "Former D1 athlete (Track & Field)",
+        "4+ years in direct sales",
+        "President's club member (2023)",
+        "Last role lasted 3 years",
+        "Individual contributor role",
+        "Lives 12 miles from Dallas"
+      ],
+      unmetCriteria: [
+        {
+          criterion: "Does not work in excluded industries",
+          reason: "Currently works in Financial Services industry"
+        }
+      ],
+      outreachMessage: "Hi Brandon,\n\nYour track record at Premier Solutions and your D1 athletics background make you a standout candidate for our Regional Sales position at SpotOn. We're building a team of competitive, driven professionals, and your profile suggests you'd be a perfect fit.\n\nThis role offers strong base salary, unlimited commission potential, and the chance to work with innovative payment technology.\n\nWould you be interested in a conversation?\n\nBest,\nSarah Johnson"
     },
     {
       id: 5,
-      name: "David Park",
-      email: "david.park@email.com",
+      name: "Amanda Chen",
+      email: "amanda.chen@email.com",
       phone: "+1 (555) 678-9012",
-      currentRole: "Senior Backend Engineer",
-      currentCompany: "Cloud Systems Inc.",
-      experience: "7 years",
-      status: "Contacted",
-      matchScore: "90%"
+      currentRole: "Enterprise Sales Representative",
+      currentCompany: "TechVision Corp",
+      location: "Richardson, TX",
+      experience: "6 years",
+      status: "New",
+      linkedinUrl: "https://linkedin.com",
+      criteriaMet: 7,
+      totalCriteria: 7,
+      criteriaList: [
+        "Former D1 athlete (Volleyball)",
+        "3+ years in direct sales",
+        "President's club member (2024)",
+        "Last role lasted 2 years",
+        "Individual contributor role",
+        "Lives 18 miles from Dallas",
+        "Current industry: B2B Technology"
+      ],
+      unmetCriteria: [],
+      outreachMessage: "Hi Amanda,\n\nYour success at TechVision Corp and your D1 volleyball experience demonstrate the competitive spirit and discipline we value at SpotOn. Your President's Club achievement in 2024 shows you're currently at the top of your game.\n\nWe're looking for top performers like you to join our growing Dallas sales team. The opportunity includes competitive compensation and significant career advancement potential.\n\nCan we schedule a brief call to discuss?\n\nKind regards,\nSarah Johnson"
     }
   ];
 
@@ -1547,79 +1638,305 @@ export default function Home() {
           </div>
         );
       case "candidates":
+        // Sort candidates by criteria met (highest first)
+        const sortedCandidates = [...dummyCandidates].sort((a, b) => b.criteriaMet - a.criteriaMet);
+        
         return (
-          <div className="space-y-6">
-            <Card>
-              <CardContent>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {dummyCandidates.length} candidates found
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex items-center gap-2">
-                      <Download className="h-4 w-4" />
-                      Export
-                    </Button>
-                  </div>
-                </div>
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Current Role</TableHead>
-                        <TableHead>Company</TableHead>
-                        <TableHead>Experience</TableHead>
-                        <TableHead>Match</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dummyCandidates.map((candidate) => (
-                        <TableRow key={candidate.id}>
-                          <TableCell className="font-medium">
-                            <div>
-                              <div>{candidate.name}</div>
-                              <div className="text-xs text-muted-foreground">{candidate.email}</div>
+          <div className="space-y-3">
+            {/* Header with total count */}
+            <div className="flex items-center justify-end">
+              <Badge variant="secondary" className="text-sm px-3 py-1">
+                {dummyCandidates.length} out of 732 candidates
+              </Badge>
+            </div>
+
+            {/* Candidate Cards */}
+            <div className="space-y-2">
+              {sortedCandidates.map((candidate) => {
+                const isExpanded = expandedCandidates[candidate.id] || { fit: false, outreach: false };
+                const approval = candidateApprovals[candidate.id];
+                const isEditing = editingOutreach[candidate.id];
+                const currentMessage = editedMessages[candidate.id] || candidate.outreachMessage;
+                
+                return (
+                  <Card 
+                    key={candidate.id} 
+                    className={`transition-all ${
+                      approval === 'approved' ? 'border-green-500 bg-green-50' :
+                      approval === 'rejected' ? 'border-red-500 bg-red-50' :
+                      'hover:shadow-md'
+                    }`}
+                  >
+                    <CardContent className="px-6 pt-[0.1rem] pb-2">
+                      <div className="space-y-1.5">
+                        {/* Main Info Row */}
+                        <div className="flex items-start justify-between gap-3">
+                          {/* Left side - Name, LinkedIn, Score, Title, Company, Location */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <h3 className="text-base font-semibold">{candidate.name}</h3>
+                              <a 
+                                href={candidate.linkedinUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 flex-shrink-0"
+                              >
+                                <Linkedin className="h-4 w-4" />
+                              </a>
+                              <Badge 
+                                variant="secondary" 
+                                className={`text-sm px-2 py-0.5 font-semibold flex-shrink-0 ${
+                                  candidate.criteriaMet === candidate.totalCriteria 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}
+                              >
+                                {candidate.criteriaMet}/{candidate.totalCriteria}
+                              </Badge>
                             </div>
-                          </TableCell>
-                          <TableCell>{candidate.currentRole}</TableCell>
-                          <TableCell>{candidate.currentCompany}</TableCell>
-                          <TableCell>{candidate.experience}</TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="bg-green-100 text-green-800">
-                              {candidate.matchScore}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              candidate.status === 'New' ? 'bg-blue-100 text-blue-800' :
-                              candidate.status === 'Contacted' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-purple-100 text-purple-800'
-                            }`}>
-                              {candidate.status}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <MessageSquare className="h-4 w-4" />
-                              </Button>
+                            
+                            <div className="text-xs text-muted-foreground">
+                              {candidate.currentRole} • <Building2 className="h-3 w-3 inline" /> {candidate.currentCompany} • <MapPin className="h-3 w-3 inline" /> {candidate.location}
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                          </div>
+
+                          {/* Right side - Approval Buttons */}
+                          <div className="flex gap-1 flex-shrink-0">
+                            <Button
+                              size="sm"
+                              variant={approval === 'approved' ? 'default' : 'outline'}
+                              className={`h-7 w-7 p-0 ${approval === 'approved' ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                              onClick={() => {
+                                setCandidateApprovals(prev => ({
+                                  ...prev,
+                                  [candidate.id]: prev[candidate.id] === 'approved' ? null : 'approved'
+                                }));
+                              }}
+                            >
+                              <ThumbsUp className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={approval === 'rejected' ? 'default' : 'outline'}
+                              className={`h-7 w-7 p-0 ${approval === 'rejected' ? 'bg-red-600 hover:bg-red-700' : ''}`}
+                              onClick={() => {
+                                if (approval === 'rejected') {
+                                  // If already rejected, unreject
+                                  setCandidateApprovals(prev => ({
+                                    ...prev,
+                                    [candidate.id]: null
+                                  }));
+                                  setRejectionFeedback(prev => ({
+                                    ...prev,
+                                    [candidate.id]: ''
+                                  }));
+                                } else {
+                                  // Open dialog for rejection feedback
+                                  setRejectionDialogOpen(candidate.id);
+                                  setCurrentRejectionText(rejectionFeedback[candidate.id] || '');
+                                }
+                              }}
+                            >
+                              <ThumbsDown className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Expandable Sections */}
+                        <div className="space-y-1">
+                          {/* Why Great Fit Section */}
+                          <div className="border rounded-lg overflow-hidden">
+                            <button
+                              className="w-full flex items-center justify-between p-1.5 hover:bg-gray-50 transition-colors"
+                              onClick={() => {
+                                setExpandedCandidates(prev => ({
+                                  ...prev,
+                                  [candidate.id]: {
+                                    ...prev[candidate.id],
+                                    fit: !isExpanded.fit,
+                                    outreach: prev[candidate.id]?.outreach || false
+                                  }
+                                }));
+                              }}
+                            >
+                              <span className="text-xs font-medium flex items-center gap-1.5">
+                                <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                                Why this candidate is a great fit
+                              </span>
+                              <ChevronDown 
+                                className={`h-3.5 w-3.5 transition-transform ${
+                                  isExpanded.fit ? 'rotate-180' : ''
+                                }`}
+                              />
+                            </button>
+                            
+                            {isExpanded.fit && (
+                              <div className="p-1.5 bg-gray-50 border-t">
+                                <ul className="space-y-0.5">
+                                  {candidate.criteriaList.map((criteria, idx) => (
+                                    <li key={idx} className="flex items-start gap-1">
+                                      <CheckCircle className="h-3.5 w-3.5 text-green-600 flex-shrink-0 mt-0.5" />
+                                      <span className="text-xs">{criteria}</span>
+                                    </li>
+                                  ))}
+                                  {candidate.unmetCriteria && candidate.unmetCriteria.map((unmet, idx) => (
+                                    <li key={`unmet-${idx}`} className="flex items-start gap-1">
+                                      <X className="h-3.5 w-3.5 text-red-600 flex-shrink-0 mt-0.5" />
+                                      <div className="text-xs">
+                                        <span className="font-medium">{unmet.criterion}</span>
+                                        <span className="text-muted-foreground"> - {unmet.reason}</span>
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Personalized Outreach Message Section */}
+                          <div className="border rounded-lg overflow-hidden">
+                            <button
+                              className="w-full flex items-center justify-between p-1.5 hover:bg-gray-50 transition-colors"
+                              onClick={() => {
+                                setExpandedCandidates(prev => ({
+                                  ...prev,
+                                  [candidate.id]: {
+                                    fit: prev[candidate.id]?.fit || false,
+                                    outreach: !isExpanded.outreach
+                                  }
+                                }));
+                              }}
+                            >
+                              <span className="text-xs font-medium flex items-center gap-1.5">
+                                <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
+                                Personalized outreach message
+                              </span>
+                              <ChevronDown 
+                                className={`h-3.5 w-3.5 transition-transform ${
+                                  isExpanded.outreach ? 'rotate-180' : ''
+                                }`}
+                              />
+                            </button>
+                            
+                            {isExpanded.outreach && (
+                              <div className="p-1.5 bg-gray-50 border-t">
+                                {isEditing ? (
+                                  <textarea
+                                    className="w-full min-h-[160px] p-1.5 border rounded-md font-sans text-xs"
+                                    value={currentMessage}
+                                    onChange={(e) => {
+                                      setEditedMessages(prev => ({
+                                        ...prev,
+                                        [candidate.id]: e.target.value
+                                      }));
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="prose prose-sm max-w-none">
+                                    <pre className="whitespace-pre-wrap font-sans text-xs text-gray-700">
+                                      {currentMessage}
+                                    </pre>
+                                  </div>
+                                )}
+                                <div className="flex gap-1 mt-1.5">
+                                  {isEditing ? (
+                                    <>
+                                      <Button 
+                                        size="sm" 
+                                        variant="default" 
+                                        className="flex items-center gap-1 h-6 text-xs px-2"
+                                        onClick={() => {
+                                          setEditingOutreach(prev => ({
+                                            ...prev,
+                                            [candidate.id]: false
+                                          }));
+                                        }}
+                                      >
+                                        <Save className="h-3 w-3" />
+                                        Save
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="flex items-center gap-1 h-6 text-xs px-2"
+                                      onClick={() => {
+                                        setEditingOutreach(prev => ({
+                                          ...prev,
+                                          [candidate.id]: true
+                                        }));
+                                      }}
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                      Edit
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {/* Rejection Feedback Dialog */}
+            <Dialog open={rejectionDialogOpen !== null} onOpenChange={(open) => {
+              if (!open) {
+                setRejectionDialogOpen(null);
+                setCurrentRejectionText('');
+              }
+            }}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Rejection Feedback</DialogTitle>
+                  <DialogDescription>
+                    Please provide feedback on why this candidate is not a good fit.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <Textarea
+                    placeholder="Enter your feedback here..."
+                    value={currentRejectionText}
+                    onChange={(e) => setCurrentRejectionText(e.target.value)}
+                    className="min-h-[120px]"
+                  />
                 </div>
-              </CardContent>
-            </Card>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setRejectionDialogOpen(null);
+                      setCurrentRejectionText('');
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (rejectionDialogOpen !== null) {
+                        setCandidateApprovals(prev => ({
+                          ...prev,
+                          [rejectionDialogOpen]: 'rejected'
+                        }));
+                        setRejectionFeedback(prev => ({
+                          ...prev,
+                          [rejectionDialogOpen]: currentRejectionText
+                        }));
+                        setRejectionDialogOpen(null);
+                        setCurrentRejectionText('');
+                      }
+                    }}
+                  >
+                    Save Feedback
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         );
       case "outreach":
