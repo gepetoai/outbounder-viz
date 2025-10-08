@@ -69,7 +69,6 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("leads");
   const [activeSubTab, setActiveSubTab] = useState("upload");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [appSidebarOpen, setAppSidebarOpen] = useState(true);
   const [leadsExpanded, setLeadsExpanded] = useState(true);
   const [sequencerExpanded, setSequencerExpanded] = useState(false);
   const [messagingExpanded, setMessagingExpanded] = useState(false);
@@ -2098,39 +2097,25 @@ export default function Home() {
   return (
     <div className="flex h-screen bg-background">
       {/* Main Applications Sidebar */}
-      <div className={`${appSidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 bg-card border-r border-border flex flex-col`}>
+      <div className="w-16 bg-card border-r border-border flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between">
-            {appSidebarOpen && (
-              <h1 className="text-xl font-bold text-foreground">248</h1>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setAppSidebarOpen(!appSidebarOpen)}
-              className="ml-auto"
-            >
-              {appSidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-            </Button>
-          </div>
+        <div className="p-4 border-b border-border min-h-[72px] flex items-center justify-center">
+          <h1 className="text-xl font-bold text-foreground">248</h1>
         </div>
 
         {/* Applications Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-2 space-y-2">
           {applications.map((app) => {
             const Icon = app.icon;
             return (
               <Button
                 key={app.id}
                 variant={activeApp === app.id ? "default" : "ghost"}
-                className={`w-full justify-start ${appSidebarOpen ? 'px-3' : 'px-2'}`}
+                size="icon"
+                className="w-full"
                 onClick={() => setActiveApp(app.id)}
               >
-                <Icon className="h-4 w-4" />
-                {appSidebarOpen && (
-                  <span className="ml-2 font-medium">{app.label}</span>
-                )}
+                <Icon className="h-5 w-5" />
               </Button>
             );
           })}
@@ -2141,26 +2126,24 @@ export default function Home() {
       {(activeApp === "outbounder" || activeApp === "inbounder" || activeApp === "recruiter") && (
         <div className={`${sidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 bg-card border-r border-border flex flex-col`}>
           {/* Header */}
-          <div className="p-4 border-b border-border">
-            <div className="flex items-center justify-between">
-              {sidebarOpen && (
-                <h1 className="text-xl font-bold text-foreground">
-                  {activeApp === "outbounder" ? "Outbounder" : activeApp === "inbounder" ? "Inbounder" : "Recruiter"}
-                </h1>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="ml-auto"
-              >
-                {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-              </Button>
-            </div>
+          <div className="p-4 border-b border-border min-h-[72px] flex items-center justify-between">
+            {sidebarOpen && (
+              <h1 className="text-xl font-bold text-foreground">
+                {activeApp === "outbounder" ? "Outbounder" : activeApp === "inbounder" ? "Inbounder" : "Recruiter"}
+              </h1>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="ml-auto"
+            >
+              {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </Button>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-2">
+          <nav className="flex-1 p-2 space-y-2">
             {(activeApp === "recruiter" ? recruiterTabs : tabs).map((tab) => {
               const Icon = tab.icon;
               const isLeadsTab = tab.id === "leads";
@@ -2172,6 +2155,7 @@ export default function Home() {
                 <div key={tab.id} className="space-y-1">
                   <Button
                     variant={activeApp === "recruiter" ? (recruiterTab === tab.id ? "default" : "ghost") : (activeTab === tab.id ? "default" : "ghost")}
+                    size={sidebarOpen ? "default" : "icon"}
                     className={`w-full justify-start ${sidebarOpen ? 'px-3' : 'px-2'}`}
                     onClick={() => {
                       if (activeApp === "recruiter") {
@@ -2220,11 +2204,11 @@ export default function Home() {
                             <Button
                               key={subItem.id}
                               variant={activeSubTab === subItem.id ? "secondary" : "ghost"}
-                              size="sm"
-                              className="w-full justify-start px-3 text-sm"
+                              size="default"
+                              className="w-full justify-start px-3"
                               onClick={() => setActiveSubTab(subItem.id)}
                             >
-                              <SubIcon className="h-3 w-3" />
+                              <SubIcon className="h-4 w-4" />
                               <span className="ml-2">{subItem.label}</span>
                             </Button>
                           );
@@ -2247,11 +2231,11 @@ export default function Home() {
                             <Button
                               key={subItem.id}
                               variant={activeSubTab === subItem.id ? "secondary" : "ghost"}
-                              size="sm"
-                              className="w-full justify-start px-3 text-sm"
+                              size="default"
+                              className="w-full justify-start px-3"
                               onClick={() => setActiveSubTab(subItem.id)}
                             >
-                              <SubIcon className="h-3 w-3" />
+                              <SubIcon className="h-4 w-4" />
                               <span className="ml-2">{subItem.label}</span>
                             </Button>
                           );
@@ -2274,11 +2258,11 @@ export default function Home() {
                             <Button
                               key={subItem.id}
                               variant={activeSubTab === subItem.id ? "secondary" : "ghost"}
-                              size="sm"
-                              className="w-full justify-start px-3 text-sm"
+                              size="default"
+                              className="w-full justify-start px-3"
                               onClick={() => setActiveSubTab(subItem.id)}
                             >
-                              <SubIcon className="h-3 w-3" />
+                              <SubIcon className="h-4 w-4" />
                               <span className="ml-2">{subItem.label}</span>
                             </Button>
                           );
