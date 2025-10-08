@@ -106,8 +106,16 @@ export default function Home() {
   const [showPassword, setShowPassword] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newEmailProvider, setNewEmailProvider] = useState("Gmail");
-  const [jobUrl, setJobUrl] = useState("");
-  const [checklistItems, setChecklistItems] = useState<string[]>([]);
+  const [jobUrl, setJobUrl] = useState("https://job-boards.greenhouse.io/regionalspotonsales/jobs/7483840003");
+  const [checklistItems, setChecklistItems] = useState<string[]>([
+    "Be a former D1 athlete",
+    "Worked in direct sales roles for at least 3 years",
+    "President's club member in the last year",
+    "Last experience longer than 2 years",
+    "Worked as an individual contributor and not as a sales manager",
+    "Lives in a 50-mile radius from Dallas",
+    "Does not work in the following industries: Enterprise software, Medical, IT, Financial Services, Automative, Retail, Cybersecurity"
+  ]);
   const [editingChecklistIndex, setEditingChecklistIndex] = useState<number | null>(null);
   const [editingChecklistText, setEditingChecklistText] = useState("");
 
@@ -403,13 +411,6 @@ export default function Home() {
       description: "Talent acquisition tools",
       color: "orange"
     },
-    { 
-      id: "reporter", 
-      label: "Reporter", 
-      icon: BarChart3,
-      description: "Analytics and reporting",
-      color: "indigo"
-    },
   ];
 
   // Outbounder tabs
@@ -464,24 +465,6 @@ export default function Home() {
         );
       case "recruiter":
         return renderRecruiterContent();
-      case "reporter":
-        return (
-          <div className="flex items-center justify-center h-full">
-            <Card className="w-full max-w-md">
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-4 p-3 bg-indigo-100 rounded-full w-fit">
-                  <BarChart3 className="h-8 w-8 text-indigo-600" />
-                </div>
-                <CardTitle>Reporter</CardTitle>
-                <CardDescription>Advanced analytics and reporting</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-muted-foreground mb-4">Coming soon...</p>
-                <Button disabled>Under Development</Button>
-              </CardContent>
-            </Card>
-          </div>
-        );
       default:
         return null;
     }
@@ -1432,7 +1415,11 @@ export default function Home() {
                     className="font-mono text-sm"
                   />
                 </div>
-                <Button disabled={!jobUrl} className="flex items-center gap-2">
+                <Button 
+                  disabled={!jobUrl} 
+                  className="flex items-center gap-2"
+                  onClick={() => setRecruiterTab("checklist")}
+                >
                   <CheckCircle className="h-4 w-4" />
                   Generate Checklist
                 </Button>
@@ -1547,7 +1534,10 @@ export default function Home() {
                     <Plus className="h-4 w-4" />
                     Add new checklist item
                   </Button>
-                  <Button className="w-full flex items-center gap-2">
+                  <Button 
+                    className="w-full flex items-center gap-2"
+                    onClick={() => setRecruiterTab("candidates")}
+                  >
                     <Users className="h-4 w-4" />
                     Find Candidates
                   </Button>
