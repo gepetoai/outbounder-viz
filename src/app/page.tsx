@@ -59,6 +59,17 @@ import {
   ThumbsDown,
   MapPin,
   Building2,
+  Database,
+  Key,
+  UserPlus,
+  Camera,
+  Check,
+  XCircle,
+  Filter,
+  FileText,
+  Folder,
+  ChevronRight,
+  Info,
 } from "lucide-react";
 
 // Configuration
@@ -73,6 +84,7 @@ export default function Home() {
   const [sequencerExpanded, setSequencerExpanded] = useState(false);
   const [messagingExpanded, setMessagingExpanded] = useState(false);
   const [recruiterTab, setRecruiterTab] = useState("job-setup");
+  const [researcherTab, setResearcherTab] = useState("finder");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [webhookEnabled, setWebhookEnabled] = useState(false);
   const [webhookUrl] = useState("https://api.outbounder.com/webhooks/leads/abc123def456");
@@ -135,11 +147,111 @@ export default function Home() {
   const [editingDisqualifierText, setEditingDisqualifierText] = useState("");
   const [expandedCandidates, setExpandedCandidates] = useState<{[key: number]: {fit: boolean, outreach: boolean}}>({});
   const [candidateApprovals, setCandidateApprovals] = useState<{[key: number]: 'approved' | 'rejected' | null}>({});
+
+  // Researcher Settings State
+  const [userName, setUserName] = useState("John Doe");
+  const [userEmail, setUserEmail] = useState("john.doe@company.com");
+  const [userPhoto, setUserPhoto] = useState<string | null>(null);
+  const [organizationName, setOrganizationName] = useState("Acme Inc.");
+  const [crmConnected, setCrmConnected] = useState(true);
+  const [selectedCrm, setSelectedCrm] = useState<string>("salesforce");
+  const [aiProvider, setAiProvider] = useState<string>("");
+  const [aiApiKey, setAiApiKey] = useState("");
+  const [aiConnected, setAiConnected] = useState(false);
+  const [teamMembers, setTeamMembers] = useState([
+    { id: 1, name: "Jane Smith", email: "jane@company.com", role: "Admin", status: "Active" },
+    { id: 2, name: "Bob Johnson", email: "bob@company.com", role: "User", status: "Active" },
+  ]);
+  const [newMemberEmail, setNewMemberEmail] = useState("");
+  const [newMemberRole, setNewMemberRole] = useState("User");
+  const [crmFields, setCrmFields] = useState([
+    { id: 1, name: "first_name", type: "text", mapped: true },
+    { id: 2, name: "last_name", type: "text", mapped: true },
+    { id: 3, name: "email", type: "email", mapped: true },
+    { id: 4, name: "phone", type: "phone", mapped: true },
+    { id: 5, name: "company", type: "text", mapped: true },
+    { id: 6, name: "title", type: "text", mapped: true },
+    { id: 7, name: "industry", type: "text", mapped: false },
+    { id: 8, name: "company_size", type: "number", mapped: false },
+    { id: 9, name: "revenue", type: "number", mapped: false },
+    { id: 10, name: "location", type: "text", mapped: false },
+  ]);
+  const [sampleLead] = useState({
+    id: "LEAD-001",
+    first_name: "Sarah",
+    last_name: "Johnson",
+    email: "sarah.johnson@techcorp.com",
+    phone: "+1 (555) 234-5678",
+    company: "TechCorp Industries",
+    title: "VP of Sales",
+    industry: "Technology",
+    company_size: 250,
+    revenue: "$50M-$100M",
+    location: "San Francisco, CA",
+    linkedin_url: "linkedin.com/in/sarahjohnson",
+    last_contact_date: "2024-01-10",
+    lead_score: 85,
+    status: "Qualified",
+    notes: "Interested in enterprise solutions. Follow up next quarter.",
+    created_at: "2024-01-05",
+    updated_at: "2024-01-15"
+  });
   const [editingOutreach, setEditingOutreach] = useState<{[key: number]: boolean}>({});
   const [editedMessages, setEditedMessages] = useState<{[key: number]: string}>({});
   const [rejectionDialogOpen, setRejectionDialogOpen] = useState<number | null>(null);
   const [rejectionFeedback, setRejectionFeedback] = useState<{[key: number]: string}>({});
   const [currentRejectionText, setCurrentRejectionText] = useState("");
+
+  // Finder State
+  const [finderLeadType, setFinderLeadType] = useState<"individual" | "company">("individual");
+  const [finderSource, setFinderSource] = useState<"crm" | "generate" | "integrate">("crm");
+  const [finderCrmQuery, setFinderCrmQuery] = useState("");
+  const [finderCriteria, setFinderCriteria] = useState("");
+  const [sampleSize, setSampleSize] = useState(5);
+  const [totalLeadPool, setTotalLeadPool] = useState(247);
+  const [foundLeads, setFoundLeads] = useState<any[]>([
+    { id: 1, name: "Sarah Johnson", email: "sarah.j@techcorp.com", company: "TechCorp Industries", title: "VP of Sales", location: "San Francisco, CA", phone: "+1 555-234-5678", linkedin: "linkedin.com/in/sarahjohnson", selected: false },
+    { id: 2, name: "Michael Chen", email: "mchen@innovate.io", company: "Innovate Solutions", title: "Sales Director", location: "Austin, TX", phone: "+1 555-345-6789", linkedin: "linkedin.com/in/michaelchen", selected: false },
+    { id: 3, name: "Emily Rodriguez", email: "emily.r@salesforce.com", company: "Salesforce", title: "Enterprise AE", location: "New York, NY", phone: "+1 555-456-7890", linkedin: "linkedin.com/in/emilyrodriguez", selected: false },
+    { id: 4, name: "David Kim", email: "dkim@startupxyz.com", company: "StartupXYZ", title: "Head of Growth", location: "Seattle, WA", phone: "+1 555-567-8901", linkedin: "linkedin.com/in/davidkim", selected: false },
+    { id: 5, name: "Jessica Williams", email: "jwilliams@enterprise.com", company: "Enterprise Corp", title: "Sales Manager", location: "Chicago, IL", phone: "+1 555-678-9012", linkedin: "linkedin.com/in/jessicawilliams", selected: false },
+  ]);
+  const [savedLists, setSavedLists] = useState<any[]>([
+    { id: 1, name: "Florida Healthcare Leads", count: 45, created: "2024-01-10", type: "individual", query: "All leads in Florida working in the healthcare industry" },
+    { id: 2, name: "Tech Companies West Coast", count: 128, created: "2024-01-08", type: "company", query: "B2B SaaS companies on the West Coast with 50-200 employees" },
+    { id: 3, name: "Q1 Target Accounts", count: 67, created: "2024-01-05", type: "individual", query: "VP-level contacts at target accounts for Q1 outreach" },
+  ]);
+  const [expandedListId, setExpandedListId] = useState<number | null>(null);
+  const [listDisplayCounts, setListDisplayCounts] = useState<{[key: number]: number}>({});
+  const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
+  const [saveListDialogOpen, setSaveListDialogOpen] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const [addToExistingList, setAddToExistingList] = useState(false);
+  const [selectedExistingList, setSelectedExistingList] = useState<string>("");
+
+  // Enricher State
+  const [enricherSelectedList, setEnricherSelectedList] = useState<number | null>(null);
+  const [addColumnDialogOpen, setAddColumnDialogOpen] = useState(false);
+  const [newColumnName, setNewColumnName] = useState("");
+  const [newColumnQuery, setNewColumnQuery] = useState("");
+  const [newColumnType, setNewColumnType] = useState("text");
+  const [columnConstraints, setColumnConstraints] = useState("");
+  const [selectedDataSources, setSelectedDataSources] = useState<string[]>(["google"]);
+  const [enrichedColumns, setEnrichedColumns] = useState<any[]>([
+    { id: 1, name: "Has Free Trial", query: "Does this company offer a free trial?", type: "binary", constraint: "All rows" },
+    { id: 2, name: "Recent Funding", query: "What funding has this company received in the last 6 months?", type: "text", constraint: "Only if LinkedIn present" },
+  ]);
+  const [enrichedData, setEnrichedData] = useState<{[key: string]: any}>({
+    "1-1": { value: "Yes", confidence: 95, source: "Company Website", method: "Googled company name + 'free trial'", sourceUrl: "https://techcorp.com/pricing", reasoning: "Found 'Start Free Trial' button on homepage and pricing page indicates 14-day trial period with no credit card required." },
+    "1-2": { value: "No", confidence: 90, source: "Google Search", method: "Searched company website and pricing pages", sourceUrl: "https://innovate.io/pricing", reasoning: "No free trial mentioned on website. Only paid plans available starting at $99/mo." },
+    "1-3": { value: "Yes", confidence: 98, source: "Company Website", method: "Analyzed website content and CTAs", sourceUrl: "https://salesforce.com/trial", reasoning: "Clear 'Try for Free' CTA on homepage. Documentation confirms 30-day trial with full feature access." },
+    "2-1": { value: "Series B - $50M", confidence: 92, source: "Crunchbase", method: "Googled company funding, found Crunchbase", sourceUrl: "https://crunchbase.com/organization/techcorp", reasoning: "Led by Sequoia Capital in March 2024. Previous funding: Series A $15M in 2022." },
+    "2-2": { value: "Seed Round - $3M", confidence: 88, source: "TechCrunch", method: "Searched recent funding news, found TechCrunch article", sourceUrl: "https://techcrunch.com/2024/02/innovate-funding", reasoning: "Announced in February 2024. Led by Y Combinator with participation from angels." },
+  });
+  const [reasoningPopup, setReasoningPopup] = useState<{open: boolean, data: any}>({ open: false, data: null });
+  const [enricherShowCount, setEnricherShowCount] = useState(3);
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
+  const [columnVisibilityOpen, setColumnVisibilityOpen] = useState(false);
 
   // Generate random candidate data
   const generateCandidates = (count: number) => {
@@ -482,6 +594,14 @@ export default function Home() {
     { id: "analytics", label: "Analytics", icon: BarChart3, subItems: [] },
   ];
 
+  // Researcher tabs
+  const researcherTabs = [
+    { id: "finder", label: "Finder", icon: Search, subItems: [] },
+    { id: "enricher", label: "Enricher", icon: Zap, subItems: [] },
+    { id: "lists", label: "Lists", icon: Users, subItems: [] },
+    { id: "settings", label: "Settings", icon: Settings, subItems: [] },
+  ];
+
   const renderAppContent = () => {
     switch (activeApp) {
       case "outbounder":
@@ -489,23 +609,7 @@ export default function Home() {
       case "inbounder":
         return renderOutbounderContent();
       case "researcher":
-        return (
-          <div className="flex items-center justify-center h-full">
-            <Card className="w-full max-w-md">
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-4 p-3 bg-purple-100 rounded-full w-fit">
-                  <Search className="h-8 w-8 text-purple-600" />
-                </div>
-                <CardTitle>Researcher</CardTitle>
-                <CardDescription>Lead research and enrichment tools</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-muted-foreground mb-4">Coming soon...</p>
-                <Button disabled>Under Development</Button>
-              </CardContent>
-            </Card>
-          </div>
-        );
+        return renderResearcherContent();
       case "recruiter":
         return renderRecruiterContent();
       default:
@@ -2094,6 +2198,1536 @@ export default function Home() {
     }
   };
 
+  const renderResearcherContent = () => {
+    switch (researcherTab) {
+      case "finder":
+        return (
+          <div className="space-y-6">
+            {/* Lead Source Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Search className="h-5 w-5" />
+                  Lead Finder
+                </CardTitle>
+                <CardDescription>
+                  Pull leads from your CRM or generate new prospects from scratch
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Source Selection */}
+                <div className="space-y-2">
+                  <Label>Lead Source</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      variant={finderSource === "integrate" ? "default" : "outline"}
+                      onClick={() => setFinderSource("integrate")}
+                      disabled={!crmConnected}
+                    >
+                      <Database className="h-4 w-4 mr-2" />
+                      Integrate CRM
+                    </Button>
+                    <Button
+                      variant={finderSource === "crm" ? "default" : "outline"}
+                      onClick={() => setFinderSource("crm")}
+                      disabled={!crmConnected}
+                    >
+                      <Search className="h-4 w-4 mr-2" />
+                      Query CRM
+                    </Button>
+                    <Button
+                      variant={finderSource === "generate" ? "default" : "outline"}
+                      onClick={() => setFinderSource("generate")}
+                    >
+                      <Zap className="h-4 w-4 mr-2" />
+                      Generate
+                    </Button>
+                  </div>
+                  {!crmConnected && (finderSource === "crm" || finderSource === "integrate") && (
+                    <p className="text-xs text-muted-foreground">
+                      Connect your CRM in Settings to access these features
+                    </p>
+                  )}
+                </div>
+
+                {/* Integrate All CRM Leads */}
+                {finderSource === "integrate" && crmConnected && (
+                  <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                    <div className="flex items-start gap-3">
+                      <Database className="h-5 w-5 text-purple-600 mt-1" />
+                      <div className="flex-1">
+                        <h4 className="font-medium mb-2">Import All CRM Leads</h4>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Pull all leads from your connected CRM ({selectedCrm === "salesforce" ? "Salesforce" : selectedCrm === "hubspot" ? "HubSpot" : selectedCrm === "pipedrive" ? "Pipedrive" : "Zoho CRM"}) into a new list called "All Leads" for easy access and enrichment.
+                        </p>
+                        <Alert className="mb-4">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>
+                            This will create a comprehensive list of all contacts from your CRM. You can then use the Query feature to create filtered segments.
+                          </AlertDescription>
+                        </Alert>
+                        <Button className="w-full" onClick={() => {
+                          alert("Importing all leads from CRM...")
+                        }}>
+                          <Database className="h-4 w-4 mr-2" />
+                          Import All Leads from CRM
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Query CRM with Natural Language */}
+                {finderSource === "crm" && crmConnected && (
+                  <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                    <h4 className="font-medium">Query Your CRM Data</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Use natural language to search and filter your CRM leads
+                    </p>
+                    
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">What leads are you looking for?</Label>
+                        <Textarea
+                          placeholder="Examples:&#10;• All leads without a LinkedIn profile&#10;• Leads that work at TechCorp Industries&#10;• All VP-level contacts in the healthcare industry&#10;• Leads in Florida with no activity in the last 90 days&#10;• Companies with revenue over $10M"
+                          value={finderCrmQuery}
+                          onChange={(e) => setFinderCrmQuery(e.target.value)}
+                          rows={5}
+                        />
+                      </div>
+
+                      <Button className="w-full" onClick={() => {
+                        setTotalLeadPool(Math.floor(Math.random() * 500) + 50)
+                        alert("Searching CRM...")
+                      }}>
+                        <Search className="h-4 w-4 mr-2" />
+                        Search CRM
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Generate from Scratch Options */}
+                {finderSource === "generate" && (
+                  <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                    <h4 className="font-medium">Generate Lead List from Scratch</h4>
+                    
+                    {/* Lead Type Toggle */}
+                    <div className="space-y-2">
+                      <Label>Lead Type</Label>
+                      <div className="flex gap-2">
+                        <Button
+                          variant={finderLeadType === "individual" ? "default" : "outline"}
+                          onClick={() => setFinderLeadType("individual")}
+                          className="flex-1"
+                          size="sm"
+                        >
+                          <User className="h-4 w-4 mr-2" />
+                          Individuals
+                        </Button>
+                        <Button
+                          variant={finderLeadType === "company" ? "default" : "outline"}
+                          onClick={() => setFinderLeadType("company")}
+                          className="flex-1"
+                          size="sm"
+                        >
+                          <Building2 className="h-4 w-4 mr-2" />
+                          Companies
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">
+                          Describe Your Ideal {finderLeadType === "individual" ? "Prospect" : "Company"}
+                        </Label>
+                        <Textarea
+                          placeholder={
+                            finderLeadType === "individual" 
+                              ? "e.g., VP of Sales at SaaS companies in California with 50-200 employees"
+                              : "e.g., B2B SaaS companies in the healthcare space with $10M-$50M revenue"
+                          }
+                          value={finderCriteria}
+                          onChange={(e) => setFinderCriteria(e.target.value)}
+                          rows={4}
+                        />
+                      </div>
+                      <Button className="w-full" onClick={() => {
+                        setTotalLeadPool(Math.floor(Math.random() * 1000) + 100)
+                        alert("Generating leads...")
+                      }}>
+                        <Zap className="h-4 w-4 mr-2" />
+                        Generate Leads
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Found Leads Table */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5" />
+                        Found Leads
+                      </CardTitle>
+                      <Badge variant="secondary" className="text-sm">
+                        {totalLeadPool} total matches
+                      </Badge>
+                    </div>
+                    <CardDescription>
+                      Viewing {Math.min(sampleSize, foundLeads.length)} of {totalLeadPool} leads
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm text-muted-foreground">Show:</Label>
+                      <select
+                        value={sampleSize}
+                        onChange={(e) => setSampleSize(Number(e.target.value))}
+                        className="px-2 py-1 border rounded-md bg-background text-sm"
+                      >
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Company</TableHead>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>LinkedIn</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {foundLeads.slice(0, sampleSize).map((lead) => (
+                        <TableRow key={lead.id}>
+                          <TableCell className="font-medium">{lead.name}</TableCell>
+                          <TableCell className="font-mono text-sm">{lead.email}</TableCell>
+                          <TableCell>{lead.company}</TableCell>
+                          <TableCell>{lead.title}</TableCell>
+                          <TableCell>{lead.location}</TableCell>
+                          <TableCell>
+                            <a 
+                              href={`https://${lead.linkedin}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline text-sm"
+                            >
+                              <Linkedin className="h-4 w-4" />
+                            </a>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Save Leads Button */}
+                <div className="flex justify-center pt-2">
+                  <Button 
+                    size="lg"
+                    onClick={() => setSaveListDialogOpen(true)}
+                    className="min-w-[200px]"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save These Leads
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Save List Dialog */}
+            <Dialog open={saveListDialogOpen} onOpenChange={setSaveListDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Save Lead List</DialogTitle>
+                  <DialogDescription>
+                    Save {totalLeadPool} leads to a list for later enrichment
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="list-name">List Name</Label>
+                    <Input
+                      id="list-name"
+                      placeholder="e.g., Q1 Target Accounts, Florida Healthcare Leads"
+                      value={newListName}
+                      onChange={(e) => setNewListName(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setSaveListDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (newListName) {
+                        setSavedLists([
+                          ...savedLists,
+                          {
+                            id: savedLists.length + 1,
+                            name: newListName,
+                            count: totalLeadPool,
+                            created: new Date().toISOString().split('T')[0],
+                            type: finderLeadType,
+                            query: finderSource === "crm" ? finderCrmQuery : finderSource === "integrate" ? "All leads from CRM" : finderCriteria
+                          }
+                        ])
+                        setNewListName("")
+                        setSaveListDialogOpen(false)
+                      }
+                    }}
+                    disabled={!newListName}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save List
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        );
+      case "enricher":
+        return (
+          <div className="space-y-6">
+            {/* List Selection View */}
+            {!enricherSelectedList ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Folder className="h-5 w-5" />
+                    Select a List to Enrich
+                  </CardTitle>
+                  <CardDescription>
+                    Choose a lead list to add enrichment columns and AI-powered data
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>List Name</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Lead Count</TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead className="text-right">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {savedLists.map((list) => (
+                          <TableRow key={list.id}>
+                            <TableCell className="font-medium">{list.name}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {list.type === "individual" ? (
+                                  <User className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                                )}
+                                <span className="capitalize">{list.type}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>{list.count} leads</TableCell>
+                            <TableCell>{list.created}</TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                size="sm"
+                                onClick={() => setEnricherSelectedList(list.id)}
+                              >
+                                <Zap className="h-4 w-4 mr-2" />
+                                Enrich
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {savedLists.length === 0 && (
+                    <div className="text-center py-12">
+                      <Folder className="h-12 w-12 mx-auto text-muted-foreground opacity-50 mb-3" />
+                      <p className="text-muted-foreground mb-2">No lists available</p>
+                      <p className="text-sm text-muted-foreground">
+                        Create lists in the Finder to start enriching
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                {/* Selected List Header */}
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {savedLists.find(l => l.id === enricherSelectedList)?.type === "individual" ? (
+                          <User className="h-5 w-5 text-muted-foreground" />
+                        ) : (
+                          <Building2 className="h-5 w-5 text-muted-foreground" />
+                        )}
+                        <div>
+                          <h3 className="font-medium">
+                            Currently Enriching: {savedLists.find(l => l.id === enricherSelectedList)?.name}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {savedLists.find(l => l.id === enricherSelectedList)?.count} leads
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEnricherSelectedList(null);
+                          setEnricherShowCount(3);
+                        }}
+                      >
+                        Change List
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+
+            {/* Enrichment Table */}
+            {enricherSelectedList && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>{savedLists.find(l => l.id === enricherSelectedList)?.name}</CardTitle>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setColumnVisibilityOpen(true)}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        Columns
+                      </Button>
+                      <Button
+                        onClick={() => setAddColumnDialogOpen(true)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Column
+                      </Button>
+                      <Button variant="outline">
+                        <Database className="h-4 w-4 mr-2" />
+                        Push to CRM
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="border rounded-lg overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="sticky left-0 bg-background z-10">Name</TableHead>
+                          {!hiddenColumns.includes("email") && <TableHead>Email</TableHead>}
+                          {!hiddenColumns.includes("company") && <TableHead>Company</TableHead>}
+                          {!hiddenColumns.includes("title") && <TableHead>Title</TableHead>}
+                          {enrichedColumns.filter(c => !hiddenColumns.includes(`custom-${c.id}`)).map((column) => (
+                            <TableHead key={column.id}>
+                              <div className="flex items-center gap-2">
+                                <span>{column.name}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => {
+                                    setEnrichedColumns(enrichedColumns.filter(c => c.id !== column.id))
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {foundLeads.slice(0, enricherShowCount).map((lead, leadIndex) => (
+                          <TableRow key={lead.id}>
+                            <TableCell className="sticky left-0 bg-background z-10 font-medium">
+                              {lead.name}
+                            </TableCell>
+                            {!hiddenColumns.includes("email") && <TableCell className="font-mono text-sm">{lead.email}</TableCell>}
+                            {!hiddenColumns.includes("company") && <TableCell>{lead.company}</TableCell>}
+                            {!hiddenColumns.includes("title") && <TableCell>{lead.title}</TableCell>}
+                            {enrichedColumns.filter(c => !hiddenColumns.includes(`custom-${c.id}`)).map((column) => {
+                              const cellKey = `${column.id}-${lead.id}`;
+                              const cellData = enrichedData[cellKey];
+                              
+                              return (
+                                <TableCell key={column.id}>
+                                  {cellData ? (
+                                    <div 
+                                      className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
+                                      onClick={() => setReasoningPopup({ open: true, data: cellData })}
+                                    >
+                                      <span className={column.type === "binary" ? "font-medium" : ""}>
+                                        {cellData.value}
+                                      </span>
+                                      <Badge variant="outline" className="text-xs">
+                                        {cellData.confidence}%
+                                      </Badge>
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground italic text-sm">Pending...</span>
+                                  )}
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="mt-3 flex items-center justify-center gap-3">
+                    <span className="text-sm text-muted-foreground">
+                      Showing {enricherShowCount} of {savedLists.find(l => l.id === enricherSelectedList)?.count} leads
+                    </span>
+                    {enricherShowCount < (savedLists.find(l => l.id === enricherSelectedList)?.count || 0) && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setEnricherShowCount(Math.min(enricherShowCount + 10, savedLists.find(l => l.id === enricherSelectedList)?.count || 0))}
+                      >
+                        Show More
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Add Column Dialog */}
+            <Dialog open={addColumnDialogOpen} onOpenChange={setAddColumnDialogOpen}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Add Enrichment Column</DialogTitle>
+                  <DialogDescription>
+                    Define a custom column with a natural language query to enrich your lead data
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  {/* Column Name */}
+                  <div className="space-y-2">
+                    <Label htmlFor="column-name">Column Name</Label>
+                    <Input
+                      id="column-name"
+                      placeholder="e.g., Has Free Trial, Recent Funding"
+                      value={newColumnName}
+                      onChange={(e) => setNewColumnName(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Natural Language Query */}
+                  <div className="space-y-2">
+                    <Label htmlFor="column-query">Enrichment Question</Label>
+                    <Textarea
+                      id="column-query"
+                      placeholder="Examples:&#10;• Does this company offer a free trial?&#10;• What funding has this company received in the last 6 months?&#10;• How many employees does this company have?&#10;• Does the company have a contact us form on their website?"
+                      value={newColumnQuery}
+                      onChange={(e) => setNewColumnQuery(e.target.value)}
+                      rows={4}
+                    />
+                  </div>
+
+                  {/* Column Type */}
+                  <div className="space-y-2">
+                    <Label htmlFor="column-type">Column Type</Label>
+                    <select
+                      id="column-type"
+                      value={newColumnType}
+                      onChange={(e) => setNewColumnType(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md bg-background"
+                    >
+                      <option value="binary">Binary (Yes/No)</option>
+                      <option value="text">Text</option>
+                      <option value="number">Number</option>
+                      <option value="url">URL</option>
+                    </select>
+                  </div>
+
+                  {/* Constraints */}
+                  <div className="space-y-2">
+                    <Label htmlFor="constraints">Constraints (Optional)</Label>
+                    <Textarea
+                      id="constraints"
+                      placeholder="Examples:&#10;• Only run on first 10 rows&#10;• Only if LinkedIn profile is present&#10;• Skip if company field is empty&#10;• Run only for companies with >100 employees"
+                      value={columnConstraints}
+                      onChange={(e) => setColumnConstraints(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setAddColumnDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (newColumnName && newColumnQuery) {
+                        setEnrichedColumns([
+                          ...enrichedColumns,
+                          {
+                            id: enrichedColumns.length + 1,
+                            name: newColumnName,
+                            query: newColumnQuery,
+                            type: newColumnType,
+                            constraint: columnConstraints || "All rows"
+                          }
+                        ])
+                        setNewColumnName("")
+                        setNewColumnQuery("")
+                        setNewColumnType("text")
+                        setColumnConstraints("")
+                        setAddColumnDialogOpen(false)
+                      }
+                    }}
+                    disabled={!newColumnName || !newColumnQuery}
+                  >
+                    <Zap className="h-4 w-4 mr-2" />
+                    Add & Run Enrichment
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Reasoning Popup */}
+            <Dialog open={reasoningPopup.open} onOpenChange={(open) => setReasoningPopup({ open, data: null })}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Enrichment Details</DialogTitle>
+                </DialogHeader>
+                {reasoningPopup.data && (
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Result</Label>
+                      <div className="p-3 bg-muted rounded-md font-medium">
+                        {reasoningPopup.data.value}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Confidence</Label>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-green-500"
+                              style={{ width: `${reasoningPopup.data.confidence}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium">{reasoningPopup.data.confidence}%</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Source</Label>
+                        <Badge variant="outline" className="w-fit">
+                          {reasoningPopup.data.source}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Method</Label>
+                      <div className="p-3 bg-muted/50 rounded-md text-sm border">
+                        {reasoningPopup.data.method}
+                      </div>
+                    </div>
+
+                    {reasoningPopup.data.sourceUrl && (
+                      <div className="space-y-2">
+                        <Label>Source URL</Label>
+                        <a 
+                          href={reasoningPopup.data.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:underline break-all block p-3 bg-muted/50 rounded-md border"
+                        >
+                          {reasoningPopup.data.sourceUrl}
+                        </a>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label>Reasoning</Label>
+                      <div className="p-3 bg-muted/50 rounded-md text-sm border">
+                        {reasoningPopup.data.reasoning}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button onClick={() => setReasoningPopup({ open: false, data: null })}>
+                    Close
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Column Visibility Dialog */}
+            <Dialog open={columnVisibilityOpen} onOpenChange={setColumnVisibilityOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Column Visibility</DialogTitle>
+                  <DialogDescription>
+                    Show or hide columns in the enrichment table
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3 py-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Standard Columns</Label>
+                    {["email", "company", "title"].map((col) => (
+                      <div key={col} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`vis-${col}`}
+                          checked={!hiddenColumns.includes(col)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setHiddenColumns(hiddenColumns.filter(c => c !== col))
+                            } else {
+                              setHiddenColumns([...hiddenColumns, col])
+                            }
+                          }}
+                          className="cursor-pointer"
+                        />
+                        <label htmlFor={`vis-${col}`} className="text-sm cursor-pointer capitalize">
+                          {col}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+
+                  {enrichedColumns.length > 0 && (
+                    <div className="space-y-2 pt-3 border-t">
+                      <Label className="text-sm font-medium">Custom Columns</Label>
+                      {enrichedColumns.map((column) => (
+                        <div key={column.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`vis-custom-${column.id}`}
+                            checked={!hiddenColumns.includes(`custom-${column.id}`)}
+                            onChange={(e) => {
+                              const colId = `custom-${column.id}`;
+                              if (e.target.checked) {
+                                setHiddenColumns(hiddenColumns.filter(c => c !== colId))
+                              } else {
+                                setHiddenColumns([...hiddenColumns, colId])
+                              }
+                            }}
+                            className="cursor-pointer"
+                          />
+                          <label htmlFor={`vis-custom-${column.id}`} className="text-sm cursor-pointer">
+                            {column.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button onClick={() => setColumnVisibilityOpen(false)}>
+                    Done
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        );
+      case "lists":
+        return (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Folder className="h-5 w-5" />
+                  Lead Lists
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {savedLists.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Folder className="h-12 w-12 mx-auto text-muted-foreground opacity-50 mb-3" />
+                    <p className="text-muted-foreground mb-2">No lists yet</p>
+                    <p className="text-sm text-muted-foreground">
+                      Create lists in the Finder to organize your leads
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {savedLists.map((list) => (
+                      <div key={list.id} className="border rounded-lg">
+                        {/* List Header */}
+                        <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
+                          <div className="flex items-center gap-3 flex-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setExpandedListId(expandedListId === list.id ? null : list.id)}
+                            >
+                              <ChevronRight 
+                                className={`h-5 w-5 transition-transform ${expandedListId === list.id ? 'rotate-90' : ''}`}
+                              />
+                            </Button>
+                            {list.type === "individual" ? (
+                              <User className="h-5 w-5 text-muted-foreground" />
+                            ) : (
+                              <Building2 className="h-5 w-5 text-muted-foreground" />
+                            )}
+                            <div>
+                              <h4 className="font-medium">{list.name}</h4>
+                              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                <span>{list.count} leads</span>
+                                <span>•</span>
+                                <span>Created {list.created}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm">
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Leads
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => {
+                                setSavedLists(savedLists.filter(l => l.id !== list.id))
+                                if (expandedListId === list.id) {
+                                  setExpandedListId(null)
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Expanded Content */}
+                        {expandedListId === list.id && (
+                          <div className="border-t bg-muted/20">
+                            {/* Query Source Banner */}
+                            <div className="p-3 bg-muted/50 border-b flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Info className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm font-medium">Query Source:</span>
+                                <span className="text-sm text-muted-foreground">{list.query}</span>
+                              </div>
+                              <Button variant="outline" size="sm">
+                                <Database className="h-4 w-4 mr-2" />
+                                Send to CRM
+                              </Button>
+                            </div>
+
+                            {/* Leads Table */}
+                            <div className="p-4">
+                              <div className="border rounded-lg bg-background">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Name</TableHead>
+                                      <TableHead>Email</TableHead>
+                                      <TableHead>Company</TableHead>
+                                      <TableHead>Title</TableHead>
+                                      <TableHead>Location</TableHead>
+                                      <TableHead>LinkedIn</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {Array.from({ length: Math.min(listDisplayCounts[list.id] || 5, list.count) }).map((_, index) => {
+                                      const lead = foundLeads[index % foundLeads.length];
+                                      return (
+                                        <TableRow key={`${list.id}-${index}`}>
+                                          <TableCell className="font-medium">{lead.name}</TableCell>
+                                          <TableCell className="font-mono text-sm">{lead.email}</TableCell>
+                                          <TableCell>{lead.company}</TableCell>
+                                          <TableCell>{lead.title}</TableCell>
+                                          <TableCell>{lead.location}</TableCell>
+                                          <TableCell>
+                                            <a 
+                                              href={`https://${lead.linkedin}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-blue-600 hover:underline text-sm"
+                                            >
+                                              <Linkedin className="h-4 w-4" />
+                                            </a>
+                                          </TableCell>
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                              <div className="mt-3 flex items-center justify-center gap-3">
+                                <span className="text-sm text-muted-foreground">
+                                  Showing {Math.min(listDisplayCounts[list.id] || 5, list.count)} of {list.count} leads
+                                </span>
+                                {(listDisplayCounts[list.id] || 5) < list.count && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => {
+                                      const currentCount = listDisplayCounts[list.id] || 5;
+                                      const newCount = Math.min(currentCount + 10, list.count);
+                                      setListDisplayCounts({
+                                        ...listDisplayCounts,
+                                        [list.id]: newCount
+                                      });
+                                    }}
+                                  >
+                                    Show More
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        );
+      case "settings":
+        return (
+          <div className="space-y-6">
+            {/* User Profile Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  User Profile
+                </CardTitle>
+                <CardDescription>Update your personal information and profile settings</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Profile Photo */}
+                <div className="flex items-center gap-6">
+                  <div className="relative">
+                    {userPhoto ? (
+                      <img src={userPhoto} alt="Profile" className="h-20 w-20 rounded-full object-cover" />
+                    ) : (
+                      <div className="h-20 w-20 rounded-full bg-purple-100 flex items-center justify-center">
+                        <User className="h-10 w-10 text-purple-600" />
+                      </div>
+                    )}
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
+                      onClick={() => {
+                        // Placeholder for file upload
+                        alert("Photo upload functionality coming soon")
+                      }}
+                    >
+                      <Camera className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium">Profile Photo</h3>
+                    <p className="text-sm text-muted-foreground">Upload a photo to personalize your profile</p>
+                  </div>
+                </div>
+
+                {/* Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="user-name">Full Name</Label>
+                  <Input
+                    id="user-name"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    placeholder="Enter your full name"
+                  />
+                </div>
+
+                {/* Email */}
+                <div className="space-y-2">
+                  <Label htmlFor="user-email">Email Address</Label>
+                  <Input
+                    id="user-email"
+                    type="email"
+                    value={userEmail}
+                    onChange={(e) => setUserEmail(e.target.value)}
+                    placeholder="Enter your email"
+                  />
+                </div>
+
+                {/* Organization */}
+                <div className="space-y-2">
+                  <Label htmlFor="organization">Organization Name</Label>
+                  <Input
+                    id="organization"
+                    value={organizationName}
+                    onChange={(e) => setOrganizationName(e.target.value)}
+                    placeholder="Enter organization name"
+                  />
+                </div>
+
+                <Button className="flex items-center gap-2">
+                  <Save className="h-4 w-4" />
+                  Save Profile Changes
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Payment Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  Payment Information
+                </CardTitle>
+                <CardDescription>Manage your billing and payment methods</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="h-8 w-8 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">•••• •••• •••• 4242</p>
+                      <p className="text-sm text-muted-foreground">Expires 12/2025</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    Update
+                  </Button>
+                </div>
+                <Button variant="outline" className="w-full">
+                  Add Payment Method
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* AI Provider Connection */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="h-5 w-5" />
+                  AI Provider Connection
+                </CardTitle>
+                <CardDescription>Connect your AI provider to enable enrichment features</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* AI Provider Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="ai-provider">Select AI Provider</Label>
+                  <select
+                    id="ai-provider"
+                    value={aiProvider}
+                    onChange={(e) => setAiProvider(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-md bg-background"
+                  >
+                    <option value="">-- Select Provider --</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Anthropic (Claude)</option>
+                    <option value="gemini">Google Gemini</option>
+                    <option value="groq">Groq</option>
+                    <option value="248ai">248 AI (Premium)</option>
+                  </select>
+                </div>
+
+                {/* API Key Input */}
+                {aiProvider && aiProvider !== "248ai" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="api-key">API Key</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="api-key"
+                        type="password"
+                        value={aiApiKey}
+                        onChange={(e) => setAiApiKey(e.target.value)}
+                        placeholder="Enter your API key"
+                        className="font-mono"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Your API key is encrypted and stored securely
+                    </p>
+                  </div>
+                )}
+
+                {aiProvider === "248ai" && (
+                  <Alert>
+                    <Zap className="h-4 w-4" />
+                    <AlertDescription>
+                      248 AI is our premium AI service. No API key required - works out of the box with enhanced features.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Connection Status */}
+                {aiConnected && (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <span className="text-sm font-medium text-green-800">
+                      Connected to {aiProvider === "openai" ? "OpenAI" : aiProvider === "anthropic" ? "Anthropic" : aiProvider === "gemini" ? "Google Gemini" : aiProvider === "groq" ? "Groq" : "248 AI"}
+                    </span>
+                  </div>
+                )}
+
+                <Button
+                  onClick={() => {
+                    if (aiProvider && (aiApiKey || aiProvider === "248ai")) {
+                      setAiConnected(true)
+                    }
+                  }}
+                  disabled={!aiProvider || (aiProvider !== "248ai" && !aiApiKey)}
+                  className="flex items-center gap-2"
+                >
+                  <Key className="h-4 w-4" />
+                  {aiConnected ? "Update Connection" : "Connect AI Provider"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* CRM Connection */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="h-5 w-5" />
+                  CRM Integration
+                </CardTitle>
+                <CardDescription>Connect your CRM to sync and enrich contact data</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* CRM Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="crm-select">Select CRM</Label>
+                  <select
+                    id="crm-select"
+                    value={selectedCrm}
+                    onChange={(e) => setSelectedCrm(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-md bg-background"
+                  >
+                    <option value="">-- Select CRM --</option>
+                    <option value="salesforce">Salesforce</option>
+                    <option value="hubspot">HubSpot</option>
+                    <option value="pipedrive">Pipedrive</option>
+                    <option value="zoho">Zoho CRM</option>
+                    <option value="custom">Custom Integration</option>
+                  </select>
+                </div>
+
+                {/* Connection Status */}
+                {crmConnected ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <span className="text-sm font-medium text-green-800">
+                        Connected to {selectedCrm === "salesforce" ? "Salesforce" : selectedCrm === "hubspot" ? "HubSpot" : selectedCrm === "pipedrive" ? "Pipedrive" : selectedCrm === "zoho" ? "Zoho CRM" : "Custom CRM"}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm">
+                        Test Connection
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCrmConnected(false)}
+                      >
+                        Disconnect
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={() => {
+                      if (selectedCrm) {
+                        setCrmConnected(true)
+                      }
+                    }}
+                    disabled={!selectedCrm}
+                    className="flex items-center gap-2"
+                  >
+                    <Link className="h-4 w-4" />
+                    Connect CRM
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* CRM Field Mapping */}
+            {crmConnected && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    CRM Field Mapping
+                  </CardTitle>
+                  <CardDescription>
+                    View and manage fields available in your CRM for data mapping
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Field Name</TableHead>
+                          <TableHead>Field Type</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {crmFields.map((field) => (
+                          <TableRow key={field.id}>
+                            <TableCell className="font-mono text-sm">{field.name}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{field.type}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              {field.mapped ? (
+                                <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                                  <Check className="h-3 w-3 mr-1" />
+                                  Mapped
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary">Not Mapped</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setCrmFields(crmFields.map(f =>
+                                    f.id === field.id ? { ...f, mapped: !f.mapped } : f
+                                  ))
+                                }}
+                              >
+                                {field.mapped ? "Unmap" : "Map"}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Sample Lead Preview */}
+            {crmConnected && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    Sample Lead Preview
+                  </CardTitle>
+                  <CardDescription>
+                    View a sample lead with all available fields from your CRM
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Lead Header */}
+                  <div className="flex items-start justify-between p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 rounded-full bg-purple-200 flex items-center justify-center">
+                        <User className="h-6 w-6 text-purple-700" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg">
+                          {sampleLead.first_name} {sampleLead.last_name}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">{sampleLead.title}</p>
+                        <p className="text-sm text-muted-foreground">{sampleLead.company}</p>
+                      </div>
+                    </div>
+                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                      {sampleLead.status}
+                    </Badge>
+                  </div>
+
+                  {/* Lead Fields Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
+                    {/* Contact Information */}
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+                        Contact Information
+                      </h4>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <Mail className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground">Email</p>
+                            <p className="text-sm font-mono">{sampleLead.email}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2">
+                          <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground">Phone</p>
+                            <p className="text-sm font-mono">{sampleLead.phone}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2">
+                          <Linkedin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground">LinkedIn</p>
+                            <p className="text-sm text-blue-600 hover:underline cursor-pointer">
+                              {sampleLead.linkedin_url}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2">
+                          <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground">Location</p>
+                            <p className="text-sm">{sampleLead.location}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Company & Lead Details */}
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+                        Company & Lead Details
+                      </h4>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <Building2 className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground">Industry</p>
+                            <p className="text-sm">{sampleLead.industry}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground">Company Size</p>
+                            <p className="text-sm">{sampleLead.company_size} employees</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2">
+                          <BarChart3 className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground">Revenue</p>
+                            <p className="text-sm">{sampleLead.revenue}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2">
+                          <Activity className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground">Lead Score</p>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-green-500"
+                                  style={{ width: `${sampleLead.lead_score}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-medium">{sampleLead.lead_score}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Additional Information */}
+                  <div className="space-y-3 p-4 border rounded-lg">
+                    <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+                      Additional Information
+                    </h4>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Notes</p>
+                        <p className="text-sm p-3 bg-muted rounded-md">{sampleLead.notes}</p>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Lead ID</p>
+                          <p className="text-sm font-mono">{sampleLead.id}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Created</p>
+                          <p className="text-sm">{sampleLead.created_at}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Last Updated</p>
+                          <p className="text-sm">{sampleLead.updated_at}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Last Contact</p>
+                          <p className="text-sm">{sampleLead.last_contact_date}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Field Count Summary */}
+                  <Alert>
+                    <Database className="h-4 w-4" />
+                    <AlertDescription>
+                      This lead has <strong>{Object.keys(sampleLead).length} unique fields</strong> available from your CRM.
+                      You can map these fields in the section above to use them for enrichment.
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Team Management */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Team Management
+                </CardTitle>
+                <CardDescription>Invite and manage team member access</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Invite New Member */}
+                <div className="p-4 border rounded-lg space-y-3">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    Invite Team Member
+                  </h4>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="email@company.com"
+                      type="email"
+                      value={newMemberEmail}
+                      onChange={(e) => setNewMemberEmail(e.target.value)}
+                      className="flex-1"
+                    />
+                    <select
+                      value={newMemberRole}
+                      onChange={(e) => setNewMemberRole(e.target.value)}
+                      className="px-3 py-2 border rounded-md bg-background"
+                    >
+                      <option value="User">User</option>
+                      <option value="Admin">Admin</option>
+                    </select>
+                    <Button
+                      onClick={() => {
+                        if (newMemberEmail) {
+                          setTeamMembers([
+                            ...teamMembers,
+                            {
+                              id: teamMembers.length + 1,
+                              name: newMemberEmail.split("@")[0],
+                              email: newMemberEmail,
+                              role: newMemberRole,
+                              status: "Pending"
+                            }
+                          ])
+                          setNewMemberEmail("")
+                        }
+                      }}
+                      disabled={!newMemberEmail}
+                    >
+                      Send Invite
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Team Members List */}
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {teamMembers.map((member) => (
+                        <TableRow key={member.id}>
+                          <TableCell className="font-medium">{member.name}</TableCell>
+                          <TableCell>{member.email}</TableCell>
+                          <TableCell>
+                            <Badge variant={member.role === "Admin" ? "default" : "outline"}>
+                              {member.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={member.status === "Active" ? "default" : "secondary"}
+                              className={member.status === "Active" ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}
+                            >
+                              {member.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex gap-1 justify-end">
+                              <Button variant="ghost" size="sm">
+                                Edit
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setTeamMembers(teamMembers.filter(m => m.id !== member.id))
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 text-red-600" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background">
       {/* Main Applications Sidebar */}
@@ -2122,14 +3756,14 @@ export default function Home() {
         </nav>
       </div>
 
-      {/* Outbounder/Inbounder/Recruiter Sidebar - Only show when these apps are active */}
-      {(activeApp === "outbounder" || activeApp === "inbounder" || activeApp === "recruiter") && (
+      {/* Outbounder/Inbounder/Recruiter/Researcher Sidebar - Only show when these apps are active */}
+      {(activeApp === "outbounder" || activeApp === "inbounder" || activeApp === "recruiter" || activeApp === "researcher") && (
         <div className={`${sidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 bg-card border-r border-border flex flex-col`}>
           {/* Header */}
           <div className="p-4 border-b border-border min-h-[72px] flex items-center justify-between">
             {sidebarOpen && (
               <h1 className="text-xl font-bold text-foreground">
-                {activeApp === "outbounder" ? "Outbounder" : activeApp === "inbounder" ? "Inbounder" : "Recruiter"}
+                {activeApp === "outbounder" ? "Outbounder" : activeApp === "inbounder" ? "Inbounder" : activeApp === "researcher" ? "Researcher" : "Recruiter"}
               </h1>
             )}
             <Button
@@ -2144,7 +3778,7 @@ export default function Home() {
 
           {/* Navigation */}
           <nav className="flex-1 p-2 space-y-2">
-            {(activeApp === "recruiter" ? recruiterTabs : tabs).map((tab) => {
+            {(activeApp === "recruiter" ? recruiterTabs : activeApp === "researcher" ? researcherTabs : tabs).map((tab) => {
               const Icon = tab.icon;
               const isLeadsTab = tab.id === "leads";
               const isSequencerTab = tab.id === "sequencer";
@@ -2154,12 +3788,14 @@ export default function Home() {
               return (
                 <div key={tab.id} className="space-y-1">
                   <Button
-                    variant={activeApp === "recruiter" ? (recruiterTab === tab.id ? "default" : "ghost") : (activeTab === tab.id ? "default" : "ghost")}
+                    variant={activeApp === "recruiter" ? (recruiterTab === tab.id ? "default" : "ghost") : activeApp === "researcher" ? (researcherTab === tab.id ? "default" : "ghost") : (activeTab === tab.id ? "default" : "ghost")}
                     size={sidebarOpen ? "default" : "icon"}
                     className={`w-full justify-start ${sidebarOpen ? 'px-3' : 'px-2'}`}
                     onClick={() => {
                       if (activeApp === "recruiter") {
                         setRecruiterTab(tab.id);
+                      } else if (activeApp === "researcher") {
+                        setResearcherTab(tab.id);
                       } else {
                         setActiveTab(tab.id);
                         if (isLeadsTab) {
@@ -2287,10 +3923,12 @@ export default function Home() {
                 ? tabs.find(tab => tab.id === activeTab)?.label
                 : activeApp === "recruiter"
                 ? recruiterTabs.find(tab => tab.id === recruiterTab)?.label
+                : activeApp === "researcher"
+                ? researcherTabs.find(tab => tab.id === researcherTab)?.label
                 : applications.find(app => app.id === activeApp)?.label
               }
             </h1>
-            {activeApp !== "outbounder" && activeApp !== "inbounder" && activeApp !== "recruiter" && (
+            {activeApp !== "outbounder" && activeApp !== "inbounder" && activeApp !== "recruiter" && activeApp !== "researcher" && (
               <p className="text-muted-foreground mt-2 text-lg">
                 {applications.find(app => app.id === activeApp)?.description}
               </p>
