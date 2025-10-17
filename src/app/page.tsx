@@ -1,6 +1,8 @@
 "use client";
 //test
 import { useState, useMemo } from "react";
+import { AuthWrapper } from '@/components/auth/auth-wrapper';
+import { UserButton } from '@clerk/nextjs';
 import ReactFlow, {
   useNodesState,
   useEdgesState,
@@ -138,12 +140,13 @@ export default function Home() {
   const [rejectionDialogOpen, setRejectionDialogOpen] = useState<number | null>(null);
   const [rejectionFeedback, setRejectionFeedback] = useState<{[key: number]: string}>({});
   const [currentRejectionText, setCurrentRejectionText] = useState("");
+  const [shouldFetchCandidates, setShouldFetchCandidates] = useState(false);
   
   // Job description API integration
   const jobDescriptionMutation = useJobDescription();
   const checklistItemsQuery = useChecklistItems(jobDescriptionId);
   const createChecklistItemsMutation = useCreateChecklistItems();
-  const candidateGenerationQuery = useCandidateGeneration(jobDescriptionId);
+  const candidateGenerationQuery = useCandidateGeneration(shouldFetchCandidates ? jobDescriptionId : null);
 
   // Combine API data with manual items
   const allChecklistItems = useMemo(() => {
@@ -245,6 +248,10 @@ export default function Home() {
       
       // Navigate to candidates tab after successful API call
       setRecruiterTab("candidates");
+      // Wait 3 seconds before fetching candidates
+      setTimeout(() => {
+        setShouldFetchCandidates(true);
+      }, 3000);
     } catch (error) {
       console.error('Failed to find candidates:', error);
     }
@@ -2136,16 +2143,20 @@ export default function Home() {
           </div>
         );
       case "candidates":
-        // Show loading state for candidate generation
-        if (candidateGenerationQuery.isLoading) {
+        // Show loading state for candidate generation or during delay
+        if (candidateGenerationQuery.isLoading || !shouldFetchCandidates) {
           return (
             <div className="space-y-6">
               <Card>
                 <CardContent className="py-8">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                    <h3 className="text-lg font-semibold mb-2">Generating Candidates</h3>
-                    <p className="text-muted-foreground">Finding and analyzing potential candidates...</p>
+                    <h3 className="text-lg font-semibold mb-2">
+                      {!shouldFetchCandidates ? "Preparing to Generate Candidates" : "Generating Candidates"}
+                    </h3>
+                    <p className="text-muted-foreground">
+                      {!shouldFetchCandidates ? "Please wait while we prepare the candidate search..." : "Finding and analyzing potential candidates..."}
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -2529,7 +2540,8 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <AuthWrapper>
+      <div className="flex h-screen bg-background">
       {/* Main Applications Sidebar */}
       <div className="w-16 bg-card border-r border-border flex flex-col">
         {/* Header */}
@@ -2554,6 +2566,18 @@ export default function Home() {
             );
           })}
         </nav>
+        
+        {/* User Button */}
+        <div className="p-2 border-t border-border">
+          <UserButton 
+            afterSignOutUrl="/"
+            appearance={{
+              elements: {
+                avatarBox: "w-10 h-10"
+              }
+            }}
+          />
+        </div>
       </div>
 
       {/* Outbounder/Inbounder/Recruiter Sidebar - Only show when these apps are active */}
@@ -2733,7 +2757,8 @@ export default function Home() {
           {renderAppContent()}
         </main>
       </div>
-    </div>
+      </div>
+    </AuthWrapper>
   );
 }
 

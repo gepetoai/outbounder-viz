@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query'
+import { useApiMutation } from './use-api'
 import axiosInstance from '@/lib/axios'
 
 interface JobDescriptionRequest {
@@ -20,10 +20,13 @@ interface JobDescriptionResponse {
 }
 
 export function useJobDescription() {
-  return useMutation<JobDescriptionResponse, Error, JobDescriptionRequest>({
-    mutationFn: async (data) => {
+  return useApiMutation<JobDescriptionResponse, JobDescriptionRequest>(
+    async (data) => {
       const response = await axiosInstance.post('/job-description/', data)
       return response.data
     },
-  })
+    {
+      requireAuth: true
+    }
+  )
 }
