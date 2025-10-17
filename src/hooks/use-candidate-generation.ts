@@ -49,7 +49,7 @@ export function useCandidateGeneration(jobDescriptionId: number | null) {
       if (!jobDescriptionId) {
         throw new Error('Job description ID is required')
       }
-      const response = await axiosInstance.get(`/candidate-generation/job-description/${jobDescriptionId}`)
+      const response = await axiosInstance.get(`/candidate-generation/job-description/${jobDescriptionId}/limit/20`)
       return response.data
     },
     enabled: !!jobDescriptionId,
