@@ -1,8 +1,8 @@
 "use client";
 //test
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AuthWrapper } from '@/components/auth/auth-wrapper';
-import { UserButton } from '@clerk/nextjs';
+import { UserButton, useAuth } from '@clerk/nextjs';
 import ReactFlow, {
   useNodesState,
   useEdgesState,
@@ -69,6 +69,7 @@ import {
 
 
 export default function Home() {
+  const { isSignedIn } = useAuth();
   const [activeApp, setActiveApp] = useState("outbounder");
   const [activeTab, setActiveTab] = useState("leads");
   const [activeSubTab, setActiveSubTab] = useState("upload");
@@ -118,8 +119,8 @@ export default function Home() {
   const [showPassword, setShowPassword] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newEmailProvider, setNewEmailProvider] = useState("Gmail");
-  const [jobUrl, setJobUrl] = useState("https://job-boards.greenhouse.io/regionalspotonsales/jobs/7483840003");
-  const [jobTitle, setJobTitle] = useState("Regional Sales Representative");
+  const [jobUrl, setJobUrl] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
   const [jobDescriptionId, setJobDescriptionId] = useState<number | null>(null);
   const [requiredQualifications, setRequiredQualifications] = useState<string[]>([]);
   const [disqualifyingFactors, setDisqualifyingFactors] = useState<string[]>([]);
@@ -141,6 +142,36 @@ export default function Home() {
   const [rejectionFeedback, setRejectionFeedback] = useState<{[key: number]: string}>({});
   const [currentRejectionText, setCurrentRejectionText] = useState("");
   const [shouldFetchCandidates, setShouldFetchCandidates] = useState(false);
+  
+  // Reset function to clear all data
+  const resetToInitialState = () => {
+    setJobUrl("");
+    setJobTitle("");
+    setActiveApp("outbounder");
+    setActiveTab("leads");
+    setActiveSubTab("upload");
+    setRecruiterTab("job-setup");
+    setJobDescriptionId(null);
+    setRequiredQualifications([]);
+    setDisqualifyingFactors([]);
+    setExclusionListFile(null);
+    setCsvHeaders([]);
+    setSelectedColumns([]);
+    setFieldTitles("");
+    setExpandedCandidates({});
+    setCandidateApprovals({});
+    setEditingOutreach({});
+    setEditedMessages({});
+    setRejectionFeedback({});
+    setShouldFetchCandidates(false);
+  };
+
+  // Reset data when user logs out
+  useEffect(() => {
+    if (!isSignedIn) {
+      resetToInitialState();
+    }
+  }, [isSignedIn]);
   
   // Job description API integration
   const jobDescriptionMutation = useJobDescription();
