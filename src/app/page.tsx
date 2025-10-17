@@ -2326,7 +2326,7 @@ export default function Home() {
             {/* Header with total count */}
             <div className="flex items-center justify-end">
               <Badge variant="secondary" className="text-sm px-3 py-1">
-                {candidates.length} candidates found
+                {candidates.length} candidates found - {response?.excluded_count} excluded
               </Badge>
             </div>
 
