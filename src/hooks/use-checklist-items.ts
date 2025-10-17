@@ -8,12 +8,15 @@ export interface ChecklistItem {
   id: number
   created_at: string
   updated_at: string
+  originalContent?: string
 }
 
 interface ChecklistItemRequest {
   content: string
   is_qualifier: boolean
   fk_job_description_id: number
+  is_new: boolean
+  is_updated: boolean
 }
 
 interface JobDescriptionChecklistRequest {

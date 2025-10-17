@@ -131,6 +131,9 @@ export default function Home() {
   const [editingDisqualifierText, setEditingDisqualifierText] = useState("");
   const [newQualifierText, setNewQualifierText] = useState("");
   const [newDisqualifierText, setNewDisqualifierText] = useState("");
+  const [editingJobDescriptionChecklistItemId, setEditingJobDescriptionChecklistItemId] = useState<number | null>(null);
+  const [editingJobDescriptionChecklistItemText, setEditingJobDescriptionChecklistItemText] = useState("");
+  const [editedContent, setEditedContent] = useState<{[key: number]: string}>({});
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [fieldTitles, setFieldTitles] = useState("");
@@ -181,7 +184,11 @@ export default function Home() {
 
   // Combine API data with manual items
   const allChecklistItems = useMemo(() => {
-    const apiItems = checklistItemsQuery.data || [];
+    const apiItems = (checklistItemsQuery.data || []).map(item => ({
+      ...item,
+      originalContent: item.originalContent || item.content,
+      content: editedContent[item.id] || item.content
+    }));
     
     // Convert manual qualifications to ChecklistItem format
     const manualQualifications: ChecklistItem[] = requiredQualifications.map((content, index) => ({
@@ -191,6 +198,7 @@ export default function Home() {
       fk_job_description_id: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      originalContent: content
     }));
     
     // Convert manual disqualifiers to ChecklistItem format
@@ -201,10 +209,11 @@ export default function Home() {
       fk_job_description_id: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      originalContent: content
     }));
     
     return [...apiItems, ...manualQualifications, ...manualDisqualifiers];
-  }, [checklistItemsQuery.data, requiredQualifications, disqualifyingFactors]);
+  }, [checklistItemsQuery.data, requiredQualifications, disqualifyingFactors, editedContent]);
 
   // Handle CSV file parsing
   const handleCsvUpload = (file: File) => {
@@ -253,12 +262,23 @@ export default function Home() {
   // Handle find candidates API call
   const handleCheckListUpdateAndExclusionList = async () => {
     try {
+      // Get the fk_job_description_id from existing API items
+      const existingJobDescriptionId = checklistItemsQuery.data?.[0]?.fk_job_description_id || jobDescriptionId;
+      
       // Convert checklist items to API format
-      const checklistItems = allChecklistItems.map(item => ({
-        content: item.content,
-        is_qualifier: item.is_qualifier,
-        fk_job_description_id: item.fk_job_description_id
-      }));
+      const checklistItems = allChecklistItems.map(item => {
+        const isManualItem = item.fk_job_description_id === 0;
+        const isExistingItem = item.fk_job_description_id > 0;
+        
+        return {
+          id: item.id,
+          content: item.content,
+          is_qualifier: item.is_qualifier,
+          fk_job_description_id: isManualItem ? existingJobDescriptionId! : item.fk_job_description_id,
+          is_new: isManualItem,
+          is_updated: isManualItem || (isExistingItem && item.content !== item.originalContent)
+        };
+      });
 
       // Convert CSV file to base64 if uploaded
       let fileData = "";
@@ -1642,34 +1662,61 @@ export default function Home() {
                           item.fk_job_description_id === 0 ? 'bg-blue-50 border-blue-200' : 'bg-green-50'
                         }`}>
                           <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
-                          {item.fk_job_description_id === 0 && editingQualificationIndex === Number(item.id) ? (
+                          {(item.fk_job_description_id === 0 && editingQualificationIndex === Number(item.id)) || 
+                           (item.fk_job_description_id > 0 && editingJobDescriptionChecklistItemId === item.id) ? (
                             <div className="flex-1 flex gap-2">
                               <Input
-                                value={editingQualificationText}
-                                onChange={(e) => setEditingQualificationText(e.target.value)}
+                                value={item.fk_job_description_id === 0 ? editingQualificationText : editingJobDescriptionChecklistItemText}
+                                onChange={(e) => {
+                                  if (item.fk_job_description_id === 0) {
+                                    setEditingQualificationText(e.target.value)
+                                  } else {
+                                    setEditingJobDescriptionChecklistItemText(e.target.value)
+                                  }
+                                }}
                                 className="flex-1"
                                 autoFocus
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
-                                    const newItems = [...requiredQualifications]
-                                    newItems[Number(item.id)] = editingQualificationText
-                                    setRequiredQualifications(newItems)
-                                    setEditingQualificationIndex(null)
-                                    setEditingQualificationText("")
+                                    if (item.fk_job_description_id === 0) {
+                                      const newItems = [...requiredQualifications]
+                                      newItems[Number(item.id)] = editingQualificationText
+                                      setRequiredQualifications(newItems)
+                                      setEditingQualificationIndex(null)
+                                      setEditingQualificationText("")
+                                    } else {
+                                      // Save the edited content
+                                      setEditedContent(prev => ({
+                                        ...prev,
+                                        [item.id]: editingJobDescriptionChecklistItemText
+                                      }));
+                                      setEditingJobDescriptionChecklistItemId(null)
+                                      setEditingJobDescriptionChecklistItemText("")
+                                    }
                                   } else if (e.key === 'Escape') {
-                                    setEditingQualificationIndex(null)
-                                    setEditingQualificationText("")
+                                    if (item.fk_job_description_id === 0) {
+                                      setEditingQualificationIndex(null)
+                                      setEditingQualificationText("")
+                                    } else {
+                                      setEditingJobDescriptionChecklistItemId(null)
+                                      setEditingJobDescriptionChecklistItemText("")
+                                    }
                                   }
                                 }}
                               />
                               <Button
                                 size="sm"
                                 onClick={() => {
-                                  const newItems = [...requiredQualifications]
-                                  newItems[Number(item.id)] = editingQualificationText
-                                  setRequiredQualifications(newItems)
-                                  setEditingQualificationIndex(null)
-                                  setEditingQualificationText("")
+                                  if (item.fk_job_description_id === 0) {
+                                    const newItems = [...requiredQualifications]
+                                    newItems[Number(item.id)] = editingQualificationText
+                                    setRequiredQualifications(newItems)
+                                    setEditingQualificationIndex(null)
+                                    setEditingQualificationText("")
+                                  } else {
+                                    setEditingJobDescriptionChecklistItemId(null)
+                                    setEditingJobDescriptionChecklistItemText("")
+                                  }
                                 }}
                               >
                                 <Save className="h-4 w-4" />
@@ -1678,8 +1725,13 @@ export default function Home() {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => {
-                                  setEditingQualificationIndex(null)
-                                  setEditingQualificationText("")
+                                  if (item.fk_job_description_id === 0) {
+                                    setEditingQualificationIndex(null)
+                                    setEditingQualificationText("")
+                                  } else {
+                                    setEditingJobDescriptionChecklistItemId(null)
+                                    setEditingJobDescriptionChecklistItemText("")
+                                  }
                                 }}
                               >
                                 <X className="h-4 w-4" />
@@ -1688,19 +1740,24 @@ export default function Home() {
                           ) : (
                             <>
                               <span className="text-sm flex-1">{item.content}</span>
-                              {item.fk_job_description_id === 0 && (
-                                <div className="flex gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (item.fk_job_description_id === 0) {
                                       const index = Number(item.id);
                                       setEditingQualificationIndex(index);
                                       setEditingQualificationText(item.content);
-                                    }}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
+                                    } else {
+                                      setEditingJobDescriptionChecklistItemId(item.id);
+                                      setEditingJobDescriptionChecklistItemText(item.content);
+                                    }
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                {item.fk_job_description_id === 0 && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -1712,8 +1769,8 @@ export default function Home() {
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </>
                           )}
                         </li>
@@ -1850,34 +1907,66 @@ export default function Home() {
                           item.fk_job_description_id === 0 ? 'bg-orange-50 border-orange-200' : 'bg-red-50'
                         }`}>
                           <X className="h-5 w-5 text-red-600 flex-shrink-0" />
-                          {item.fk_job_description_id === 0 && editingDisqualifierIndex === Number(item.id) ? (
+                          {(item.fk_job_description_id === 0 && editingDisqualifierIndex === Number(item.id)) || 
+                           (item.fk_job_description_id > 0 && editingJobDescriptionChecklistItemId === item.id) ? (
                             <div className="flex-1 flex gap-2">
                               <Input
-                                value={editingDisqualifierText}
-                                onChange={(e) => setEditingDisqualifierText(e.target.value)}
+                                value={item.fk_job_description_id === 0 ? editingDisqualifierText : editingJobDescriptionChecklistItemText}
+                                onChange={(e) => {
+                                  if (item.fk_job_description_id === 0) {
+                                    setEditingDisqualifierText(e.target.value)
+                                  } else {
+                                    setEditingJobDescriptionChecklistItemText(e.target.value)
+                                  }
+                                }}
                                 className="flex-1"
                                 autoFocus
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
-                                    const newItems = [...disqualifyingFactors]
-                                    newItems[Number(item.id)] = editingDisqualifierText
-                                    setDisqualifyingFactors(newItems)
-                                    setEditingDisqualifierIndex(null)
-                                    setEditingDisqualifierText("")
+                                    if (item.fk_job_description_id === 0) {
+                                      const newItems = [...disqualifyingFactors]
+                                      newItems[Number(item.id)] = editingDisqualifierText
+                                      setDisqualifyingFactors(newItems)
+                                      setEditingDisqualifierIndex(null)
+                                      setEditingDisqualifierText("")
+                                    } else {
+                                      // Save the edited content
+                                      setEditedContent(prev => ({
+                                        ...prev,
+                                        [item.id]: editingJobDescriptionChecklistItemText
+                                      }));
+                                      setEditingJobDescriptionChecklistItemId(null)
+                                      setEditingJobDescriptionChecklistItemText("")
+                                    }
                                   } else if (e.key === 'Escape') {
-                                    setEditingDisqualifierIndex(null)
-                                    setEditingDisqualifierText("")
+                                    if (item.fk_job_description_id === 0) {
+                                      setEditingDisqualifierIndex(null)
+                                      setEditingDisqualifierText("")
+                                    } else {
+                                      setEditingJobDescriptionChecklistItemId(null)
+                                      setEditingJobDescriptionChecklistItemText("")
+                                    }
                                   }
                                 }}
                               />
                               <Button
                                 size="sm"
                                 onClick={() => {
-                                  const newItems = [...disqualifyingFactors]
-                                  newItems[Number(item.id)] = editingDisqualifierText
-                                  setDisqualifyingFactors(newItems)
-                                  setEditingDisqualifierIndex(null)
-                                  setEditingDisqualifierText("")
+                                  if (item.fk_job_description_id === 0) {
+                                    const newItems = [...disqualifyingFactors]
+                                    newItems[Number(item.id)] = editingDisqualifierText
+                                    setDisqualifyingFactors(newItems)
+                                    setEditingDisqualifierIndex(null)
+                                    setEditingDisqualifierText("")
+                                  } else {
+                                    // Save the edited content
+                                    setEditedContent(prev => ({
+                                      ...prev,
+                                      [item.id]: editingJobDescriptionChecklistItemText
+                                    }));
+                                    setEditingJobDescriptionChecklistItemId(null)
+                                    setEditingJobDescriptionChecklistItemText("")
+                                  }
                                 }}
                               >
                                 <Save className="h-4 w-4" />
@@ -1886,8 +1975,13 @@ export default function Home() {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => {
-                                  setEditingDisqualifierIndex(null)
-                                  setEditingDisqualifierText("")
+                                  if (item.fk_job_description_id === 0) {
+                                    setEditingDisqualifierIndex(null)
+                                    setEditingDisqualifierText("")
+                                  } else {
+                                    setEditingJobDescriptionChecklistItemId(null)
+                                    setEditingJobDescriptionChecklistItemText("")
+                                  }
                                 }}
                               >
                                 <X className="h-4 w-4" />
@@ -1896,19 +1990,24 @@ export default function Home() {
                           ) : (
                             <>
                               <span className="text-sm flex-1">{item.content}</span>
-                              {item.fk_job_description_id === 0 && (
-                                <div className="flex gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (item.fk_job_description_id === 0) {
                                       const index = Number(item.id);
                                       setEditingDisqualifierIndex(index);
                                       setEditingDisqualifierText(item.content);
-                                    }}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
+                                    } else {
+                                      setEditingJobDescriptionChecklistItemId(item.id);
+                                      setEditingJobDescriptionChecklistItemText(item.content);
+                                    }
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                {item.fk_job_description_id === 0 && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -1920,8 +2019,8 @@ export default function Home() {
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </>
                           )}
                         </li>
