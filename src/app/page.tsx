@@ -8,6 +8,7 @@ import ReactFlow, {
   BackgroundVariant,
 } from "reactflow";
 import "reactflow/dist/style.css";
+import { useJobDescription } from "@/hooks/use-job-description";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -115,6 +116,7 @@ export default function Home() {
   const [newEmail, setNewEmail] = useState("");
   const [newEmailProvider, setNewEmailProvider] = useState("Gmail");
   const [jobUrl, setJobUrl] = useState("https://job-boards.greenhouse.io/regionalspotonsales/jobs/7483840003");
+  const [jobTitle, setJobTitle] = useState("Regional Sales Representative");
   const [requiredQualifications, setRequiredQualifications] = useState<string[]>([
     "Be a former D1 athlete",
     "Worked in direct sales roles for at least 3 years",
@@ -140,6 +142,28 @@ export default function Home() {
   const [rejectionDialogOpen, setRejectionDialogOpen] = useState<number | null>(null);
   const [rejectionFeedback, setRejectionFeedback] = useState<{[key: number]: string}>({});
   const [currentRejectionText, setCurrentRejectionText] = useState("");
+  
+  // Job description API integration
+  const jobDescriptionMutation = useJobDescription();
+
+  // Handle job description generation
+  const handleGenerateChecklist = async () => {
+    try {
+      const response = await jobDescriptionMutation.mutateAsync({
+        title: jobTitle,
+        url: jobUrl,
+        raw_text: null,
+        fk_organization_id: 1
+      });
+      console.log('Job description created:', response);
+      // Navigate to checklist after a brief delay to show success message
+      setTimeout(() => {
+        setRecruiterTab("checklist");
+      }, 1500);
+    } catch (error) {
+      console.error('Failed to create job description:', error);
+    }
+  };
 
   // Generate random candidate data
   const generateCandidates = (count: number) => {
@@ -1448,6 +1472,16 @@ export default function Home() {
             <Card>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
+                  <Label htmlFor="job-title">Job Title</Label>
+                  <Input
+                    id="job-title"
+                    type="text"
+                    placeholder="Enter job title..."
+                    value={jobTitle}
+                    onChange={(e) => setJobTitle(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="job-url">Job URL</Label>
                   <Input
                     id="job-url"
@@ -1458,13 +1492,34 @@ export default function Home() {
                     className="font-mono text-sm"
                   />
                 </div>
+                
+                {/* Error Message */}
+                {jobDescriptionMutation.isError && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Failed to generate job description. Please try again.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                {/* Success Message */}
+                {jobDescriptionMutation.isSuccess && (
+                  <Alert>
+                    <CheckCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Job description generated successfully! Proceeding to checklist...
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
                 <Button 
-                  disabled={!jobUrl} 
+                  disabled={!jobUrl || !jobTitle || jobDescriptionMutation.isPending} 
                   className="flex items-center gap-2"
-                  onClick={() => setRecruiterTab("checklist")}
+                  onClick={handleGenerateChecklist}
                 >
                   <CheckCircle className="h-4 w-4" />
-                  Generate Checklist
+                  {jobDescriptionMutation.isPending ? "Generating..." : "Generate Checklist"}
                 </Button>
               </CardContent>
             </Card>
