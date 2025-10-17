@@ -1,5 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
-import axiosInstance from '@/lib/axios'
+import { useApiQuery } from './use-api'
 
 export interface JobDescriptionChecklistItem {
   id: number
@@ -43,15 +42,12 @@ export interface CandidateGenerationResponse {
 }
 
 export function useCandidateGeneration(jobDescriptionId: number | null) {
-  return useQuery({
-    queryKey: ['candidate-generation', jobDescriptionId],
-    queryFn: async (): Promise<CandidateGenerationResponse> => {
-      if (!jobDescriptionId) {
-        throw new Error('Job description ID is required')
-      }
-      const response = await axiosInstance.get(`/candidate-generation/job-description/${jobDescriptionId}/limit/20`)
-      return response.data
-    },
-    enabled: !!jobDescriptionId,
-  })
+  return useApiQuery<CandidateGenerationResponse>(
+    ['candidate-generation', jobDescriptionId?.toString() || ''],
+    `/candidate-generation/job-description/${jobDescriptionId}/limit/20`,
+    {
+      enabled: !!jobDescriptionId,
+      requireAuth: true
+    }
+  )
 }
