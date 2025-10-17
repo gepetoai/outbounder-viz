@@ -1,14 +1,26 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import axiosInstance from '@/lib/axios'
 
-interface ChecklistItem {
+export interface ChecklistItem {
   content: string
   is_qualifier: boolean
   fk_job_description_id: number
   id: number
   created_at: string
   updated_at: string
-  job_description: null
+}
+
+interface ChecklistItemRequest {
+  content: string
+  is_qualifier: boolean
+  fk_job_description_id: number
+}
+
+interface JobDescriptionChecklistRequest {
+  checklist_items: ChecklistItemRequest[]
+  organization_id: number
+  field_titles: string
+  file_data: string
 }
 
 export function useChecklistItems(jobDescriptionId: number | null) {
@@ -24,5 +36,14 @@ export function useChecklistItems(jobDescriptionId: number | null) {
     enabled: !!jobDescriptionId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
+  })
+}
+
+export function useCreateChecklistItems() {
+  return useMutation({
+    mutationFn: async (data: JobDescriptionChecklistRequest) => {
+      const response = await axiosInstance.post('/job-description-checklist-item/', data)
+      return response.data
+    },
   })
 }

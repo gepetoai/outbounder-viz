@@ -9,7 +9,8 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { useJobDescription } from "@/hooks/use-job-description";
-import { useChecklistItems } from "@/hooks/use-checklist-items";
+import { useChecklistItems, useCreateChecklistItems } from "@/hooks/use-checklist-items";
+import { ChecklistItem } from "@/hooks/use-checklist-items";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -126,6 +127,11 @@ export default function Home() {
   const [editingQualificationText, setEditingQualificationText] = useState("");
   const [editingDisqualifierIndex, setEditingDisqualifierIndex] = useState<number | null>(null);
   const [editingDisqualifierText, setEditingDisqualifierText] = useState("");
+  const [newQualifierText, setNewQualifierText] = useState("");
+  const [newDisqualifierText, setNewDisqualifierText] = useState("");
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
+  const [fieldTitles, setFieldTitles] = useState("");
   const [expandedCandidates, setExpandedCandidates] = useState<{[key: number]: {fit: boolean, outreach: boolean}}>({});
   const [candidateApprovals, setCandidateApprovals] = useState<{[key: number]: 'approved' | 'rejected' | null}>({});
   const [editingOutreach, setEditingOutreach] = useState<{[key: number]: boolean}>({});
@@ -137,6 +143,112 @@ export default function Home() {
   // Job description API integration
   const jobDescriptionMutation = useJobDescription();
   const checklistItemsQuery = useChecklistItems(jobDescriptionId);
+  const createChecklistItemsMutation = useCreateChecklistItems();
+
+  // Combine API data with manual items
+  const allChecklistItems = useMemo(() => {
+    const apiItems = checklistItemsQuery.data || [];
+    
+    // Convert manual qualifications to ChecklistItem format
+    const manualQualifications: ChecklistItem[] = requiredQualifications.map((content, index) => ({
+      id: index,
+      content,
+      is_qualifier: true,
+      fk_job_description_id: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }));
+    
+    // Convert manual disqualifiers to ChecklistItem format
+    const manualDisqualifiers: ChecklistItem[] = disqualifyingFactors.map((content, index) => ({
+      id: index,
+      content,
+      is_qualifier: false,
+      fk_job_description_id: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }));
+    
+    return [...apiItems, ...manualQualifications, ...manualDisqualifiers];
+  }, [checklistItemsQuery.data, requiredQualifications, disqualifyingFactors]);
+
+  // Handle CSV file parsing
+  const handleCsvUpload = (file: File) => {
+    console.log('Processing CSV file:', file.name);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      console.log('CSV content:', text.substring(0, 200)); // Log first 200 chars
+      if (text) {
+        const lines = text.split('\n').filter(line => line.trim());
+        console.log('Number of lines:', lines.length);
+        if (lines.length > 0) {
+          // Better CSV parsing that handles quoted fields
+          const firstLine = lines[0];
+          console.log('First line:', firstLine);
+          const headers = firstLine.split(',').map(header => 
+            header.trim().replace(/^"|"$/g, '').replace(/"/g, '')
+          );
+          console.log('Parsed headers:', headers);
+          setCsvHeaders(headers);
+          setUploadedFile(file);
+        }
+      }
+    };
+    reader.onerror = (e) => {
+      console.error('Error reading file:', e);
+    };
+    reader.readAsText(file);
+  };
+
+  // Convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove the data:type;base64, prefix
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  // Handle find candidates API call
+  const handleCheckListUpdateAndExclusionList = async () => {
+    try {
+      // Convert checklist items to API format
+      const checklistItems = allChecklistItems.map(item => ({
+        content: item.content,
+        is_qualifier: item.is_qualifier,
+        fk_job_description_id: item.fk_job_description_id
+      }));
+
+      // Convert CSV file to base64 if uploaded
+      let fileData = "";
+      if (exclusionListFile) {
+        fileData = await fileToBase64(exclusionListFile);
+      }
+
+      const requestData = {
+        checklist_items: checklistItems,
+        organization_id: 1,
+        field_titles: fieldTitles,
+        file_data: fileData
+      };
+
+      console.log('Sending request:', requestData);
+      const response = await createChecklistItemsMutation.mutateAsync(requestData);
+      console.log('API response:', response);
+      
+      // Navigate to candidates tab after successful API call
+      setRecruiterTab("candidates");
+    } catch (error) {
+      console.error('Failed to find candidates:', error);
+    }
+  };
 
   // Handle job description generation
   const handleGenerateChecklist = async () => {
@@ -556,7 +668,12 @@ export default function Home() {
                         <Input
                           type="file"
                           accept=".csv"
-                          onChange={(e) => setUploadedFile(e.target.files?.[0] || null)}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handleCsvUpload(file);
+                            }
+                          }}
                           className="max-w-xs mx-auto"
                         />
                       </div>
@@ -574,6 +691,7 @@ export default function Home() {
                         </p>
                       </div>
                     )}
+
                     
                     <div className="flex gap-2">
                       <Button disabled={!uploadedFile} className="flex items-center gap-2">
@@ -1555,15 +1673,90 @@ export default function Home() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  {checklistItemsQuery.data ? (
-                    // Show API generated qualifiers
+                  {allChecklistItems.filter(item => item.is_qualifier).length > 0 ? (
+                    // Show combined qualifiers (API + manual)
                     <ul className="space-y-2">
-                      {checklistItemsQuery.data
+                      {allChecklistItems
                         .filter(item => item.is_qualifier)
                         .map((item) => (
-                        <li key={item.id} className="flex items-center gap-3 p-3 border rounded-lg bg-green-50">
+                        <li key={item.id} className={`flex items-center gap-3 p-3 border rounded-lg ${
+                          item.fk_job_description_id === 0 ? 'bg-blue-50 border-blue-200' : 'bg-green-50'
+                        }`}>
                           <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
-                          <span className="text-sm flex-1">{item.content}</span>
+                          {item.fk_job_description_id === 0 && editingQualificationIndex === Number(item.id) ? (
+                            <div className="flex-1 flex gap-2">
+                              <Input
+                                value={editingQualificationText}
+                                onChange={(e) => setEditingQualificationText(e.target.value)}
+                                className="flex-1"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    const newItems = [...requiredQualifications]
+                                    newItems[Number(item.id)] = editingQualificationText
+                                    setRequiredQualifications(newItems)
+                                    setEditingQualificationIndex(null)
+                                    setEditingQualificationText("")
+                                  } else if (e.key === 'Escape') {
+                                    setEditingQualificationIndex(null)
+                                    setEditingQualificationText("")
+                                  }
+                                }}
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  const newItems = [...requiredQualifications]
+                                  newItems[Number(item.id)] = editingQualificationText
+                                  setRequiredQualifications(newItems)
+                                  setEditingQualificationIndex(null)
+                                  setEditingQualificationText("")
+                                }}
+                              >
+                                <Save className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditingQualificationIndex(null)
+                                  setEditingQualificationText("")
+                                }}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="text-sm flex-1">{item.content}</span>
+                              {item.fk_job_description_id === 0 && (
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      const index = Number(item.id);
+                                      setEditingQualificationIndex(index);
+                                      setEditingQualificationText(item.content);
+                                    }}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-700"
+                                    onClick={() => {
+                                      const index = Number(item.id);
+                                      setRequiredQualifications(prev => prev.filter((_, i) => i !== index));
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
+                            </>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -1655,18 +1848,19 @@ export default function Home() {
                     </ul>
                   )}
                 </div>
-                {!checklistItemsQuery.data && (
-                  <Button 
-                    variant="outline" 
-                    className="w-full flex items-center gap-2"
-                    onClick={() => {
-                      setRequiredQualifications([...requiredQualifications, "New qualification"])
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add new requirement..."
+                    value={newQualifierText}
+                    onChange={(e) => setNewQualifierText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newQualifierText.trim()) {
+                        setRequiredQualifications(prev => [...prev, newQualifierText.trim()]);
+                        setNewQualifierText('');
+                      }
                     }}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Requirement
-                  </Button>
-                )}
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -1687,15 +1881,90 @@ export default function Home() {
               <CardContent className="space-y-6">
                 {/* Disqualifying Criteria List */}
                 <div className="space-y-3">
-                  {checklistItemsQuery.data ? (
-                    // Show API generated disqualifiers
+                  {allChecklistItems.filter(item => !item.is_qualifier).length > 0 ? (
+                    // Show combined disqualifiers (API + manual)
                     <ul className="space-y-2">
-                      {checklistItemsQuery.data
+                      {allChecklistItems
                         .filter(item => !item.is_qualifier)
                         .map((item) => (
-                        <li key={item.id} className="flex items-center gap-3 p-3 border rounded-lg bg-red-50">
+                        <li key={item.id} className={`flex items-center gap-3 p-3 border rounded-lg ${
+                          item.fk_job_description_id === 0 ? 'bg-orange-50 border-orange-200' : 'bg-red-50'
+                        }`}>
                           <X className="h-5 w-5 text-red-600 flex-shrink-0" />
-                          <span className="text-sm flex-1">{item.content}</span>
+                          {item.fk_job_description_id === 0 && editingDisqualifierIndex === Number(item.id) ? (
+                            <div className="flex-1 flex gap-2">
+                              <Input
+                                value={editingDisqualifierText}
+                                onChange={(e) => setEditingDisqualifierText(e.target.value)}
+                                className="flex-1"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    const newItems = [...disqualifyingFactors]
+                                    newItems[Number(item.id)] = editingDisqualifierText
+                                    setDisqualifyingFactors(newItems)
+                                    setEditingDisqualifierIndex(null)
+                                    setEditingDisqualifierText("")
+                                  } else if (e.key === 'Escape') {
+                                    setEditingDisqualifierIndex(null)
+                                    setEditingDisqualifierText("")
+                                  }
+                                }}
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  const newItems = [...disqualifyingFactors]
+                                  newItems[Number(item.id)] = editingDisqualifierText
+                                  setDisqualifyingFactors(newItems)
+                                  setEditingDisqualifierIndex(null)
+                                  setEditingDisqualifierText("")
+                                }}
+                              >
+                                <Save className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditingDisqualifierIndex(null)
+                                  setEditingDisqualifierText("")
+                                }}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="text-sm flex-1">{item.content}</span>
+                              {item.fk_job_description_id === 0 && (
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      const index = Number(item.id);
+                                      setEditingDisqualifierIndex(index);
+                                      setEditingDisqualifierText(item.content);
+                                    }}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-700"
+                                    onClick={() => {
+                                      const index = Number(item.id);
+                                      setDisqualifyingFactors(prev => prev.filter((_, i) => i !== index));
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
+                            </>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -1785,78 +2054,163 @@ export default function Home() {
                       ))}
                     </ul>
                   )}
-                  {!checklistItemsQuery.data && (
-                    <Button 
-                      variant="outline" 
-                      className="w-full flex items-center gap-2"
-                      onClick={() => {
-                        setDisqualifyingFactors([...disqualifyingFactors, "New disqualifying factor"])
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Add new disqualifier..."
+                      value={newDisqualifierText}
+                      onChange={(e) => setNewDisqualifierText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newDisqualifierText.trim()) {
+                          setDisqualifyingFactors(prev => [...prev, newDisqualifierText.trim()]);
+                          setNewDisqualifierText('');
+                        }
                       }}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add Disqualifier
-                    </Button>
-                  )}
+                    />
+                  </div>
                 </div>
 
                 {/* Exclusion List Upload */}
-                <div className="space-y-3 p-4 border rounded-lg">
-                  <h4 className="font-semibold text-sm flex items-center gap-2">
-                    <Upload className="h-4 w-4" />
-                    Do Not Contact List
-                  </h4>
-                  <p className="text-xs text-muted-foreground">
-                    Upload a CSV file with candidates to exclude from outreach
-                  </p>
-                  
-                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
-                    <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-                    <label htmlFor="exclusion-file-upload" className="cursor-pointer">
-                      <div className="text-sm text-muted-foreground mb-2">
-                        {exclusionListFile ? exclusionListFile.name : 'No file chosen'}
-                      </div>
-                      <Button variant="outline" size="sm" type="button" className="pointer-events-none">
-                        Choose File
-                      </Button>
-                    </label>
-                    <Input
-                      id="exclusion-file-upload"
-                      type="file"
-                      accept=".csv"
-                      onChange={(e) => setExclusionListFile(e.target.files?.[0] || null)}
-                      className="hidden"
-                    />
+                <div className="space-y-4 p-6 border rounded-lg bg-gray-50/50">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <Upload className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-base">Do Not Contact List</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Upload a CSV file with candidates to exclude from outreach
+                      </p>
+                    </div>
                   </div>
                   
-                  {exclusionListFile && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <div className="flex items-center gap-2 text-blue-800">
-                        <CheckCircle className="h-4 w-4" />
-                        <span className="text-sm font-medium">Exclusion list uploaded:</span>
-                        <span className="text-sm">{exclusionListFile.name}</span>
+                  {!exclusionListFile ? (
+                    <label htmlFor="exclusion-file-upload" className="cursor-pointer">
+                      <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-orange-400 hover:bg-orange-50/30 transition-all duration-200 group">
+                        <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-orange-200 transition-colors">
+                          <Upload className="h-8 w-8 text-orange-600" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Upload CSV File</h3>
+                        <p className="text-gray-600 mb-4">Choose a CSV file to upload your exclusion list</p>
+                        <Button className="bg-orange-600 hover:bg-orange-700 text-white pointer-events-none">
+                          <Upload className="h-4 w-4 mr-2" />
+                          Choose File
+                        </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="mt-2 text-red-600 hover:text-red-700"
-                        onClick={() => setExclusionListFile(null)}
-                      >
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        Remove
-                      </Button>
+                      <Input
+                        id="exclusion-file-upload"
+                        type="file"
+                        accept=".csv"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleCsvUpload(file);
+                            setExclusionListFile(file);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* File Upload Success */}
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-green-100 rounded-lg">
+                              <CheckCircle className="h-5 w-5 text-green-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-green-900">{exclusionListFile.name}</p>
+                              <p className="text-sm text-green-700">
+                                {(exclusionListFile.size / 1024).toFixed(1)} KB • Ready to process
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => {
+                              setExclusionListFile(null);
+                              setCsvHeaders([]);
+                              setSelectedColumns([]);
+                              setFieldTitles("");
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Column Selection */}
+                      {csvHeaders.length > 0 && (
+                        <div className="bg-white border rounded-lg p-5">
+                          <div className="mb-4">
+                            <h5 className="font-semibold text-gray-900 mb-2">Select columns to include:</h5>
+                            <p className="text-sm text-gray-600">
+                              Choose which columns from your CSV should be used for the exclusion list
+                            </p>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+                            {csvHeaders.map((header, index) => (
+                              <label key={index} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedColumns.includes(header)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      const newSelected = [...selectedColumns, header];
+                                      setSelectedColumns(newSelected);
+                                      setFieldTitles(newSelected.join(', '));
+                                    } else {
+                                      const newSelected = selectedColumns.filter(col => col !== header);
+                                      setSelectedColumns(newSelected);
+                                      setFieldTitles(newSelected.join(', '));
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                                />
+                                <span className="text-sm font-medium text-gray-900">{header}</span>
+                              </label>
+                            ))}
+                          </div>
+                          
+                          {selectedColumns.length > 0 && (
+                            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                <span className="font-medium text-orange-900">Selected Columns</span>
+                              </div>
+                              <p className="text-sm text-orange-800">{fieldTitles}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               </CardContent>
             </Card>
 
+            {/* Error Message */}
+            {createChecklistItemsMutation.isError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Failed to find candidates. Please try again.
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Action Button */}
             <Button 
               className="w-full flex items-center gap-2"
-              onClick={() => setRecruiterTab("candidates")}
+              onClick={handleCheckListUpdateAndExclusionList}
+              disabled={createChecklistItemsMutation.isPending}
             >
               <Users className="h-4 w-4" />
-              Find Candidates
+              {createChecklistItemsMutation.isPending ? "Updating Check List and Exclusion List..." : "Update Check List and Exclusion List"}
             </Button>
           </div>
         );
