@@ -11,6 +11,7 @@ import "reactflow/dist/style.css";
 import { useJobDescription } from "@/hooks/use-job-description";
 import { useChecklistItems, useCreateChecklistItems } from "@/hooks/use-checklist-items";
 import { ChecklistItem } from "@/hooks/use-checklist-items";
+import { useCandidateGeneration } from "@/hooks/use-candidate-generation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -64,8 +65,6 @@ import {
   Building2,
 } from "lucide-react";
 
-// Configuration
-const NUM_CANDIDATES = 20;
 
 export default function Home() {
   const [activeApp, setActiveApp] = useState("outbounder");
@@ -144,6 +143,7 @@ export default function Home() {
   const jobDescriptionMutation = useJobDescription();
   const checklistItemsQuery = useChecklistItems(jobDescriptionId);
   const createChecklistItemsMutation = useCreateChecklistItems();
+  const candidateGenerationQuery = useCandidateGeneration(jobDescriptionId);
 
   // Combine API data with manual items
   const allChecklistItems = useMemo(() => {
@@ -269,85 +269,6 @@ export default function Home() {
     }
   };
 
-  // Generate random candidate data
-  const generateCandidates = (count: number) => {
-    const firstNames = ["Alex", "Marcus", "Jessica", "Brandon", "Amanda", "Sarah", "Michael", "Emily", "David", "Rachel", "James", "Lauren", "Chris", "Nicole", "Ryan", "Stephanie", "Kevin", "Michelle", "Daniel", "Ashley"];
-    const lastNames = ["Thompson", "Williams", "Rodriguez", "Lee", "Chen", "Johnson", "Davis", "Martinez", "Brown", "Garcia", "Miller", "Wilson", "Moore", "Taylor", "Anderson", "Thomas", "Jackson", "White", "Harris", "Martin"];
-    const roles = ["Account Executive", "Senior Sales Representative", "Sales Account Manager", "Territory Sales Rep", "Enterprise Sales Rep", "Business Development Rep", "Sales Specialist"];
-    const companies = ["Tech Innovations Inc.", "CloudTech Solutions", "DataCore Systems", "Premier Solutions", "TechVision Corp", "SalesPro Group", "Growth Dynamics", "Revenue Labs", "Quantum Sales", "Peak Performance Co."];
-    const locations = ["Dallas, TX", "Fort Worth, TX", "Plano, TX", "Irving, TX", "Richardson, TX", "Frisco, TX", "McKinney, TX", "Allen, TX"];
-    const sports = ["Basketball", "Football", "Soccer", "Track & Field", "Volleyball", "Baseball", "Swimming", "Tennis"];
-    const industries = ["SaaS B2B", "Technology Services", "B2B Technology", "Cloud Services", "Software Solutions"];
-    const excludedIndustries = ["Enterprise software", "Financial Services", "Medical", "Cybersecurity"];
-    
-    return Array.from({ length: count }, (_, i) => {
-      const id = i + 1;
-      const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-      const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-      const sport = sports[Math.floor(Math.random() * sports.length)];
-      const company = companies[Math.floor(Math.random() * companies.length)];
-      const location = locations[Math.floor(Math.random() * locations.length)];
-      const role = roles[Math.floor(Math.random() * roles.length)];
-      const experience = Math.floor(Math.random() * 6) + 3; // 3-8 years
-      const distance = Math.floor(Math.random() * 45) + 5; // 5-50 miles
-      const clubYear = Math.random() > 0.5 ? "2024" : "2023";
-      const roleYears = Math.floor(Math.random() * 3) + 2; // 2-4 years
-      
-      // Randomly decide if 6/7 or 7/7
-      const criteriaMet = Math.random() > 0.5 ? 7 : 6;
-      
-      const criteriaList = [
-        `Former D1 athlete (${sport})`,
-        `${experience}+ years in direct sales`,
-        `President's club member (${clubYear})`,
-        `Last role lasted ${roleYears} years`,
-        `Individual contributor role`,
-        `Lives ${distance} miles from Dallas`
-      ];
-      
-      const unmetCriteria = [];
-      
-      if (criteriaMet === 7) {
-        const industry = industries[Math.floor(Math.random() * industries.length)];
-        criteriaList.push(`Current industry: ${industry}`);
-      } else {
-        const excludedIndustry = excludedIndustries[Math.floor(Math.random() * excludedIndustries.length)];
-        unmetCriteria.push({
-          criterion: "Does not work in excluded industries",
-          reason: `Currently works in ${excludedIndustry} industry`
-        });
-      }
-      
-      const highlights = [
-        `President's Club achievement in ${clubYear}`,
-        `D1 ${sport} background`,
-        `${experience} years of sales experience`,
-        `President's Club winner`,
-        `competitive drive from D1 ${sport}`
-      ];
-      const highlight = highlights[Math.floor(Math.random() * highlights.length)];
-      
-      return {
-        id,
-        name: `${firstName} ${lastName}`,
-        email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@email.com`,
-        phone: `+1 (555) ${String(Math.floor(Math.random() * 900) + 100)}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
-        currentRole: role,
-        currentCompany: company,
-        location,
-        experience: `${experience} years`,
-        status: "New",
-        linkedinUrl: "https://linkedin.com",
-        criteriaMet,
-        totalCriteria: 7,
-        criteriaList,
-        unmetCriteria,
-        outreachMessage: `Hi ${firstName}! Your ${highlight} caught my eye. We're hiring a Regional Sales Rep at SpotOn in Dallas and would love to connect.`
-      };
-    });
-  };
-
-  const dummyCandidates = useMemo(() => generateCandidates(NUM_CANDIDATES), []);
 
   // Playbook state
   const [expandedPlays, setExpandedPlays] = useState<number[]>([]);
@@ -2215,25 +2136,74 @@ export default function Home() {
           </div>
         );
       case "candidates":
-        // Sort candidates by criteria met (highest first)
-        const sortedCandidates = [...dummyCandidates].sort((a, b) => b.criteriaMet - a.criteriaMet);
+        // Show loading state for candidate generation
+        if (candidateGenerationQuery.isLoading) {
+          return (
+            <div className="space-y-6">
+              <Card>
+                <CardContent className="py-8">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                    <h3 className="text-lg font-semibold mb-2">Generating Candidates</h3>
+                    <p className="text-muted-foreground">Finding and analyzing potential candidates...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          );
+        }
+
+        // Show error state
+        if (candidateGenerationQuery.isError) {
+          return (
+            <div className="space-y-6">
+              <Card>
+                <CardContent className="py-8">
+                  <div className="text-center">
+                    <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Failed to Generate Candidates</h3>
+                    <p className="text-muted-foreground mb-4">There was an error generating candidates.</p>
+                    <Button onClick={() => candidateGenerationQuery.refetch()}>
+                      Try Again
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          );
+        }
+
+        const response = candidateGenerationQuery.data;
+        const candidates = response?.candidates || [];
+        const checklistItems = response?.checklist_items || [];
+        
+        // Create a lookup map for checklist items
+        const checklistItemsMap = new Map(checklistItems.map(item => [item.id, item]));
         
         return (
           <div className="space-y-3">
             {/* Header with total count */}
             <div className="flex items-center justify-end">
               <Badge variant="secondary" className="text-sm px-3 py-1">
-                {NUM_CANDIDATES} out of 732 candidates
+                {candidates.length} candidates found
               </Badge>
             </div>
 
             {/* Candidate Cards */}
             <div className="space-y-2">
-              {sortedCandidates.map((candidate) => {
+              {candidates.map((candidate) => {
                 const isExpanded = expandedCandidates[candidate.id] || { fit: false, outreach: false };
                 const approval = candidateApprovals[candidate.id];
                 const isEditing = editingOutreach[candidate.id];
-                const currentMessage = editedMessages[candidate.id] || candidate.outreachMessage;
+                
+                // Calculate criteria met from API data
+                const criteriaMet = candidate.candidate_checklist_item_statuses.filter(status => status.status).length;
+                const totalCriteria = candidate.candidate_checklist_item_statuses.length;
+                
+                // Generate outreach message (we'll need to add this field to the API)
+                const outreachMessage = `Hi ${candidate.first_name}! Your background in ${candidate.job_title} at ${candidate.company_name} caught my attention. We're hiring for a similar role and would love to connect.`;
+                
+                const currentMessage = editedMessages[candidate.id] || outreachMessage;
                 
                 return (
                   <Card 
@@ -2251,9 +2221,9 @@ export default function Home() {
                           {/* Left side - Name, LinkedIn, Score, Title, Company, Location */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-0.5">
-                              <h3 className="text-base font-semibold">{candidate.name}</h3>
+                              <h3 className="text-base font-semibold">{candidate.first_name} {candidate.last_name}</h3>
                               <a 
-                                href={candidate.linkedinUrl}
+                                href={`https://linkedin.com/in/${candidate.linkedin_shorthand_slug}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-blue-600 hover:text-blue-800 flex-shrink-0"
@@ -2263,17 +2233,17 @@ export default function Home() {
                               <Badge 
                                 variant="secondary" 
                                 className={`text-sm px-2 py-0.5 font-semibold flex-shrink-0 ${
-                                  candidate.criteriaMet === candidate.totalCriteria 
+                                  criteriaMet === totalCriteria 
                                     ? 'bg-green-100 text-green-800' 
                                     : 'bg-blue-100 text-blue-800'
                                 }`}
                               >
-                                {candidate.criteriaMet}/{candidate.totalCriteria}
+                                {criteriaMet}/{totalCriteria}
                               </Badge>
                             </div>
                             
                             <div className="text-xs text-muted-foreground">
-                              {candidate.currentRole} • <Building2 className="h-3 w-3 inline" /> {candidate.currentCompany} • <MapPin className="h-3 w-3 inline" /> {candidate.location}
+                              {candidate.job_title} • <Building2 className="h-3 w-3 inline" /> {candidate.company_name} • <MapPin className="h-3 w-3 inline" /> {candidate.city}, {candidate.state}
                             </div>
                           </div>
 
@@ -2350,18 +2320,20 @@ export default function Home() {
                             {isExpanded.fit && (
                               <div className="pt-2 pb-1">
                                 <ul className="space-y-1">
-                                  {candidate.criteriaList.map((criteria, idx) => (
+                                  {candidate.candidate_checklist_item_statuses.map((status, idx) => (
                                     <li key={idx} className="flex items-start gap-1.5">
-                                      <CheckCircle className="h-3.5 w-3.5 text-green-600 flex-shrink-0 mt-0.5" />
-                                      <span className="text-xs">{criteria}</span>
-                                    </li>
-                                  ))}
-                                  {candidate.unmetCriteria && candidate.unmetCriteria.map((unmet, idx) => (
-                                    <li key={`unmet-${idx}`} className="flex items-start gap-1.5">
-                                      <X className="h-3.5 w-3.5 text-red-600 flex-shrink-0 mt-0.5" />
-                                      <div className="text-xs">
-                                        <span className="font-medium">{unmet.criterion}</span>
-                                        <span className="text-muted-foreground"> - {unmet.reason}</span>
+                                      {status.status ? (
+                                        <CheckCircle className="h-3.5 w-3.5 text-green-600 flex-shrink-0 mt-0.5" />
+                                      ) : (
+                                        <X className="h-3.5 w-3.5 text-red-600 flex-shrink-0 mt-0.5" />
+                                      )}
+                                      <div className="text-xs flex-1">
+                                        <div className="font-medium">
+                                          {checklistItemsMap.get(status.fk_job_description_checklist_item_id)?.content || 'Unknown requirement'}
+                                        </div>
+                                        <div className={`text-xs mt-0.5 ${status.status ? "text-green-700" : "text-red-700"}`}>
+                                          {status.reasoning}
+                                        </div>
                                       </div>
                                     </li>
                                   ))}
@@ -2522,7 +2494,7 @@ export default function Home() {
             {/* Export Button */}
             <div className="flex justify-end pt-4">
               <Button
-                disabled={Object.values(candidateApprovals).filter(v => v === 'approved').length < 19}
+                disabled={Object.values(candidateApprovals).filter(v => v === 'approved').length < 1}
                 className="flex items-center gap-2"
               >
                 <Download className="h-4 w-4" />
