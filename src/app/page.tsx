@@ -9,6 +9,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { useJobDescription } from "@/hooks/use-job-description";
+import { useChecklistItems } from "@/hooks/use-checklist-items";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -117,19 +118,9 @@ export default function Home() {
   const [newEmailProvider, setNewEmailProvider] = useState("Gmail");
   const [jobUrl, setJobUrl] = useState("https://job-boards.greenhouse.io/regionalspotonsales/jobs/7483840003");
   const [jobTitle, setJobTitle] = useState("Regional Sales Representative");
-  const [requiredQualifications, setRequiredQualifications] = useState<string[]>([
-    "Be a former D1 athlete",
-    "Worked in direct sales roles for at least 3 years",
-    "President's club member in the last year",
-    "Last experience longer than 2 years",
-    "Lives in a 50-mile radius from Dallas"
-  ]);
-  const [disqualifyingFactors, setDisqualifyingFactors] = useState<string[]>([
-    "Works in the following industries: Enterprise software, Medical, IT, Financial Services, Automotive, Retail, Cybersecurity",
-    "Previously worked at SpotOn",
-    "Currently works at IBM",
-    "Has worked as a sales manager (must be individual contributor)"
-  ]);
+  const [jobDescriptionId, setJobDescriptionId] = useState<number | null>(null);
+  const [requiredQualifications, setRequiredQualifications] = useState<string[]>([]);
+  const [disqualifyingFactors, setDisqualifyingFactors] = useState<string[]>([]);
   const [exclusionListFile, setExclusionListFile] = useState<File | null>(null);
   const [editingQualificationIndex, setEditingQualificationIndex] = useState<number | null>(null);
   const [editingQualificationText, setEditingQualificationText] = useState("");
@@ -145,6 +136,7 @@ export default function Home() {
   
   // Job description API integration
   const jobDescriptionMutation = useJobDescription();
+  const checklistItemsQuery = useChecklistItems(jobDescriptionId);
 
   // Handle job description generation
   const handleGenerateChecklist = async () => {
@@ -156,10 +148,10 @@ export default function Home() {
         fk_organization_id: 1
       });
       console.log('Job description created:', response);
+      // Store the job description ID for fetching checklist items
+      setJobDescriptionId(response.id);
       // Navigate to checklist after a brief delay to show success message
-      setTimeout(() => {
-        setRecruiterTab("checklist");
-      }, 1500);
+      setRecruiterTab("checklist");
     } catch (error) {
       console.error('Failed to create job description:', error);
     }
@@ -1503,16 +1495,6 @@ export default function Home() {
                   </Alert>
                 )}
                 
-                {/* Success Message */}
-                {jobDescriptionMutation.isSuccess && (
-                  <Alert>
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Job description generated successfully! Proceeding to checklist...
-                    </AlertDescription>
-                  </Alert>
-                )}
-                
                 <Button 
                   disabled={!jobUrl || !jobTitle || jobDescriptionMutation.isPending} 
                   className="flex items-center gap-2"
@@ -1528,23 +1510,71 @@ export default function Home() {
       case "checklist":
         return (
           <div className="space-y-6">
-            {/* Requirements */}
+            {/* Loading State */}
+            {checklistItemsQuery.isLoading && (
+              <Card>
+                <CardContent className="py-8">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                    <h3 className="text-lg font-semibold mb-2">Generating Checklist</h3>
+                    <p className="text-muted-foreground">Analyzing job description and creating requirements...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Error State */}
+            {checklistItemsQuery.isError && (
+              <Card>
+                <CardContent className="py-8">
+                  <div className="text-center">
+                    <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Failed to Generate Checklist</h3>
+                    <p className="text-muted-foreground mb-4">There was an error generating the checklist items.</p>
+                    <Button onClick={() => checklistItemsQuery.refetch()}>
+                      Try Again
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Requirements - Show API generated or manual */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CheckCircle className="h-5 w-5 text-green-600" />
                   Requirements
                 </CardTitle>
+                <CardDescription>
+                  {checklistItemsQuery.data ? 
+                    "Generated from job description" : 
+                    "Add criteria for ideal candidates"
+                  }
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  {requiredQualifications.length === 0 ? (
+                  {checklistItemsQuery.data ? (
+                    // Show API generated qualifiers
+                    <ul className="space-y-2">
+                      {checklistItemsQuery.data
+                        .filter(item => item.is_qualifier)
+                        .map((item) => (
+                        <li key={item.id} className="flex items-center gap-3 p-3 border rounded-lg bg-green-50">
+                          <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                          <span className="text-sm flex-1">{item.content}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : requiredQualifications.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <CheckCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
                       <p>No qualifications yet</p>
                       <p className="text-sm">Add criteria for ideal candidates</p>
                     </div>
                   ) : (
+                    // Show manual qualifications
                     <ul className="space-y-2">
                       {requiredQualifications.map((item, index) => (
                         <li key={index} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
@@ -1625,16 +1655,18 @@ export default function Home() {
                     </ul>
                   )}
                 </div>
-                <Button 
-                  variant="outline" 
-                  className="w-full flex items-center gap-2"
-                  onClick={() => {
-                    setRequiredQualifications([...requiredQualifications, "New qualification"])
-                  }}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Requirement
-                </Button>
+                {!checklistItemsQuery.data && (
+                  <Button 
+                    variant="outline" 
+                    className="w-full flex items-center gap-2"
+                    onClick={() => {
+                      setRequiredQualifications([...requiredQualifications, "New qualification"])
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Requirement
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
@@ -1645,16 +1677,35 @@ export default function Home() {
                   <AlertCircle className="h-5 w-5 text-red-600" />
                   Disqualifiers
                 </CardTitle>
+                <CardDescription>
+                  {checklistItemsQuery.data ? 
+                    "Generated from job description" : 
+                    "Add factors that disqualify candidates"
+                  }
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Disqualifying Criteria List */}
                 <div className="space-y-3">
-                  {disqualifyingFactors.length === 0 ? (
+                  {checklistItemsQuery.data ? (
+                    // Show API generated disqualifiers
+                    <ul className="space-y-2">
+                      {checklistItemsQuery.data
+                        .filter(item => !item.is_qualifier)
+                        .map((item) => (
+                        <li key={item.id} className="flex items-center gap-3 p-3 border rounded-lg bg-red-50">
+                          <X className="h-5 w-5 text-red-600 flex-shrink-0" />
+                          <span className="text-sm flex-1">{item.content}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : disqualifyingFactors.length === 0 ? (
                     <div className="text-center py-6 text-muted-foreground border rounded-lg">
                       <AlertCircle className="h-10 w-10 mx-auto mb-2 opacity-50" />
                       <p className="text-sm">No disqualifying factors set</p>
                     </div>
                   ) : (
+                    // Show manual disqualifiers
                     <ul className="space-y-2">
                       {disqualifyingFactors.map((item, index) => (
                         <li key={index} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
@@ -1734,16 +1785,18 @@ export default function Home() {
                       ))}
                     </ul>
                   )}
-                  <Button 
-                    variant="outline" 
-                    className="w-full flex items-center gap-2"
-                    onClick={() => {
-                      setDisqualifyingFactors([...disqualifyingFactors, "New disqualifying factor"])
-                    }}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Disqualifier
-                  </Button>
+                  {!checklistItemsQuery.data && (
+                    <Button 
+                      variant="outline" 
+                      className="w-full flex items-center gap-2"
+                      onClick={() => {
+                        setDisqualifyingFactors([...disqualifyingFactors, "New disqualifying factor"])
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Disqualifier
+                    </Button>
+                  )}
                 </div>
 
                 {/* Exclusion List Upload */}
