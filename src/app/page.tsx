@@ -65,6 +65,7 @@ import {
   ThumbsDown,
   MapPin,
   Building2,
+  RefreshCw,
 } from "lucide-react";
 
 
@@ -145,6 +146,7 @@ export default function Home() {
   const [rejectionFeedback, setRejectionFeedback] = useState<{[key: number]: string}>({});
   const [currentRejectionText, setCurrentRejectionText] = useState("");
   const [shouldFetchCandidates, setShouldFetchCandidates] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   
   // Reset function to clear all data
   const resetToInitialState = () => {
@@ -167,6 +169,7 @@ export default function Home() {
     setEditedMessages({});
     setRejectionFeedback({});
     setShouldFetchCandidates(false);
+    setIsRegenerating(false);
   };
 
   // Reset data when user logs out
@@ -299,6 +302,8 @@ export default function Home() {
       
       // Navigate to candidates tab after successful API call
       setRecruiterTab("candidates");
+      // Clear previous approvals when fetching new candidates
+      setCandidateApprovals({});
       // Wait 3 seconds before fetching candidates
       setTimeout(() => {
         setShouldFetchCandidates(true);
@@ -2632,15 +2637,52 @@ export default function Home() {
               </DialogContent>
             </Dialog>
 
-            {/* Export Button */}
-            <div className="flex justify-end pt-4">
-              <Button
-                disabled={Object.values(candidateApprovals).filter(v => v === 'approved').length < 1}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Export
-              </Button>
+            {/* Approval Progress */}
+            <div className="flex justify-between items-center pt-4">
+              <div className="text-sm text-gray-600">
+                {(() => {
+                  const totalCandidates = candidates.length;
+                  const approvedCount = Object.values(candidateApprovals).filter(v => v === 'approved').length;
+                  const approvalPercentage = totalCandidates > 0 ? (approvedCount / totalCandidates) * 100 : 0;
+                  return `${approvedCount}/${totalCandidates} approved (${approvalPercentage.toFixed(1)}%) - Need 90% to export`;
+                })()}
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  disabled={(() => {
+                    const totalCandidates = candidates.length;
+                    const approvedCount = Object.values(candidateApprovals).filter(v => v === 'approved').length;
+                    const approvalPercentage = totalCandidates > 0 ? (approvedCount / totalCandidates) * 100 : 0;
+                    return approvalPercentage >= 90 || isRegenerating;
+                  })()}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  onClick={async () => {
+                    // Clear approvals and regenerate candidates
+                    setCandidateApprovals({});
+                    setIsRegenerating(true);
+                    try {
+                      await candidateGenerationQuery.refetch();
+                    } finally {
+                      setIsRegenerating(false);
+                    }
+                  }}
+                >
+                  <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
+                  {isRegenerating ? 'Regenerating...' : 'Regenerate'}
+                </Button>
+                
+                <Button
+                  className="flex items-center gap-2"
+                  onClick={()=>{
+                    setCandidateApprovals({});
+                  }}
+                >
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+              </div>
             </div>
           </div>
         );
