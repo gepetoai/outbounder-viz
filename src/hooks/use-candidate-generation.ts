@@ -39,6 +39,7 @@ export interface Candidate {
 export interface CandidateGenerationResponse {
   candidates: Candidate[]
   checklist_items: JobDescriptionChecklistItem[]
+  excluded_count: number
 }
 
 export function useCandidateGeneration(jobDescriptionId: number | null) {
