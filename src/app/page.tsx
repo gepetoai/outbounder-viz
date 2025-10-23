@@ -123,6 +123,7 @@ export default function Home() {
   const [jobUrl, setJobUrl] = useState("");
   const [jobTitle, setJobTitle] = useState("");
   const [jobDescriptionId, setJobDescriptionId] = useState<number | null>(null);
+  const [jobDescriptionChecklistId, setJobDescriptionChecklistId] = useState<number | null>(null);
   const [requiredQualifications, setRequiredQualifications] = useState<string[]>([]);
   const [disqualifyingFactors, setDisqualifyingFactors] = useState<string[]>([]);
   const [exclusionListFile, setExclusionListFile] = useState<File | null>(null);
@@ -187,7 +188,7 @@ export default function Home() {
 
   // Combine API data with manual items
   const allChecklistItems = useMemo(() => {
-    const apiItems = (checklistItemsQuery.data || []).map(item => ({
+    const apiItems = (checklistItemsQuery.data?.job_description_checklist_items || []).map(item => ({
       ...item,
       originalContent: item.originalContent || item.content,
       content: editedContent[item.id] || item.content
@@ -212,7 +213,7 @@ export default function Home() {
       fk_job_description_id: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      originalContent: content
+      originalContent: content,
     }));
     
     return [...apiItems, ...manualQualifications, ...manualDisqualifiers];
@@ -266,7 +267,7 @@ export default function Home() {
   const handleCheckListUpdateAndExclusionList = async () => {
     try {
       // Get the fk_job_description_id from existing API items
-      const existingJobDescriptionId = checklistItemsQuery.data?.[0]?.fk_job_description_id || jobDescriptionId;
+      const existingJobDescriptionId = checklistItemsQuery.data?.job_description_checklist_items[0]?.fk_job_description_id || jobDescriptionId;
       
       // Convert checklist items to API format
       const checklistItems = allChecklistItems.map(item => {
@@ -277,7 +278,7 @@ export default function Home() {
           id: item.id,
           content: item.content,
           is_qualifier: item.is_qualifier,
-          fk_job_description_id: isManualItem ? existingJobDescriptionId! : item.fk_job_description_id,
+          fk_job_description_checklist_id: checklistItemsQuery.data?.id ?? 0,
           is_new: isManualItem,
           is_updated: isManualItem || (isExistingItem && item.content !== item.originalContent)
         };
@@ -293,7 +294,8 @@ export default function Home() {
         checklist_items: checklistItems,
         organization_id: 1,
         field_titles: fieldTitles,
-        file_data: fileData
+        file_data: fileData,
+        fk_job_description_checklist_id: checklistItemsQuery.data?.id ?? 0
       };
 
       console.log('Sending request:', requestData);

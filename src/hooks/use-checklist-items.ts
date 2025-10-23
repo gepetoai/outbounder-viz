@@ -1,6 +1,12 @@
 import { useApiQuery, useApiMutation } from './use-api'
 import axiosInstance from '@/lib/axios'
 
+export interface JobDescriptionChecklist{
+  title: string
+  id: number
+  job_description_checklist_items: ChecklistItem[]
+}
+
 export interface ChecklistItem {
   content: string
   is_qualifier: boolean
@@ -14,7 +20,7 @@ export interface ChecklistItem {
 interface ChecklistItemRequest {
   content: string
   is_qualifier: boolean
-  fk_job_description_id: number
+  fk_job_description_checklist_id: number
   is_new: boolean
   is_updated: boolean
 }
@@ -27,7 +33,7 @@ interface JobDescriptionChecklistRequest {
 }
 
 export function useChecklistItems(jobDescriptionId: number | null) {
-  return useApiQuery<ChecklistItem[]>(
+  return useApiQuery<JobDescriptionChecklist>(
     ['checklist-items', jobDescriptionId?.toString() || ''],
     `/job-description-checklist-item/job-description/${jobDescriptionId}`,
     {
