@@ -88,18 +88,3 @@ export function useCreateJobPosting() {
     },
   })
 }
-
-export function useDeleteJobPosting() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: deleteJobPosting,
-    onSuccess: () => {
-      // Invalidate and refetch job postings after successful deletion
-      queryClient.invalidateQueries({ queryKey: ['jobPostings'] })
-    },
-    onError: (error) => {
-      console.error('Failed to delete job posting:', error)
-    },
-  })
-}

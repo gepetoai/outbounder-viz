@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Building2, Search, Trash2, Loader2 } from 'lucide-react'
-import { useJobPostings, useCreateJobPosting, useDeleteJobPosting } from '@/hooks/useJobPostings'
+import { Plus, Building2, Search, Loader2 } from 'lucide-react'
+import { useJobPostings, useCreateJobPosting } from '@/hooks/useJobPostings'
 
 interface JobPostingManagerProps {
   onSearchClick: (jobId: string) => void
@@ -20,7 +20,6 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
   // React Query hooks
   const { data: jobPostings = [], isLoading, error } = useJobPostings()
   const createJobMutation = useCreateJobPosting()
-  const deleteJobMutation = useDeleteJobPosting()
 
   const handleSaveJob = () => {
     if (!newJobTitle || !newJobUrl) return
