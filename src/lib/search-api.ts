@@ -66,10 +66,24 @@ export async function createSearch(data: SearchRequest): Promise<SearchResponse>
     },
     body: JSON.stringify(data)
   })
-  
+
   if (!response.ok) {
     throw new Error(`Failed to create search: ${response.status} ${response.statusText}`)
   }
-  
+
   return response.json()
+}
+
+export async function updateSearchName(searchId: number, searchTitle: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/job-description-searches/${searchId}/name`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ search_title: searchTitle })
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to update search name: ${response.status} ${response.statusText}`)
+  }
 }
