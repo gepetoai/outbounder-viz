@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { 
   Users, 
   Play, 
@@ -17,17 +16,13 @@ import {
   Globe,
   Zap,
   ChevronDown,
-  Building2,
-  RefreshCw,
-  Send,
   Briefcase
 } from 'lucide-react'
 
 // Import our refactored components
-import { JobPostingManager, type JobPosting } from '@/components/recruiter/JobPostingManager'
+import { JobPostingManager } from '@/components/recruiter/JobPostingManager'
 import { SearchTab, type SearchParams, type Candidate } from '@/components/recruiter/SearchTab'
 import { CandidateTab } from '@/components/recruiter/CandidateTab'
-import { OutreachTab } from '@/components/recruiter/OutreachTab'
 import { SequencerTab } from '@/components/recruiter/SequencerTab'
 import { AnalyticsTab } from '@/components/recruiter/AnalyticsTab'
 import { ApprovedRejectedCarousel } from '@/components/recruiter/ApprovedRejectedCarousel'
@@ -49,8 +44,7 @@ export default function HomePage() {
   const [recruiterSubTab, setRecruiterSubTab] = useState('candidates')
   const [researcherTab, setResearcherTab] = useState('finder')
   
-  // Job postings state
-  const [jobPostings, setJobPostings] = useState<JobPosting[]>([])
+  // Job postings state removed - now handled by React Query
   
   // Search state
   const [searchParams, setSearchParams] = useState<SearchParams>({
@@ -80,11 +74,7 @@ export default function HomePage() {
   const [approvedCandidatesData, setApprovedCandidatesData] = useState<Candidate[]>([])
   const [rejectedCandidatesData, setRejectedCandidatesData] = useState<Candidate[]>([])
   
-  // Outreach metrics state
-  const [connectionRequestsSent, setConnectionRequestsSent] = useState(0)
-  const [initialMessagesSent, setInitialMessagesSent] = useState(0)
-  const [positiveReplies, setPositiveReplies] = useState(0)
-  const [applicants, setApplicants] = useState(0)
+  // Outreach metrics state - removed unused variables
 
   // Applications configuration
   const applications = [
@@ -177,7 +167,7 @@ export default function HomePage() {
     { id: 'lists', label: 'Lists', icon: Users, subItems: [] }
   ]
 
-  const handleSearchClick = (jobId: string) => {
+  const handleSearchClick = () => {
     setRecruiterTab('search')
   }
 
@@ -232,8 +222,6 @@ export default function HomePage() {
       case 'job-setup':
         return (
           <JobPostingManager
-            jobPostings={jobPostings}
-            setJobPostings={setJobPostings}
             onSearchClick={handleSearchClick}
           />
         )
@@ -276,10 +264,10 @@ export default function HomePage() {
           case 'candidates':
             return (
               <ApprovedRejectedCarousel
-                approvedCandidatesData={approvedCandidatesData}
-                rejectedCandidatesData={rejectedCandidatesData}
-                setApprovedCandidatesData={setApprovedCandidatesData}
-                setRejectedCandidatesData={setRejectedCandidatesData}
+                approvedCandidatesData={approvedCandidatesData.map(candidate => ({ ...candidate, status: 'approved' as const }))}
+                rejectedCandidatesData={rejectedCandidatesData.map(candidate => ({ ...candidate, status: 'rejected' as const }))}
+                setApprovedCandidatesData={(candidates) => setApprovedCandidatesData(candidates.map(candidate => ({ ...candidate, status: undefined })))}
+                setRejectedCandidatesData={(candidates) => setRejectedCandidatesData(candidates.map(candidate => ({ ...candidate, status: undefined })))}
               />
             )
           case 'analytics':
