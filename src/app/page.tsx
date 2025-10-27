@@ -261,9 +261,9 @@ export default function HomePage() {
   return (
     <div className="flex h-screen bg-background">
       {/* Main App Sidebar */}
-      <div className="w-16 bg-card border-r border-border flex flex-col">
-        <div className="p-4 border-b border-border min-h-[72px] flex items-center justify-center">
-          <h1 className="text-xl font-bold text-foreground">248</h1>
+      <div className="w-12 bg-card border-r border-border flex flex-col">
+        <div className="p-2 border-b border-border min-h-[72px] flex items-center justify-center">
+          <h1 className="text-lg font-bold text-foreground">248</h1>
         </div>
 
         {/* Applications Navigation */}
@@ -275,10 +275,10 @@ export default function HomePage() {
                 key={app.id}
                 variant={activeApp === app.id ? 'default' : 'ghost'}
                 size="icon"
-                className="w-full"
+                className="w-full h-9 flex items-center justify-center"
                 onClick={() => setActiveApp(app.id)}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="h-4 w-4" />
               </Button>
             )
           })}
@@ -287,9 +287,9 @@ export default function HomePage() {
 
       {/* Outbounder/Inbounder/Recruiter/Researcher Sidebar - Only show when these apps are active */}
       {(activeApp === 'outbounder' || activeApp === 'inbounder' || activeApp === 'recruiter' || activeApp === 'researcher') && (
-        <div className={`${sidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 bg-card border-r border-border flex flex-col`}>
+        <div className={`${sidebarOpen ? 'w-64' : 'w-12'} transition-all duration-300 bg-card border-r border-border flex flex-col`}>
           {/* Header */}
-          <div className="p-4 border-b border-border min-h-[72px] flex items-center justify-between">
+          <div className={`${sidebarOpen ? 'p-4' : 'p-2'} border-b border-border min-h-[72px] flex items-center ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
             {sidebarOpen && (
               <h1 className="text-xl font-bold text-foreground">
                 {activeApp === 'outbounder' ? 'Outbounder' : activeApp === 'inbounder' ? 'Inbounder' : activeApp === 'researcher' ? 'Researcher' : 'Recruiter'}
@@ -299,14 +299,14 @@ export default function HomePage() {
               variant="ghost"
               size="icon"
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="ml-auto"
+              className={sidebarOpen ? 'ml-auto' : ''}
             >
               {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </Button>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-2 space-y-2">
+          <nav className={`flex-1 ${sidebarOpen ? 'p-2 space-y-2' : 'p-2 space-y-2'}`}>
             {(activeApp === 'recruiter' ? recruiterTabs : activeApp === 'researcher' ? researcherTabs : tabs).map((tab) => {
               const Icon = tab.icon
               const isLeadsTab = tab.id === 'leads'
@@ -319,7 +319,7 @@ export default function HomePage() {
                   <Button
                     variant={activeApp === 'recruiter' ? (recruiterTab === tab.id ? 'default' : 'ghost') : activeApp === 'researcher' ? (researcherTab === tab.id ? 'default' : 'ghost') : (activeTab === tab.id ? 'default' : 'ghost')}
                     size={sidebarOpen ? 'default' : 'icon'}
-                    className={`w-full justify-start ${sidebarOpen ? 'px-3' : 'px-2'}`}
+                    className={`w-full h-9 flex items-center ${sidebarOpen ? 'justify-start px-3' : 'justify-center px-2'}`}
                     onClick={() => {
                       if (activeApp === 'recruiter') {
                         setRecruiterTab(tab.id)
@@ -340,13 +340,13 @@ export default function HomePage() {
                       }
                     }}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-4 w-4 flex-shrink-0" />
                     {sidebarOpen && (
                       <>
-                        <span className="ml-2">{tab.label}</span>
+                        <span className="ml-2 flex items-center">{tab.label}</span>
                         {hasSubItems && (
                           <ChevronDown 
-                            className={`h-4 w-4 ml-auto transition-transform duration-200 ${
+                            className={`h-4 w-4 ml-auto flex-shrink-0 transition-transform duration-200 ${
                               (isLeadsTab && leadsExpanded) || (isSequencerTab && sequencerExpanded) || (isMessagingTab && messagingExpanded) ? 'rotate-180' : ''
                             }`} 
                           />
@@ -370,11 +370,11 @@ export default function HomePage() {
                               key={subItem.id}
                               variant={activeSubTab === subItem.id ? 'secondary' : 'ghost'}
                               size="default"
-                              className="w-full justify-start px-3"
+                              className="w-full justify-start px-3 flex items-center h-9"
                               onClick={() => setActiveSubTab(subItem.id)}
                             >
-                              <SubIcon className="h-4 w-4" />
-                              <span className="ml-2">{subItem.label}</span>
+                              <SubIcon className="h-4 w-4 flex-shrink-0" />
+                              <span className="ml-2 flex items-center">{subItem.label}</span>
                             </Button>
                           )
                         })}
@@ -397,11 +397,11 @@ export default function HomePage() {
                               key={subItem.id}
                               variant={activeSubTab === subItem.id ? 'secondary' : 'ghost'}
                               size="default"
-                              className="w-full justify-start px-3"
+                              className="w-full justify-start px-3 flex items-center h-9"
                               onClick={() => setActiveSubTab(subItem.id)}
                             >
-                              <SubIcon className="h-4 w-4" />
-                              <span className="ml-2">{subItem.label}</span>
+                              <SubIcon className="h-4 w-4 flex-shrink-0" />
+                              <span className="ml-2 flex items-center">{subItem.label}</span>
                             </Button>
                           )
                         })}
@@ -424,11 +424,11 @@ export default function HomePage() {
                               key={subItem.id}
                               variant={activeSubTab === subItem.id ? 'secondary' : 'ghost'}
                               size="default"
-                              className="w-full justify-start px-3"
+                              className="w-full justify-start px-3 flex items-center h-9"
                               onClick={() => setActiveSubTab(subItem.id)}
                             >
-                              <SubIcon className="h-4 w-4" />
-                              <span className="ml-2">{subItem.label}</span>
+                              <SubIcon className="h-4 w-4 flex-shrink-0" />
+                              <span className="ml-2 flex items-center">{subItem.label}</span>
                             </Button>
                           )
                         })}
