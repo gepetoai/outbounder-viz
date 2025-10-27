@@ -62,7 +62,7 @@ export default function HomePage() {
     experienceLength: '',
     titleMatch: false,
     profilePhoto: false,
-    connections: { min: 0, max: 500 },
+    connections: 0,
     // New fields from UnifiedSearchForm
     numExperiences: 0,
     graduationYearFrom: 0,
