@@ -11,6 +11,7 @@ import {
   Settings,
   Menu,
   X,
+
   Search,
   User,
   Globe,
@@ -67,6 +68,8 @@ export default function HomePage() {
   const [approvedCandidates, setApprovedCandidates] = useState<string[]>([])
   const [rejectedCandidates, setRejectedCandidates] = useState<string[]>([])
   const [reviewCandidates, setReviewCandidates] = useState<Candidate[]>([])
+  const [approvedCandidatesData, setApprovedCandidatesData] = useState<Candidate[]>([])
+  const [rejectedCandidatesData, setRejectedCandidatesData] = useState<Candidate[]>([])
 
   // Applications configuration
   const applications = [
@@ -240,6 +243,10 @@ export default function HomePage() {
             setApprovedCandidates={setApprovedCandidates}
             rejectedCandidates={rejectedCandidates}
             setRejectedCandidates={setRejectedCandidates}
+            approvedCandidatesData={approvedCandidatesData}
+            setApprovedCandidatesData={setApprovedCandidatesData}
+            rejectedCandidatesData={rejectedCandidatesData}
+            setRejectedCandidatesData={setRejectedCandidatesData}
             onGoToReview={handleGoToReview}
           />
         )
@@ -251,6 +258,9 @@ export default function HomePage() {
             rejectedCandidates={rejectedCandidates}
             setRejectedCandidates={setRejectedCandidates}
             stagingCandidates={stagingCandidates}
+            reviewCandidates={reviewCandidates}
+            approvedCandidatesData={approvedCandidatesData}
+            rejectedCandidatesData={rejectedCandidatesData}
           />
         )
       default:

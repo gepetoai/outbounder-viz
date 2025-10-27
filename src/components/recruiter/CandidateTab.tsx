@@ -31,6 +31,10 @@ interface CandidateTabProps {
   setApprovedCandidates: (candidates: string[]) => void
   rejectedCandidates: string[]
   setRejectedCandidates: (candidates: string[]) => void
+  approvedCandidatesData: Candidate[]
+  setApprovedCandidatesData: (candidates: Candidate[]) => void
+  rejectedCandidatesData: Candidate[]
+  setRejectedCandidatesData: (candidates: Candidate[]) => void
   onGoToReview: () => void
 }
 
@@ -42,19 +46,31 @@ export function CandidateTab({
   setApprovedCandidates,
   rejectedCandidates,
   setRejectedCandidates,
+  approvedCandidatesData,
+  setApprovedCandidatesData,
+  rejectedCandidatesData,
+  setRejectedCandidatesData,
   onGoToReview
 }: CandidateTabProps) {
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false)
 
   const handleApprove = (candidateId: string) => {
-    setApprovedCandidates([...approvedCandidates, candidateId])
-    setStagingCandidates(stagingCandidates.filter(c => c.id !== candidateId))
+    const candidate = stagingCandidates.find(c => c.id === candidateId)
+    if (candidate) {
+      setApprovedCandidates([...approvedCandidates, candidateId])
+      setApprovedCandidatesData([...approvedCandidatesData, candidate])
+      setStagingCandidates(stagingCandidates.filter(c => c.id !== candidateId))
+    }
   }
 
   const handleReject = (candidateId: string) => {
-    setRejectedCandidates([...rejectedCandidates, candidateId])
-    setStagingCandidates(stagingCandidates.filter(c => c.id !== candidateId))
+    const candidate = stagingCandidates.find(c => c.id === candidateId)
+    if (candidate) {
+      setRejectedCandidates([...rejectedCandidates, candidateId])
+      setRejectedCandidatesData([...rejectedCandidatesData, candidate])
+      setStagingCandidates(stagingCandidates.filter(c => c.id !== candidateId))
+    }
   }
 
   const handleSkip = (candidateId: string) => {
@@ -86,7 +102,7 @@ export function CandidateTab({
 
         {/* Approved Progress */}
         <div className="bg-gray-200 text-gray-900 p-4 relative overflow-hidden rounded-lg">
-          <div className="relative z-10">
+          <div className="relative z-10 text-center">
             <div className="text-3xl font-bold mb-1">
               {approvedCandidates.length}/500
             </div>

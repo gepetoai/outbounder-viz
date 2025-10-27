@@ -2,13 +2,10 @@
 
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Check, Send, Users, MessageSquare, Mail, Phone, Calendar, Clock } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Users, MessageSquare, Check, X, ChevronLeft, ChevronRight, ExternalLink, MapPin, GraduationCap, Briefcase } from 'lucide-react'
 
 export interface Candidate {
   id: string
@@ -33,6 +30,9 @@ interface OutreachTabProps {
   rejectedCandidates: string[]
   setRejectedCandidates: (candidates: string[]) => void
   stagingCandidates: Candidate[]
+  reviewCandidates: Candidate[]
+  approvedCandidatesData: Candidate[]
+  rejectedCandidatesData: Candidate[]
 }
 
 export function OutreachTab({
@@ -40,266 +40,251 @@ export function OutreachTab({
   setApprovedCandidates,
   rejectedCandidates,
   setRejectedCandidates,
-  stagingCandidates
+  stagingCandidates,
+  reviewCandidates,
+  approvedCandidatesData,
+  rejectedCandidatesData
 }: OutreachTabProps) {
-  const [outreachMethod, setOutreachMethod] = useState<'linkedin' | 'email' | 'phone'>('linkedin')
-  const [messageTemplate, setMessageTemplate] = useState('')
-  const [emailSubject, setEmailSubject] = useState('')
-  const [emailBody, setEmailBody] = useState('')
-  const [phoneScript, setPhoneScript] = useState('')
-  const [scheduledCalls, setScheduledCalls] = useState<Array<{
-    id: string
-    candidateId: string
-    candidateName: string
-    scheduledTime: string
-    notes: string
-  }>>([])
-
-  const approvedCandidatesData = stagingCandidates.filter(c => approvedCandidates.includes(c.id))
-
-  const handleSendOutreach = (candidateId: string) => {
-    // Simulate sending outreach
-    console.log(`Sending ${outreachMethod} outreach to candidate ${candidateId}`)
-    // In a real app, this would trigger the actual outreach
-  }
-
-  const handleScheduleCall = (candidateId: string, candidateName: string) => {
-    const scheduledTime = new Date()
-    scheduledTime.setDate(scheduledTime.getDate() + 1) // Tomorrow
-    
-    const newCall = {
-      id: Date.now().toString(),
-      candidateId,
-      candidateName,
-      scheduledTime: scheduledTime.toISOString(),
-      notes: ''
+  const [filterStatus, setFilterStatus] = useState<'approved' | 'rejected'>('approved')
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
+  const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false)
+  
+  const getFilteredCandidates = () => {
+    switch (filterStatus) {
+      case 'approved':
+        return approvedCandidatesData
+      case 'rejected':
+        return rejectedCandidatesData
+      default:
+        return approvedCandidatesData
     }
-    
-    setScheduledCalls([...scheduledCalls, newCall])
   }
-
-  const handleRemoveScheduledCall = (callId: string) => {
-    setScheduledCalls(scheduledCalls.filter(call => call.id !== callId))
+  
+  const filteredCandidates = getFilteredCandidates()
+  
+  const getVisibleCandidates = () => {
+    const candidates = []
+    for (let i = 0; i < 3; i++) {
+      const index = (currentIndex + i) % filteredCandidates.length
+      candidates.push(filteredCandidates[index])
+    }
+    return candidates
+  }
+  
+  const visibleCandidates = getVisibleCandidates()
+  
+  const handlePrevious = () => {
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : filteredCandidates.length - 1))
+  }
+  
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev < filteredCandidates.length - 1 ? prev + 1 : 0))
+  }
+  
+  const handleFilterChange = (newFilter: 'approved' | 'rejected') => {
+    setFilterStatus(newFilter)
+    setCurrentIndex(0)
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Outreach</h2>
-        </div>
-        <Badge variant="secondary" className="flex items-center gap-1">
-          <Users className="h-4 w-4" />
-          {approvedCandidatesData.length} candidates
-        </Badge>
-      </div>
-
-      <Tabs defaultValue="outreach" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="outreach">Outreach</TabsTrigger>
-          <TabsTrigger value="scheduled">Scheduled Calls</TabsTrigger>
-          <TabsTrigger value="templates">Templates</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="outreach" className="space-y-6">
-          {/* Outreach Method Selection */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
-                Outreach Method
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-4">
+      {/* Approved Candidates Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Candidates
+            </CardTitle>
+            <div className="flex gap-1">
                 <Button
-                  variant={outreachMethod === 'linkedin' ? 'default' : 'outline'}
-                  onClick={() => setOutreachMethod('linkedin')}
-                  className="flex items-center gap-2"
+                  variant={filterStatus === 'approved' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleFilterChange('approved')}
+                  className="flex items-center gap-1"
                 >
-                  <MessageSquare className="h-4 w-4" />
-                  LinkedIn
+                  <Check className="h-3 w-3" />
+                  Approved
                 </Button>
                 <Button
-                  variant={outreachMethod === 'email' ? 'default' : 'outline'}
-                  onClick={() => setOutreachMethod('email')}
-                  className="flex items-center gap-2"
+                  variant={filterStatus === 'rejected' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleFilterChange('rejected')}
+                  className="flex items-center gap-1"
                 >
-                  <Mail className="h-4 w-4" />
-                  Email
-                </Button>
-                <Button
-                  variant={outreachMethod === 'phone' ? 'default' : 'outline'}
-                  onClick={() => setOutreachMethod('phone')}
-                  className="flex items-center gap-2"
-                >
-                  <Phone className="h-4 w-4" />
-                  Phone
+                  <X className="h-3 w-3" />
+                  Rejected
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+        </CardHeader>
+        <CardContent>
+          {filteredCandidates.length > 0 ? (
+            <div className="space-y-4">
+              {/* Carousel Container */}
+              <div className="flex items-center justify-center gap-4">
+                {/* Left Arrow */}
+                <Button
+                  variant="outline"
+                  onClick={handlePrevious}
+                  disabled={filteredCandidates.length <= 3}
+                  className="h-24 w-12 rounded-lg border-2 border-black bg-white hover:bg-black hover:text-white transition-all duration-200 flex items-center justify-center"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </Button>
 
-          {/* Approved Candidates List */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Check className="h-5 w-5" />
-                Approved Candidates
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {approvedCandidatesData.map((candidate) => (
-                  <div
-                    key={candidate.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div className="flex items-center gap-4">
-                      <img
-                        src={candidate.photo}
-                        alt={candidate.name}
-                        className="w-12 h-12 rounded-full object-cover"
-                      />
-                      <div>
-                        <h3 className="font-semibold">{candidate.name}</h3>
-                        <p className="text-sm text-gray-600">{candidate.title} at {candidate.company}</p>
-                        <p className="text-xs text-gray-500">{candidate.location}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {outreachMethod === 'phone' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleScheduleCall(candidate.id, candidate.name)}
-                        >
-                          <Calendar className="h-4 w-4 mr-1" />
-                          Schedule Call
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        onClick={() => handleSendOutreach(candidate.id)}
-                        className="flex items-center gap-1"
-                      >
-                        <Send className="h-4 w-4" />
-                        Send {outreachMethod === 'linkedin' ? 'Message' : outreachMethod === 'email' ? 'Email' : 'Call'}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="scheduled" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Scheduled Calls
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {scheduledCalls.length > 0 ? (
-                <div className="space-y-4">
-                  {scheduledCalls.map((call) => (
-                    <div
-                      key={call.id}
-                      className="flex items-center justify-between p-4 border rounded-lg"
+                {/* Three Candidate Cards */}
+                <div className="flex gap-3">
+                  {visibleCandidates.map((candidate, index) => (
+                    <div 
+                      key={`${candidate.id}-${index}`}
+                      className="border-2 border-black rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors w-64"
+                      onClick={() => {
+                        setSelectedCandidate(candidate)
+                        setIsProfilePanelOpen(true)
+                      }}
                     >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Phone className="h-6 w-6 text-blue-600" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold">{call.candidateName}</h3>
-                          <p className="text-sm text-gray-600">
-                            <Clock className="h-4 w-4 inline mr-1" />
-                            {new Date(call.scheduledTime).toLocaleString()}
-                          </p>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-12 w-12 border-2 border-black">
+                          <AvatarImage 
+                            src={candidate.photo} 
+                            alt={candidate.name}
+                            className="grayscale"
+                          />
+                          <AvatarFallback className="bg-black text-white font-bold text-xs">
+                            {candidate.name.split(' ').map(n => n[0]).join('')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-sm truncate">{candidate.name}</h3>
+                          <div className="w-8 h-0.5 bg-black my-1"></div>
+                          <p className="text-xs font-medium text-gray-700 truncate">{candidate.title}</p>
+                          <p className="text-xs text-gray-600 truncate">{candidate.company}</p>
+                          <p className="text-xs text-gray-500 truncate">{candidate.location}</p>
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleRemoveScheduledCall(call.id)}
-                      >
-                        Cancel
-                      </Button>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Calendar className="h-12 w-12 mx-auto mb-4" />
-                  <p>No scheduled calls yet</p>
+
+                {/* Right Arrow */}
+                <Button
+                  variant="outline"
+                  onClick={handleNext}
+                  disabled={filteredCandidates.length <= 3}
+                  className="h-24 w-12 rounded-lg border-2 border-black bg-white hover:bg-black hover:text-white transition-all duration-200 flex items-center justify-center"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </Button>
+              </div>
+
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <Users className="h-12 w-12 mx-auto mb-4" />
+              <p>No {filterStatus} candidates found</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Coming Soon Placeholder */}
+      <Card>
+        <CardContent>
+          <div className="text-center py-12">
+            <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
+              <MessageSquare className="h-12 w-12 text-blue-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Coming Soon</h3>
+            <p className="text-gray-600 max-w-md mx-auto">
+              We're working on building powerful outreach tools to help you connect with your approved candidates. 
+              This feature will include LinkedIn messaging, email campaigns, and call scheduling.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* LinkedIn Profile Slide-in Panel */}
+      {isProfilePanelOpen && selectedCandidate && (
+        <div className="fixed inset-0 z-50" onClick={() => setIsProfilePanelOpen(false)}>
+          <div 
+            className="fixed right-0 top-0 bottom-0 w-96 bg-white shadow-2xl border-l h-full transform transition-transform duration-300 ease-in-out"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b">
+                <h2 className="text-lg font-semibold">LinkedIn Profile</h2>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setIsProfilePanelOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Profile Content */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                <div className="text-center">
+                  <img
+                    src={selectedCandidate.photo}
+                    alt={selectedCandidate.name}
+                    className="w-24 h-24 rounded-full object-cover mx-auto mb-4 grayscale"
+                  />
+                  <h3 className="text-xl font-bold">{selectedCandidate.name}</h3>
+                  <p className="text-gray-600">{selectedCandidate.title}</p>
+                  <p className="text-sm text-gray-500">{selectedCandidate.company}</p>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="templates" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
-                Message Templates
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* LinkedIn Template */}
-              <div className="space-y-2">
-                <Label htmlFor="linkedin-template">LinkedIn Message Template</Label>
-                <Textarea
-                  id="linkedin-template"
-                  placeholder="Hi [Name], I noticed your experience in [Role] at [Company]. I have an exciting opportunity that might be a great fit..."
-                  value={messageTemplate}
-                  onChange={(e) => setMessageTemplate(e.target.value)}
-                  rows={4}
-                />
-              </div>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold mb-2">About</h4>
+                    <p className="text-sm text-gray-600">{selectedCandidate.summary}</p>
+                  </div>
 
-              {/* Email Template */}
-              <div className="space-y-2">
-                <Label htmlFor="email-subject">Email Subject</Label>
-                <Input
-                  id="email-subject"
-                  placeholder="Exciting opportunity at [Company] - [Role]"
-                  value={emailSubject}
-                  onChange={(e) => setEmailSubject(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email-body">Email Body</Label>
-                <Textarea
-                  id="email-body"
-                  placeholder="Dear [Name], I hope this email finds you well..."
-                  value={emailBody}
-                  onChange={(e) => setEmailBody(e.target.value)}
-                  rows={6}
-                />
+                  <div>
+                    <h4 className="font-semibold mb-2">Experience</h4>
+                    <div className="space-y-3">
+                      {selectedCandidate.experience.map((exp, index) => (
+                        <div key={index} className="border-l-2 border-blue-200 pl-3">
+                          <div className="font-medium text-sm">{exp.title}</div>
+                          <div className="text-sm text-gray-600">{exp.company}</div>
+                          <div className="text-xs text-gray-500">{exp.duration}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Education</h4>
+                    <p className="text-sm text-gray-600">{selectedCandidate.education}</p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Location</h4>
+                    <p className="text-sm text-gray-600">{selectedCandidate.location}</p>
+                  </div>
+                </div>
               </div>
 
-              {/* Phone Script */}
-              <div className="space-y-2">
-                <Label htmlFor="phone-script">Phone Call Script</Label>
-                <Textarea
-                  id="phone-script"
-                  placeholder="Hi [Name], this is [Your Name] from [Company]. I'm reaching out because..."
-                  value={phoneScript}
-                  onChange={(e) => setPhoneScript(e.target.value)}
-                  rows={4}
-                />
+              {/* Footer */}
+              <div className="p-4 border-t">
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    window.open(selectedCandidate.linkedinUrl, '_blank')
+                  }}
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View on LinkedIn
+                </Button>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
