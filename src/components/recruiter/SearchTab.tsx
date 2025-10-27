@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { User, Briefcase, MapPin, GraduationCap, X, Search, Target, Code, Upload, RefreshCw, Send } from 'lucide-react'
+import { Modal } from '@/components/ui/modal'
+import { User, Briefcase, MapPin, GraduationCap, X, Search, Target, Code, Upload, RefreshCw, Send, Save } from 'lucide-react'
 import { useDepartments, useStates, useCities, useIndustries } from '@/hooks/useDropdowns'
-import { useCreateSearch } from '@/hooks/useSearch'
+import { useCreateSearch, useUpdateSearchName } from '@/hooks/useSearch'
 import { mapSearchParamsToRequest } from '@/lib/search-api'
 
 export interface SearchParams {
@@ -107,15 +108,19 @@ export function SearchTab({
   const [inputError, setInputError] = useState('')
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false)
+  const [searchTitle, setSearchTitle] = useState('')
+  const [currentSearchId, setCurrentSearchId] = useState<number | null>(null)
 
   // Dropdown data hooks
   const { data: departmentsData, isLoading: isLoadingDepartments } = useDepartments()
   const { data: statesData, isLoading: isLoadingStates } = useStates()
   const { data: citiesData, isLoading: isLoadingCities } = useCities(searchParams.locationState, statesData)
   const { data: industriesData, isLoading: isLoadingIndustries } = useIndustries()
-  
+
   // Search functionality
   const createSearch = useCreateSearch()
+  const updateSearchName = useUpdateSearchName()
 
   const isValidLinkedInUrl = (url: string): boolean => {
     return url.includes('linkedin.com/company/') || url.includes('linkedin.com/in/')
@@ -330,17 +335,20 @@ export function SearchTab({
     try {
       // Map search params to API request format
       const searchRequest = mapSearchParamsToRequest(searchParams, 'Candidate Search')
-      
+
       // Call the search API
       const response = await createSearch.mutateAsync(searchRequest)
-      
+
+      // Store the search ID for later use
+      setCurrentSearchId(response.search_id)
+
       // Update candidate yield with real results
       setCandidateYield(response.total_results)
-      
+
       // Generate mock candidates for now (you can replace this with real candidate fetching)
       const mockCandidates = generateMockCandidates(10)
       setStagingCandidates(mockCandidates)
-      
+
       console.log('Search completed:', response)
     } catch (error) {
       console.error('Search failed:', error)
@@ -349,6 +357,29 @@ export function SearchTab({
       setCandidateYield(mockYield)
       const mockCandidates = generateMockCandidates(10)
       setStagingCandidates(mockCandidates)
+    }
+  }
+
+  const handleSaveSearch = async () => {
+    if (!currentSearchId) {
+      console.error('No search ID available')
+      return
+    }
+
+    if (!searchTitle.trim()) {
+      console.error('Search title is required')
+      return
+    }
+
+    try {
+      await updateSearchName.mutateAsync({
+        searchId: currentSearchId,
+        searchTitle: searchTitle.trim()
+      })
+      setIsSaveDialogOpen(false)
+      setSearchTitle('')
+    } catch (error) {
+      console.error('Failed to save search:', error)
     }
   }
 
@@ -810,20 +841,29 @@ export function SearchTab({
               
               {/* Action Buttons */}
               <div className="flex gap-3 pt-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="flex items-center gap-2"
                   onClick={handleRefreshCandidates}
                 >
                   <RefreshCw className="h-4 w-4" />
                   Refresh
                 </Button>
-                <Button 
+                <Button
                   className="flex items-center gap-2"
                   onClick={handleSendToReview}
                 >
                   <Send className="h-4 w-4" />
                   Send All {candidateYield.toLocaleString()} to Review
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  onClick={() => setIsSaveDialogOpen(true)}
+                  disabled={!currentSearchId}
+                >
+                  <Save className="h-4 w-4" />
+                  Save Search
                 </Button>
               </div>
             </div>
@@ -962,6 +1002,37 @@ export function SearchTab({
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Save Search Modal */}
+      <Modal
+        open={isSaveDialogOpen}
+        onOpenChange={setIsSaveDialogOpen}
+        title="Save Search"
+        description="Enter a name for this search to save it for future use."
+        confirmText="Save"
+        onConfirm={handleSaveSearch}
+        onCancel={() => {
+          setIsSaveDialogOpen(false)
+          setSearchTitle('')
+        }}
+        isLoading={updateSearchName.isPending}
+        confirmDisabled={!searchTitle.trim()}
+      >
+        <div className="space-y-2">
+          <Label htmlFor="search-title">Search Title</Label>
+          <Input
+            id="search-title"
+            placeholder="e.g., Senior Software Engineers in SF"
+            value={searchTitle}
+            onChange={(e) => setSearchTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && searchTitle.trim()) {
+                handleSaveSearch()
+              }
+            }}
+          />
+        </div>
+      </Modal>
     </div>
   )
 }
