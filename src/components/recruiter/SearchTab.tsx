@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { User, Briefcase, MapPin, GraduationCap, X, Search, Target, Code, Upload, RefreshCw, Send } from 'lucide-react'
 
 export interface SearchParams {
+  // Original fields
   education: string
   graduationYear: string
   geography: string
@@ -26,6 +27,26 @@ export interface SearchParams {
   titleMatch: boolean
   profilePhoto: boolean
   connections: { min: number; max: number }
+  
+  // New fields from UnifiedSearchForm
+  numExperiences: number
+  graduationYearFrom: number
+  graduationYearTo: number
+  maxExperience: number
+  department: string
+  deptYears: number
+  managementLevelExclusions: string
+  recency: number
+  timeInRole: number
+  locationCity: string
+  locationState: string
+  searchRadius: number
+  includeWorkLocation: boolean
+  industryExclusions: string[]
+  titleExclusions: string
+  keywordExclusions: string
+  companyExclusions: string
+  maxJobDuration: number
 }
 
 export interface Candidate {
@@ -343,22 +364,34 @@ export function SearchTab({
               <GraduationCap className="h-5 w-5" />
               <h3 className="text-lg font-semibold">Education</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
+              
+              {/* Graduation Year Range */}
               <div className="space-y-2">
-                <Input
-                  id="education"
-                  placeholder="Education Level (e.g., Bachelor's, Master's, PhD)"
-                  value={searchParams.education}
-                  onChange={(e) => setSearchParams({ ...searchParams, education: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Input
-                  id="graduation-year"
-                  placeholder="Graduation Year (e.g., 2020, 2021)"
-                  value={searchParams.graduationYear}
-                  onChange={(e) => setSearchParams({ ...searchParams, graduationYear: e.target.value })}
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-gray-600">From year</Label>
+                    <Input
+                      type="number"
+                      value={searchParams.graduationYearFrom || ''}
+                      onChange={(e) => setSearchParams({ ...searchParams, graduationYearFrom: parseInt(e.target.value) || 0 })}
+                      min="1980"
+                      max="2025"
+                      placeholder="2018"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-gray-600">To year</Label>
+                    <Input
+                      type="number"
+                      value={searchParams.graduationYearTo || ''}
+                      onChange={(e) => setSearchParams({ ...searchParams, graduationYearTo: parseInt(e.target.value) || 0 })}
+                      min="1980"
+                      max="2025"
+                      placeholder="2022"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -369,23 +402,164 @@ export function SearchTab({
               <MapPin className="h-5 w-5" />
               <h3 className="text-lg font-semibold">Location</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4"> 
+              {/* Location Details */}
               <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-gray-600">State</Label>
+                    <Input
+                      placeholder="Select state..."
+                      value={searchParams.locationState}
+                      onChange={(e) => setSearchParams({ ...searchParams, locationState: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-gray-600">City</Label>
+                    <Input
+                      placeholder="Select city..."
+                      value={searchParams.locationCity}
+                      onChange={(e) => setSearchParams({ ...searchParams, locationCity: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2 mt-2">
+                  <Label className="text-sm">Search within:</Label>
+                  <div className="grid grid-cols-4 gap-2">
+                    <Button
+                      variant={searchParams.searchRadius === 10 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSearchParams({ ...searchParams, searchRadius: 10 })}
+                    >
+                      10 miles
+                    </Button>
+                    <Button
+                      variant={searchParams.searchRadius === 25 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSearchParams({ ...searchParams, searchRadius: 25 })}
+                    >
+                      25 miles
+                    </Button>
+                    <Button
+                      variant={searchParams.searchRadius === 50 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSearchParams({ ...searchParams, searchRadius: 50 })}
+                    >
+                      50 miles
+                    </Button>
+                    <Button
+                      variant={searchParams.searchRadius === 100 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSearchParams({ ...searchParams, searchRadius: 100 })}
+                    >
+                      100 miles
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 mt-2">
+                  <Switch
+                    checked={searchParams.includeWorkLocation}
+                    onCheckedChange={(checked) => setSearchParams({ ...searchParams, includeWorkLocation: !!checked })}
+                  />
+                  <Label className="text-sm">
+                    Also consider candidates who recently worked in these areas
+                  </Label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Basic Requirements Section - New Fields from UnifiedSearchForm */}
+          <div className="border-b pb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Target className="h-5 w-5" />
+              <h3 className="text-lg font-semibold">Basic Requirements</h3>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Experience Fields in Same Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-1">
+                    How many jobs should the candidate have had?
+                  </Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="number"
+                      value={searchParams.numExperiences || ''}
+                      onChange={(e) => setSearchParams({ ...searchParams, numExperiences: parseInt(e.target.value) || 0 })}
+                      min="1"
+                      max="10"
+                      className="w-20"
+                      placeholder="3"
+                    />
+                    <span className="text-xs text-gray-500">Minimum number of past positions</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Maximum total years of experience:</Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="number"
+                      value={searchParams.maxExperience || 5}
+                      onChange={(e) => setSearchParams({ ...searchParams, maxExperience: parseInt(e.target.value) || 5 })}
+                      min="1"
+                      max="30"
+                      className="w-20"
+                    />
+                    <span className="text-xs text-gray-500">Avoid overqualified candidates</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Maximum time at one job:</Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="number"
+                      value={searchParams.maxJobDuration || 5}
+                      onChange={(e) => setSearchParams({ ...searchParams, maxJobDuration: parseInt(e.target.value) || 5 })}
+                      min="1"
+                      max="20"
+                      className="w-20"
+                    />
+                    <span className="text-xs text-gray-500">Filters out candidates who may be less adaptable</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Department */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Which department experience is required?</Label>
                 <Input
-                  id="geography"
-                  placeholder="Location (e.g., San Francisco, CA)"
-                  value={searchParams.geography}
-                  onChange={(e) => setSearchParams({ ...searchParams, geography: e.target.value })}
+                  placeholder="e.g., Sales, Marketing, Engineering"
+                  value={searchParams.department}
+                  onChange={(e) => setSearchParams({ ...searchParams, department: e.target.value })}
                 />
               </div>
+
+              {/* Management Level */}
               <div className="space-y-2">
-                <Input
-                  id="radius"
-                  type="number"
-                  placeholder="Radius (miles)"
-                  value={searchParams.radius}
-                  onChange={(e) => setSearchParams({ ...searchParams, radius: parseInt(e.target.value) || 25 })}
-                />
+                <Label className="text-sm font-medium">What management level are you targeting?</Label>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={searchParams.managementLevelExclusions === 'C-Level, Director, Manager, VP, Owner, Founder'}
+                      onCheckedChange={(checked) => {
+                        const exclusions = checked 
+                          ? 'C-Level, Director, Manager, VP, Owner, Founder'
+                          : ''
+                        setSearchParams({ ...searchParams, managementLevelExclusions: exclusions })
+                      }}
+                    />
+                    <Label className="text-sm">Individual Contributors only</Label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {searchParams.managementLevelExclusions 
+                      ? `Excludes: ${searchParams.managementLevelExclusions}`
+                      : 'All management levels will be included in results'
+                    }
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -426,89 +600,158 @@ export function SearchTab({
             </div>
           </div>
 
-          {/* Skills Section */}
+          {/* Target Roles & Location Section - New Fields from Step2 */}
           <div className="border-b pb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Code className="h-5 w-5" />
-              <h3 className="text-lg font-semibold">Skills</h3>
-            </div>
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-2 mb-3">
-                {searchParams.skills.map((skill, index) => (
-                  <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                    {skill}
-                    <X 
-                      className="h-3 w-3 cursor-pointer" 
-                      onClick={() => removeSkill(index)}
-                    />
-                  </Badge>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add skill..."
-                  value={tempSkillInput}
-                  onChange={(e) => setTempSkillInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      addSkill()
-                    }
-                  }}
-                />
-                <Button onClick={addSkill} variant="outline">
-                  Add
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Exclusion Section */}
-          <div className="border-b pb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <X className="h-5 w-5" />
-              <h3 className="text-lg font-semibold">Exclusion</h3>
-            </div>
+            
             <div className="space-y-4">
-              {/* Error Display */}
-              {inputError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                  <p className="text-sm text-red-600">{inputError}</p>
-                </div>
-              )}
-
-              {/* Keywords Exclusions */}
+              {/* Recency */}
               <div className="space-y-2">
-                <Label>Keywords</Label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {searchParams.exclusions.keywords.map((keyword, index) => (
-                    <Badge key={index} variant="destructive" className="flex items-center gap-1">
-                      {keyword}
-                      <X 
-                        className="h-3 w-3 cursor-pointer" 
-                        onClick={() => removeExclusionKeyword(index)}
-                      />
-                    </Badge>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add exclusion keyword..."
-                    value={tempExclusionInput}
-                    onChange={(e) => setTempExclusionInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        addExclusionKeyword()
-                      }
-                    }}
-                  />
-                  <Button onClick={addExclusionKeyword} variant="outline">
-                    Add
+                <Label className="text-sm font-medium">How recent should these positions be?</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant={searchParams.recency === 1 ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSearchParams({ ...searchParams, recency: 1 })}
+                  >
+                    Last 1 position
+                  </Button>
+                  <Button
+                    variant={searchParams.recency === 2 ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSearchParams({ ...searchParams, recency: 2 })}
+                  >
+                    Last 2 positions
+                  </Button>
+                  <Button
+                    variant={searchParams.recency === 3 ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSearchParams({ ...searchParams, recency: 3 })}
+                  >
+                    Last 3 positions
+                  </Button>
+                  <Button
+                    variant={searchParams.recency === 5 ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSearchParams({ ...searchParams, recency: 5 })}
+                  >
+                    Last 5 positions
                   </Button>
                 </div>
               </div>
 
-              {/* Company Exclusions */}
+              {/* Time in Current Role */}
               <div className="space-y-2">
+                <Label className="text-sm font-medium">Minimum time in current role:</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant={searchParams.timeInRole === 6 ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSearchParams({ ...searchParams, timeInRole: 6 })}
+                  >
+                    6 months
+                  </Button>
+                  <Button
+                    variant={searchParams.timeInRole === 12 ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSearchParams({ ...searchParams, timeInRole: 12 })}
+                  >
+                    1 year
+                  </Button>
+                  <Button
+                    variant={searchParams.timeInRole === 24 ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSearchParams({ ...searchParams, timeInRole: 24 })}
+                  >
+                    2 years
+                  </Button>
+                  <Button
+                    variant={searchParams.timeInRole === 0 ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSearchParams({ ...searchParams, timeInRole: 0 })}
+                  >
+                    No minimum
+                  </Button>
+                </div>
+              </div>
+
+              {/* Connections */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  Minimum professional connections required:
+                </Label>
+                <div className="flex items-center gap-3">
+                  <Input
+                    type="number"
+                    value={searchParams.connections}
+                    onChange={(e) => setSearchParams({ ...searchParams, connections: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    max="500"
+                    className="w-20"
+                  />
+                  <span className="text-xs text-gray-500">connections</span>
+                </div>
+                <div className="text-sm text-gray-500 space-x-3">
+                  <span>🔹 50: Minimal</span>
+                  <span>🔸 100: Standard</span>
+                  <span>🟡 250: Active</span>
+                  <span>🟢 500+: Highly Connected</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Refinements Section - New Fields from Step3 */}
+          <div className="border-b pb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <X className="h-5 w-5" />
+              <h3 className="text-lg font-semibold">Exclusions</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <p className="text-gray-600 text-sm mb-4">
+                Fine-tune your search by excluding specific industries, roles, or keywords.
+              </p>
+
+              {/* Industry Exclusions */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Industry Exclusions</Label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Exclude candidates with recent experience in these industries (comma-separated):
+                </p>
+                <Input
+                  placeholder="e.g., healthcare, finance, retail..."
+                  value={searchParams.industryExclusions.join(', ')}
+                  onChange={(e) => setSearchParams({ ...searchParams, industryExclusions: e.target.value.split(',').map(s => s.trim()).filter(s => s) })}
+                />
+              </div>
+
+              {/* Title Exclusions */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Job Title Exclusions</Label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Exclude candidates with these roles (comma-separated):
+                </p>
+                <Input
+                  value={searchParams.titleExclusions}
+                  onChange={(e) => setSearchParams({ ...searchParams, titleExclusions: e.target.value })}
+                  placeholder="e.g., CEO, CFO, Manager, Director..."
+                />
+              </div>
+
+              {/* Keyword Exclusions */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Profile Keyword Exclusions</Label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Exclude candidates whose profile mentions (comma-separated):
+                </p>
+                <Input
+                  value={searchParams.keywordExclusions}
+                  onChange={(e) => setSearchParams({ ...searchParams, keywordExclusions: e.target.value })}
+                  placeholder="e.g., healthcare, medical, finance, banking..."
+                />
+              </div>
+                {/* Company Exclusions */}
+                <div className="space-y-2">
                 <Label>Companies</Label>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {searchParams.exclusions.excludeCompanies.map((company, index) => (

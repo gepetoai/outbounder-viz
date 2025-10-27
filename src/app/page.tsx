@@ -62,7 +62,26 @@ export default function HomePage() {
     experienceLength: '',
     titleMatch: false,
     profilePhoto: false,
-    connections: { min: 0, max: 500 }
+    connections: { min: 0, max: 500 },
+    // New fields from UnifiedSearchForm
+    numExperiences: 0,
+    graduationYearFrom: 0,
+    graduationYearTo: 0,
+    maxExperience: 5,
+    department: '',
+    deptYears: 0,
+    managementLevelExclusions: '',
+    recency: 1,
+    timeInRole: 6,
+    locationCity: '',
+    locationState: '',
+    searchRadius: 25,
+    includeWorkLocation: false,
+    industryExclusions: [],
+    titleExclusions: '',
+    keywordExclusions: '',
+    companyExclusions: '',
+    maxJobDuration: 5
   })
   
   // Candidate state
