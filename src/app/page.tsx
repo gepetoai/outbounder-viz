@@ -28,6 +28,7 @@ import { SearchTab, type SearchParams, type Candidate } from '@/components/recru
 import { CandidateTab } from '@/components/recruiter/CandidateTab'
 import { OutreachTab } from '@/components/recruiter/OutreachTab'
 import { SequencerTab } from '@/components/recruiter/SequencerTab'
+import { AnalyticsTab } from '@/components/recruiter/AnalyticsTab'
 import { ApprovedRejectedCarousel } from '@/components/recruiter/ApprovedRejectedCarousel'
 
 export default function HomePage() {
@@ -279,35 +280,7 @@ export default function HomePage() {
               />
             )
           case 'analytics':
-            return (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Outreach Analytics</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div className="p-4 border rounded-lg">
-                        <h3 className="text-sm font-medium text-muted-foreground">Connection Requests</h3>
-                        <p className="text-2xl font-bold">{connectionRequestsSent}</p>
-                      </div>
-                      <div className="p-4 border rounded-lg">
-                        <h3 className="text-sm font-medium text-muted-foreground">Initial Messages</h3>
-                        <p className="text-2xl font-bold">{initialMessagesSent}</p>
-                      </div>
-                      <div className="p-4 border rounded-lg">
-                        <h3 className="text-sm font-medium text-muted-foreground">Positive Replies</h3>
-                        <p className="text-2xl font-bold">{positiveReplies}</p>
-                      </div>
-                      <div className="p-4 border rounded-lg">
-                        <h3 className="text-sm font-medium text-muted-foreground">Applicants</h3>
-                        <p className="text-2xl font-bold">{applicants}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )
+            return <AnalyticsTab />
           case 'sequencer':
             return <SequencerTab />
           default:
