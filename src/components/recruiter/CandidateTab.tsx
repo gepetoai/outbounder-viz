@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { X, Check, ThumbsUp, ThumbsDown, ExternalLink, MapPin, GraduationCap, Briefcase, Play } from 'lucide-react'
+import { X, Check, ThumbsUp, ThumbsDown, ExternalLink, MapPin, GraduationCap, Briefcase } from 'lucide-react'
 
 export interface Candidate {
   id: string
@@ -35,7 +35,6 @@ interface CandidateTabProps {
   setApprovedCandidatesData: (candidates: Candidate[]) => void
   rejectedCandidatesData: Candidate[]
   setRejectedCandidatesData: (candidates: Candidate[]) => void
-  onGoToReview: () => void
 }
 
 export function CandidateTab({
@@ -49,8 +48,7 @@ export function CandidateTab({
   approvedCandidatesData,
   setApprovedCandidatesData,
   rejectedCandidatesData,
-  setRejectedCandidatesData,
-  onGoToReview
+  setRejectedCandidatesData
 }: CandidateTabProps) {
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false)
@@ -262,15 +260,11 @@ export function CandidateTab({
         </div>
       ) : (
         <div className="text-center py-12">
-          <div className="text-gray-500 mb-4">
+          <div className="text-gray-500">
             <Check className="h-12 w-12 mx-auto mb-4" />
             <h3 className="text-lg font-semibold">All candidates reviewed!</h3>
             <p className="text-sm">You've reviewed all candidates in your queue.</p>
           </div>
-          <Button onClick={onGoToReview} className="flex items-center gap-2">
-            <Play className="h-4 w-4" />
-            Go to Review
-          </Button>
         </div>
       )}
 

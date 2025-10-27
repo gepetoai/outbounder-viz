@@ -70,6 +70,12 @@ export default function HomePage() {
   const [reviewCandidates, setReviewCandidates] = useState<Candidate[]>([])
   const [approvedCandidatesData, setApprovedCandidatesData] = useState<Candidate[]>([])
   const [rejectedCandidatesData, setRejectedCandidatesData] = useState<Candidate[]>([])
+  
+  // Outreach metrics state
+  const [connectionRequestsSent, setConnectionRequestsSent] = useState(0)
+  const [initialMessagesSent, setInitialMessagesSent] = useState(0)
+  const [positiveReplies, setPositiveReplies] = useState(0)
+  const [applicants, setApplicants] = useState(0)
 
   // Applications configuration
   const applications = [
@@ -156,9 +162,6 @@ export default function HomePage() {
     setRecruiterTab('search')
   }
 
-  const handleGoToReview = () => {
-    setRecruiterTab('candidates')
-  }
 
   const renderMainContent = () => {
     switch (activeApp) {
@@ -247,7 +250,6 @@ export default function HomePage() {
             setApprovedCandidatesData={setApprovedCandidatesData}
             rejectedCandidatesData={rejectedCandidatesData}
             setRejectedCandidatesData={setRejectedCandidatesData}
-            onGoToReview={handleGoToReview}
           />
         )
       case 'outreach':
@@ -261,6 +263,14 @@ export default function HomePage() {
             reviewCandidates={reviewCandidates}
             approvedCandidatesData={approvedCandidatesData}
             rejectedCandidatesData={rejectedCandidatesData}
+            connectionRequestsSent={connectionRequestsSent}
+            setConnectionRequestsSent={setConnectionRequestsSent}
+            initialMessagesSent={initialMessagesSent}
+            setInitialMessagesSent={setInitialMessagesSent}
+            positiveReplies={positiveReplies}
+            setPositiveReplies={setPositiveReplies}
+            applicants={applicants}
+            setApplicants={setApplicants}
           />
         )
       default:

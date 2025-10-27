@@ -76,7 +76,9 @@ export function SearchTab({
   setReviewCandidates,
   onGoToCandidates
 }: SearchTabProps) {
-  const [tempInput, setTempInput] = useState('')
+  const [tempJobTitleInput, setTempJobTitleInput] = useState('')
+  const [tempSkillInput, setTempSkillInput] = useState('')
+  const [tempExclusionInput, setTempExclusionInput] = useState('')
   const [inputError, setInputError] = useState('')
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
@@ -101,12 +103,12 @@ export function SearchTab({
   }
 
   const addJobTitle = () => {
-    if (tempInput.trim()) {
+    if (tempJobTitleInput.trim()) {
       setSearchParams({
         ...searchParams,
-        jobTitles: [...searchParams.jobTitles, tempInput.trim()]
+        jobTitles: [...searchParams.jobTitles, tempJobTitleInput.trim()]
       })
-      setTempInput('')
+      setTempJobTitleInput('')
     }
   }
 
@@ -116,12 +118,12 @@ export function SearchTab({
   }
 
   const addSkill = () => {
-    if (tempInput.trim()) {
+    if (tempSkillInput.trim()) {
       setSearchParams({
         ...searchParams,
-        skills: [...searchParams.skills, tempInput.trim()]
+        skills: [...searchParams.skills, tempSkillInput.trim()]
       })
-      setTempInput('')
+      setTempSkillInput('')
     }
   }
 
@@ -131,15 +133,15 @@ export function SearchTab({
   }
 
   const addExclusionKeyword = () => {
-    if (tempInput.trim()) {
+    if (tempExclusionInput.trim()) {
       setSearchParams({
         ...searchParams,
         exclusions: {
           ...searchParams.exclusions,
-          keywords: [...searchParams.exclusions.keywords, tempInput.trim()]
+          keywords: [...searchParams.exclusions.keywords, tempExclusionInput.trim()]
         }
       })
-      setTempInput('')
+      setTempExclusionInput('')
     }
   }
 
@@ -239,24 +241,55 @@ export function SearchTab({
       'Ryan Murphy', 'Isabella Chen', 'Tyler Johnson', 'Maya Patel', 'Ethan Davis'
     ]
     
-    // Shuffle the names array to get random selection
-    const shuffledNames = [...names].sort(() => Math.random() - 0.5)
+    const companies = [
+      'Google', 'Microsoft', 'Apple', 'Amazon', 'Meta', 'Netflix', 'Uber', 'Airbnb',
+      'Tesla', 'SpaceX', 'Stripe', 'Shopify', 'Slack', 'Zoom', 'Salesforce',
+      'Oracle', 'IBM', 'Intel', 'NVIDIA', 'Adobe', 'PayPal', 'Square', 'Twilio'
+    ]
     
-    return Array.from({ length: count }, (_, i) => ({
-      id: `candidate-${startIndex + i}`,
-      name: shuffledNames[i % shuffledNames.length],
-      photo: `https://api.dicebear.com/7.x/avataaars/svg?seed=${startIndex + i}`,
-      title: 'Software Engineer',
-      company: 'Tech Company',
-      location: 'San Francisco, CA',
-      education: 'Bachelor of Computer Science',
-      experience: [
-        { title: 'Software Engineer', company: 'Tech Company', duration: '2 years' },
-        { title: 'Junior Developer', company: 'Startup Inc', duration: '1 year' }
-      ],
-      linkedinUrl: `https://linkedin.com/in/candidate-${startIndex + i}`,
-      summary: 'Experienced software engineer with expertise in React and Node.js'
-    }))
+    const locations = [
+      'San Francisco, CA', 'New York, NY', 'Seattle, WA', 'Austin, TX', 'Boston, MA',
+      'Los Angeles, CA', 'Chicago, IL', 'Denver, CO', 'Portland, OR', 'Miami, FL'
+    ]
+    
+    const educationLevels = [
+      'Bachelor of Computer Science', 'Master of Computer Science', 'PhD in Computer Science',
+      'Bachelor of Software Engineering', 'Master of Software Engineering', 'Bachelor of Information Technology'
+    ]
+    
+    // Shuffle the arrays to get random selection
+    const shuffledNames = [...names].sort(() => Math.random() - 0.5)
+    const shuffledCompanies = [...companies].sort(() => Math.random() - 0.5)
+    const shuffledLocations = [...locations].sort(() => Math.random() - 0.5)
+    const shuffledEducation = [...educationLevels].sort(() => Math.random() - 0.5)
+    
+    return Array.from({ length: count }, (_, i) => {
+      // Use selected job titles if available, otherwise use default
+      const selectedTitle = searchParams.jobTitles.length > 0 
+        ? searchParams.jobTitles[i % searchParams.jobTitles.length]
+        : 'Software Engineer'
+      
+      // Use selected skills if available, otherwise use default
+      const selectedSkills = searchParams.skills.length > 0 
+        ? searchParams.skills.join(', ')
+        : 'React, Node.js, TypeScript'
+      
+      return {
+        id: `candidate-${startIndex + i}`,
+        name: shuffledNames[i % shuffledNames.length],
+        photo: `https://api.dicebear.com/7.x/avataaars/svg?seed=${startIndex + i}`,
+        title: selectedTitle,
+        company: shuffledCompanies[i % shuffledCompanies.length],
+        location: shuffledLocations[i % shuffledLocations.length],
+        education: shuffledEducation[i % shuffledEducation.length],
+        experience: [
+          { title: selectedTitle, company: shuffledCompanies[i % shuffledCompanies.length], duration: '2 years' },
+          { title: `Junior ${selectedTitle}`, company: 'Startup Inc', duration: '1 year' }
+        ],
+        linkedinUrl: `https://linkedin.com/in/candidate-${startIndex + i}`,
+        summary: `Experienced ${selectedTitle.toLowerCase()} with expertise in ${selectedSkills}`
+      }
+    })
   }
 
   const handleSearch = () => {
@@ -378,8 +411,8 @@ export function SearchTab({
               <div className="flex gap-2">
                 <Input
                   placeholder="Add job title..."
-                  value={tempInput}
-                  onChange={(e) => setTempInput(e.target.value)}
+                  value={tempJobTitleInput}
+                  onChange={(e) => setTempJobTitleInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       addJobTitle()
@@ -414,8 +447,8 @@ export function SearchTab({
               <div className="flex gap-2">
                 <Input
                   placeholder="Add skill..."
-                  value={tempInput}
-                  onChange={(e) => setTempInput(e.target.value)}
+                  value={tempSkillInput}
+                  onChange={(e) => setTempSkillInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       addSkill()
@@ -435,7 +468,7 @@ export function SearchTab({
               <X className="h-5 w-5" />
               <h3 className="text-lg font-semibold">Exclusion</h3>
             </div>
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* Error Display */}
               {inputError && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-md">
@@ -443,10 +476,41 @@ export function SearchTab({
                 </div>
               )}
 
+              {/* Keywords Exclusions */}
+              <div className="space-y-2">
+                <Label>Keywords</Label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {searchParams.exclusions.keywords.map((keyword, index) => (
+                    <Badge key={index} variant="destructive" className="flex items-center gap-1">
+                      {keyword}
+                      <X 
+                        className="h-3 w-3 cursor-pointer" 
+                        onClick={() => removeExclusionKeyword(index)}
+                      />
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add exclusion keyword..."
+                    value={tempExclusionInput}
+                    onChange={(e) => setTempExclusionInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        addExclusionKeyword()
+                      }
+                    }}
+                  />
+                  <Button onClick={addExclusionKeyword} variant="outline">
+                    Add
+                  </Button>
+                </div>
+              </div>
+
               {/* Company Exclusions */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <Label>Companies</Label>
-                <div className="flex flex-wrap gap-2 mb-3">
+                <div className="flex flex-wrap gap-2 mb-2">
                   {searchParams.exclusions.excludeCompanies.map((company, index) => (
                     <Badge key={index} variant="destructive" className="flex items-center gap-1">
                       {company}
@@ -477,9 +541,9 @@ export function SearchTab({
               </div>
 
               {/* People Exclusions */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <Label>People</Label>
-                <div className="flex flex-wrap gap-2 mb-3">
+                <div className="flex flex-wrap gap-2 mb-2">
                   {searchParams.exclusions.excludePeople.map((person, index) => (
                     <Badge key={index} variant="destructive" className="flex items-center gap-1">
                       {person}
@@ -533,6 +597,25 @@ export function SearchTab({
                 </Button>
               </div>
             </div>
+            
+            {/* Search Criteria Display */}
+            {(searchParams.jobTitles.length > 0 || searchParams.skills.length > 0) && (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-sm font-semibold mb-2">Search Criteria:</h4>
+                <div className="flex flex-wrap gap-2">
+                  {searchParams.jobTitles.map((title, index) => (
+                    <Badge key={`title-${index}`} variant="secondary" className="text-xs">
+                      Job: {title}
+                    </Badge>
+                  ))}
+                  {searchParams.skills.map((skill, index) => (
+                    <Badge key={`skill-${index}`} variant="outline" className="text-xs">
+                      Skill: {skill}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sample Candidates */}

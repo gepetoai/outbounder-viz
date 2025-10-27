@@ -33,6 +33,14 @@ interface OutreachTabProps {
   reviewCandidates: Candidate[]
   approvedCandidatesData: Candidate[]
   rejectedCandidatesData: Candidate[]
+  connectionRequestsSent: number
+  setConnectionRequestsSent: (count: number) => void
+  initialMessagesSent: number
+  setInitialMessagesSent: (count: number) => void
+  positiveReplies: number
+  setPositiveReplies: (count: number) => void
+  applicants: number
+  setApplicants: (count: number) => void
 }
 
 export function OutreachTab({
@@ -43,7 +51,15 @@ export function OutreachTab({
   stagingCandidates,
   reviewCandidates,
   approvedCandidatesData,
-  rejectedCandidatesData
+  rejectedCandidatesData,
+  connectionRequestsSent,
+  setConnectionRequestsSent,
+  initialMessagesSent,
+  setInitialMessagesSent,
+  positiveReplies,
+  setPositiveReplies,
+  applicants,
+  setApplicants
 }: OutreachTabProps) {
   const [filterStatus, setFilterStatus] = useState<'approved' | 'rejected'>('approved')
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -189,18 +205,118 @@ export function OutreachTab({
         </CardContent>
       </Card>
 
-      {/* Coming Soon Placeholder */}
+      {/* Analytics Metrics */}
       <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            Analytics
+          </CardTitle>
+        </CardHeader>
         <CardContent>
-          <div className="text-center py-12">
-            <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
-              <MessageSquare className="h-12 w-12 text-blue-600" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Coming Soon</h3>
-            <p className="text-gray-600 max-w-md mx-auto">
-              We're working on building powerful outreach tools to help you connect with your approved candidates. 
-              This feature will include LinkedIn messaging, email campaigns, and call scheduling.
-            </p>
+          <div className="space-y-3">
+            {/* Demo values for demonstration */}
+            {(() => {
+              const demoValues = {
+                approvedCandidates: 500,
+                connectionRequests: 175,
+                initialMessages: 140,
+                positiveReplies: 25,
+                approvedApplicants: 10
+              }
+              
+              const maxValue = demoValues.approvedCandidates
+              
+              return (
+                <>
+                  {/* Approved Candidates */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-32 text-sm font-medium text-muted-foreground">
+                      <div>Approved</div>
+                      <div>Candidates</div>
+                    </div>
+                    <div className="flex-1 bg-gray-200 rounded-full h-6 relative overflow-hidden">
+                      <div 
+                        className="bg-gray-800 h-full rounded-full flex items-center px-3 transition-all duration-500"
+                        style={{ width: `${(demoValues.approvedCandidates / maxValue) * 100}%` }}
+                      >
+                        <div className="text-sm font-bold text-white">{demoValues.approvedCandidates}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Connection Requests Sent */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-32 text-sm font-medium text-muted-foreground">
+                      <div>Connection</div>
+                      <div>Request Sent</div>
+                    </div>
+                    <div className="flex-1 bg-gray-200 rounded-full h-6 relative overflow-hidden">
+                      <div 
+                        className="bg-gray-800 h-full rounded-full flex items-center px-3 transition-all duration-500"
+                        style={{ width: `${(demoValues.connectionRequests / maxValue) * 100}%` }}
+                      >
+                        <div className="text-sm font-bold text-white">{demoValues.connectionRequests}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Initial Messages Sent */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-32 text-sm font-medium text-muted-foreground">
+                      <div>Initial Message</div>
+                      <div>Sent</div>
+                    </div>
+                    <div className="flex-1 bg-gray-200 rounded-full h-6 relative overflow-hidden">
+                      <div 
+                        className="bg-gray-800 h-full rounded-full flex items-center px-3 transition-all duration-500"
+                        style={{ width: `${(demoValues.initialMessages / maxValue) * 100}%` }}
+                      >
+                        <div className="text-sm font-bold text-white">{demoValues.initialMessages}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Positive Replies */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-32 text-sm font-medium text-muted-foreground">
+                      <div>Positive</div>
+                      <div>Replies</div>
+                    </div>
+                    <div className="flex-1 bg-gray-200 rounded-full h-6 relative overflow-hidden">
+                      <div 
+                        className="bg-gray-800 h-full rounded-full flex items-center px-3 transition-all duration-500"
+                        style={{ 
+                          width: `${Math.max((demoValues.positiveReplies / maxValue) * 100, 8)}%`,
+                          minWidth: '60px'
+                        }}
+                      >
+                        <div className="text-sm font-bold text-white">{demoValues.positiveReplies}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Approved Applicants */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-32 text-sm font-medium text-muted-foreground">
+                      <div>Approved</div>
+                      <div>Applicants</div>
+                    </div>
+                    <div className="flex-1 bg-gray-200 rounded-full h-6 relative overflow-hidden">
+                      <div 
+                        className="bg-gray-800 h-full rounded-full flex items-center px-2 transition-all duration-500"
+                        style={{ 
+                          width: `${Math.max((demoValues.approvedApplicants / maxValue) * 100, 6)}%`,
+                          minWidth: '40px'
+                        }}
+                      >
+                        <div className="text-sm font-bold text-white">{demoValues.approvedApplicants}</div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )
+            })()}
           </div>
         </CardContent>
       </Card>
