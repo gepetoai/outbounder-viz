@@ -66,6 +66,7 @@ export default function HomePage() {
   const [stagingCandidates, setStagingCandidates] = useState<Candidate[]>([])
   const [approvedCandidates, setApprovedCandidates] = useState<string[]>([])
   const [rejectedCandidates, setRejectedCandidates] = useState<string[]>([])
+  const [reviewCandidates, setReviewCandidates] = useState<Candidate[]>([])
 
   // Applications configuration
   const applications = [
@@ -224,14 +225,17 @@ export default function HomePage() {
             setApprovedCandidates={setApprovedCandidates}
             rejectedCandidates={rejectedCandidates}
             setRejectedCandidates={setRejectedCandidates}
+            reviewCandidates={reviewCandidates}
+            setReviewCandidates={setReviewCandidates}
+            onGoToCandidates={() => setRecruiterTab('candidates')}
           />
         )
       case 'candidates':
         return (
           <CandidateTab
             candidateYield={candidateYield}
-            stagingCandidates={stagingCandidates}
-            setStagingCandidates={setStagingCandidates}
+            stagingCandidates={reviewCandidates}
+            setStagingCandidates={setReviewCandidates}
             approvedCandidates={approvedCandidates}
             setApprovedCandidates={setApprovedCandidates}
             rejectedCandidates={rejectedCandidates}

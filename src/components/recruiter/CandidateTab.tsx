@@ -70,13 +70,50 @@ export function CandidateTab({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Candidate Review</h2>
-          <p className="text-gray-600">
-            {stagingCandidates.length} candidates to review
-          </p>
+      {/* Progress Indicators */}
+      <div className="grid grid-cols-3 gap-6">
+        {/* Remaining Candidates */}
+        <div className="bg-white border-2 border-gray-900 p-4 rounded-lg">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-gray-900 mb-1">
+              {stagingCandidates.length}
+            </div>
+            <div className="text-xs font-medium text-gray-600 uppercase tracking-wider">
+              To Review
+            </div>
+          </div>
+        </div>
+
+        {/* Approved Progress */}
+        <div className="bg-gray-200 text-gray-900 p-4 relative overflow-hidden rounded-lg">
+          <div className="relative z-10">
+            <div className="text-3xl font-bold mb-1">
+              {approvedCandidates.length}/500
+            </div>
+            <div className="text-xs font-medium text-gray-600 uppercase tracking-wider">
+              Approved
+            </div>
+          </div>
+          
+          {/* Progress Bar */}
+          <div className="absolute bottom-0 left-0 right-0 h-2 bg-gray-300 rounded-b-lg">
+            <div 
+              className="h-full bg-gray-900 transition-all duration-500 ease-out rounded-b-lg"
+              style={{ width: `${Math.min((approvedCandidates.length / 500) * 100, 100)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Rejected Candidates */}
+        <div className="bg-white border-2 border-gray-900 p-4 rounded-lg">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-gray-900 mb-1">
+              {rejectedCandidates.length}
+            </div>
+            <div className="text-xs font-medium text-gray-600 uppercase tracking-wider">
+              Rejected
+            </div>
+          </div>
         </div>
       </div>
 
@@ -87,30 +124,23 @@ export function CandidateTab({
             {/* Main Card */}
             <div className="relative z-10">
               <Card className="overflow-hidden">
-                <CardContent className="p-0">
+                <CardContent className="p-6">
                   <div className="relative">
                     {/* Candidate Photo */}
-                    <div className="h-64 bg-gradient-to-br from-blue-500 to-purple-600 relative">
+                    <div className="flex justify-center mb-6">
                       <img
                         src={stagingCandidates[0].photo}
                         alt={stagingCandidates[0].name}
-                        className="w-24 h-24 rounded-full object-cover absolute bottom-4 left-4 border-4 border-white"
-                      />
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="absolute top-4 right-4"
+                        className="w-24 h-24 rounded-full object-cover border-4 border-gray-200 grayscale cursor-pointer hover:border-gray-400 transition-colors"
                         onClick={() => {
                           setSelectedCandidate(stagingCandidates[0])
                           setIsProfilePanelOpen(true)
                         }}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
+                      />
                     </div>
 
                     {/* Candidate Info */}
-                    <div className="p-6 space-y-4">
+                    <div className="space-y-4">
                       <div>
                         <h3 className="text-xl font-bold">{stagingCandidates[0].name}</h3>
                         <p className="text-gray-600">{stagingCandidates[0].title}</p>
@@ -166,17 +196,17 @@ export function CandidateTab({
                 }}
               >
                 <Card className="overflow-hidden h-full">
-                  <CardContent className="p-0">
-                    <div className="h-64 bg-gradient-to-br from-gray-400 to-gray-600 relative">
+                  <CardContent className="p-6">
+                    <div className="flex justify-center mb-4">
                       <img
                         src={candidate.photo}
                         alt={candidate.name}
-                        className="w-24 h-24 rounded-full object-cover absolute bottom-4 left-4 border-4 border-white"
+                        className="w-20 h-20 rounded-full object-cover border-2 border-gray-300 grayscale"
                       />
                     </div>
-                    <div className="p-6">
-                      <h3 className="font-bold">{candidate.name}</h3>
-                      <p className="text-gray-600">{candidate.title}</p>
+                    <div>
+                      <h3 className="font-bold text-sm">{candidate.name}</h3>
+                      <p className="text-gray-600 text-xs">{candidate.title}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -230,7 +260,7 @@ export function CandidateTab({
 
       {/* LinkedIn Profile Slide-in Panel */}
       {isProfilePanelOpen && selectedCandidate && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-50" onClick={() => setIsProfilePanelOpen(false)}>
+        <div className="fixed inset-0 z-50" onClick={() => setIsProfilePanelOpen(false)}>
           <div 
             className="fixed right-0 top-0 bottom-0 w-96 bg-white shadow-2xl border-l h-full transform transition-transform duration-300 ease-in-out"
             onClick={(e) => e.stopPropagation()}
@@ -254,7 +284,7 @@ export function CandidateTab({
                   <img
                     src={selectedCandidate.photo}
                     alt={selectedCandidate.name}
-                    className="w-24 h-24 rounded-full object-cover mx-auto mb-4"
+                    className="w-24 h-24 rounded-full object-cover mx-auto mb-4 grayscale"
                   />
                   <h3 className="text-xl font-bold">{selectedCandidate.name}</h3>
                   <p className="text-gray-600">{selectedCandidate.title}</p>

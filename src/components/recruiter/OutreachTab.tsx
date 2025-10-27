@@ -87,10 +87,7 @@ export function OutreachTab({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Outreach Campaign</h2>
-          <p className="text-gray-600">
-            {approvedCandidatesData.length} approved candidates ready for outreach
-          </p>
+          <h2 className="text-2xl font-bold">Outreach</h2>
         </div>
         <Badge variant="secondary" className="flex items-center gap-1">
           <Users className="h-4 w-4" />

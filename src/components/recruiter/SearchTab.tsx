@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { User, Briefcase, MapPin, GraduationCap, X, Search, Target, Code, Upload, RefreshCw, Send } from 'lucide-react'
 
 export interface SearchParams {
@@ -55,6 +56,9 @@ interface SearchTabProps {
   setApprovedCandidates: (candidates: string[]) => void
   rejectedCandidates: string[]
   setRejectedCandidates: (candidates: string[]) => void
+  reviewCandidates: Candidate[]
+  setReviewCandidates: (candidates: Candidate[]) => void
+  onGoToCandidates: () => void
 }
 
 export function SearchTab({
@@ -67,10 +71,15 @@ export function SearchTab({
   approvedCandidates,
   setApprovedCandidates,
   rejectedCandidates,
-  setRejectedCandidates
+  setRejectedCandidates,
+  reviewCandidates,
+  setReviewCandidates,
+  onGoToCandidates
 }: SearchTabProps) {
   const [tempInput, setTempInput] = useState('')
   const [inputError, setInputError] = useState('')
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
+  const [isPanelOpen, setIsPanelOpen] = useState(false)
 
   const isValidLinkedInUrl = (url: string): boolean => {
     return url.includes('linkedin.com/company/') || url.includes('linkedin.com/in/')
@@ -221,9 +230,21 @@ export function SearchTab({
   }
 
   const generateMockCandidates = (count: number, startIndex: number = 0): Candidate[] => {
+    const names = [
+      'Sarah Chen', 'Marcus Rodriguez', 'Emily Johnson', 'David Kim', 'Jessica Martinez',
+      'Alex Thompson', 'Rachel Green', 'Michael Brown', 'Lisa Wang', 'James Wilson',
+      'Amanda Davis', 'Christopher Lee', 'Jennifer Taylor', 'Robert Garcia', 'Michelle Anderson',
+      'Daniel White', 'Ashley Thomas', 'Matthew Jackson', 'Stephanie Harris', 'Andrew Clark',
+      'Nicole Adams', 'Kevin Park', 'Samantha Lee', 'Brandon Wright', 'Olivia Torres',
+      'Ryan Murphy', 'Isabella Chen', 'Tyler Johnson', 'Maya Patel', 'Ethan Davis'
+    ]
+    
+    // Shuffle the names array to get random selection
+    const shuffledNames = [...names].sort(() => Math.random() - 0.5)
+    
     return Array.from({ length: count }, (_, i) => ({
       id: `candidate-${startIndex + i}`,
-      name: `Candidate ${startIndex + i + 1}`,
+      name: shuffledNames[i % shuffledNames.length],
       photo: `https://api.dicebear.com/7.x/avataaars/svg?seed=${startIndex + i}`,
       title: 'Software Engineer',
       company: 'Tech Company',
@@ -256,12 +277,27 @@ export function SearchTab({
   }
 
   const handleSendToReview = () => {
-    // Add current staging candidates to approved candidates
-    const candidateIds = stagingCandidates.map(candidate => candidate.id)
-    setApprovedCandidates([...approvedCandidates, ...candidateIds])
+    // Generate the full number of candidates for review (same as candidateYield)
+    const fullCandidateList = generateMockCandidates(candidateYield)
+    
+    // Set the review candidates to the full list
+    setReviewCandidates(fullCandidateList)
     
     // Clear staging candidates
     setStagingCandidates([])
+    
+    // Redirect to candidates tab
+    onGoToCandidates()
+  }
+
+  const handleCandidateClick = (candidate: Candidate) => {
+    setSelectedCandidate(candidate)
+    setIsPanelOpen(true)
+  }
+
+  const handleClosePanel = () => {
+    setIsPanelOpen(false)
+    setSelectedCandidate(null)
   }
 
   return (
@@ -502,10 +538,13 @@ export function SearchTab({
           {/* Sample Candidates */}
           {stagingCandidates.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Sample Candidates</h3>
               <div className="grid gap-4">
                 {stagingCandidates.slice(0, 5).map((candidate) => (
-                  <div key={candidate.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                  <div 
+                    key={candidate.id} 
+                    className="flex items-center gap-4 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                    onClick={() => handleCandidateClick(candidate)}
+                  >
                     <img 
                       src={candidate.photo} 
                       alt={candidate.name}
@@ -518,14 +557,6 @@ export function SearchTab({
                       </div>
                       <p className="text-sm text-gray-600">{candidate.company} • {candidate.location}</p>
                       <p className="text-sm text-gray-500">{candidate.education}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline">
-                        View Profile
-                      </Button>
-                      <Button size="sm">
-                        Add to List
-                      </Button>
                     </div>
                   </div>
                 ))}
@@ -546,13 +577,145 @@ export function SearchTab({
                   onClick={handleSendToReview}
                 >
                   <Send className="h-4 w-4" />
-                  Send to Review
+                  Send All {candidateYield.toLocaleString()} to Review
                 </Button>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Candidate Detail Panel */}
+      <Sheet open={isPanelOpen} onOpenChange={setIsPanelOpen}>
+        <SheetContent side="right" className="w-[312px] sm:max-w-[312px]">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Candidate Profile</SheetTitle>
+          </SheetHeader>
+          
+          {selectedCandidate && (
+            <div className="flex-1 overflow-y-auto">
+              <div className="space-y-6 p-4">
+                {/* Profile Header */}
+                <div className="flex items-start gap-3">
+                  <img 
+                    src={selectedCandidate.photo} 
+                    alt={selectedCandidate.name}
+                    className="w-16 h-16 rounded-full object-cover grayscale"
+                  />
+                  <div className="flex-1">
+                    <h2 className="text-lg font-bold">{selectedCandidate.name}</h2>
+                    <p className="text-sm text-gray-600">{selectedCandidate.title}</p>
+                    <p className="text-xs text-gray-500">{selectedCandidate.company} • {selectedCandidate.location}</p>
+                    <div className="mt-2">
+                      <Button size="sm" variant="outline" className="text-xs">
+                        View LinkedIn Profile
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Summary */}
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Summary</h3>
+                  <p className="text-xs text-gray-700">{selectedCandidate.summary}</p>
+                </div>
+
+                {/* Education */}
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Education</h3>
+                  <div className="bg-gray-50 p-2 rounded-lg">
+                    <p className="text-xs font-medium">{selectedCandidate.education}</p>
+                  </div>
+                </div>
+
+                {/* Experience */}
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Experience</h3>
+                  <div className="space-y-2">
+                    {selectedCandidate.experience.map((exp, index) => (
+                      <div key={index} className="border-l-2 border-blue-500 pl-3">
+                        <h4 className="text-xs font-medium">{exp.title}</h4>
+                        <p className="text-xs text-gray-600">{exp.company}</p>
+                        <p className="text-xs text-gray-500">{exp.duration}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Skills */}
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Skills</h3>
+                  <div className="flex flex-wrap gap-1">
+                    {['React', 'TypeScript', 'Node.js', 'Python', 'AWS', 'Docker', 'Git', 'Agile'].map((skill) => (
+                      <Badge key={skill} variant="secondary" className="text-xs">{skill}</Badge>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Additional Experience */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Additional Experience</h3>
+                  <div className="space-y-3">
+                    <div className="border-l-4 border-green-500 pl-4">
+                      <h4 className="font-medium">Senior Frontend Developer</h4>
+                      <p className="text-gray-600">Tech Startup Inc</p>
+                      <p className="text-sm text-gray-500">2020 - 2022</p>
+                      <p className="text-sm text-gray-700 mt-1">
+                        Led frontend development team of 5 developers. Implemented micro-frontend architecture 
+                        and improved application performance by 40%. Mentored junior developers and established 
+                        coding standards.
+                      </p>
+                    </div>
+                    <div className="border-l-4 border-green-500 pl-4">
+                      <h4 className="font-medium">Full Stack Developer</h4>
+                      <p className="text-gray-600">Digital Agency</p>
+                      <p className="text-sm text-gray-500">2018 - 2020</p>
+                      <p className="text-sm text-gray-700 mt-1">
+                        Developed full-stack web applications using React, Node.js, and PostgreSQL. 
+                        Collaborated with design team to implement responsive UIs and optimized database queries.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Certifications */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Certifications</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">AWS Certified Solutions Architect</Badge>
+                      <span className="text-sm text-gray-500">2023</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">Google Cloud Professional Developer</Badge>
+                      <span className="text-sm text-gray-500">2022</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Languages */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Languages</h3>
+                  <div className="space-y-1">
+                    <div className="flex justify-between">
+                      <span>English</span>
+                      <span className="text-sm text-gray-500">Native</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Spanish</span>
+                      <span className="text-sm text-gray-500">Fluent</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>French</span>
+                      <span className="text-sm text-gray-500">Conversational</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
