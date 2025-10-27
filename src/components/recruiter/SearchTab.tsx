@@ -485,15 +485,6 @@ export function SearchTab({
                     />
                   </div>
                 </div>
-                <div className="flex items-center space-x-2 mt-2">
-                  <Switch
-                    checked={searchParams.includeWorkLocation}
-                    onCheckedChange={(checked) => setSearchParams({ ...searchParams, includeWorkLocation: !!checked })}
-                  />
-                  <Label className="text-sm">
-                    Also consider candidates who recently worked in these areas
-                  </Label>
-                </div>
               </div>
             </div>
           </div>
@@ -576,27 +567,6 @@ export function SearchTab({
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2 pt-6">
-                    <Switch
-                      checked={searchParams.managementLevelExclusions === 'C-Level, Director, Manager, VP, Owner, Founder'}
-                      onCheckedChange={(checked) => {
-                        const exclusions = checked 
-                          ? 'C-Level, Director, Manager, VP, Owner, Founder'
-                          : ''
-                        setSearchParams({ ...searchParams, managementLevelExclusions: exclusions })
-                      }}
-                    />
-                    <Label className="text-sm">Individual Contributors only</Label>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    {searchParams.managementLevelExclusions 
-                      ? `Excludes: ${searchParams.managementLevelExclusions}`
-                      : 'All management levels will be included in results'
-                    }
-                  </p>
-                </div>
               </div>
             </div>
           </div>
@@ -646,7 +616,6 @@ export function SearchTab({
                     onChange={(e) => setSearchParams({ ...searchParams, timeInRole: parseInt(e.target.value) || 6 })}
                     min="0"
                     max="60"
-                    className="h-10"
                     placeholder="6"
                   />
                 </div>
@@ -666,12 +635,6 @@ export function SearchTab({
                     className="w-20"
                   />
                   <span className="text-xs text-gray-500">connections</span>
-                </div>
-                <div className="text-sm text-gray-500 space-x-3">
-                  <span>🔹 50: Minimal</span>
-                  <span>🔸 100: Standard</span>
-                  <span>🟡 250: Active</span>
-                  <span>🟢 500+: Highly Connected</span>
                 </div>
               </div>
             </div>
@@ -720,13 +683,13 @@ export function SearchTab({
                 {searchParams.industryExclusions.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {searchParams.industryExclusions.map((industry, index) => (
-                      <Badge key={index} variant="destructive" className="flex items-center gap-1">
+                      <Badge key={index} variant="outline" className="flex items-center gap-1 bg-black text-white border-black hover:bg-gray-800">
                         {industry}
-                        <X 
-                          className="h-3 w-3 cursor-pointer" 
-                          onClick={() => setSearchParams({ 
-                            ...searchParams, 
-                            industryExclusions: searchParams.industryExclusions.filter((_, i) => i !== index) 
+                        <X
+                          className="h-3 w-3 cursor-pointer"
+                          onClick={() => setSearchParams({
+                            ...searchParams,
+                            industryExclusions: searchParams.industryExclusions.filter((_, i) => i !== index)
                           })}
                         />
                       </Badge>
@@ -760,71 +723,27 @@ export function SearchTab({
                   placeholder="e.g., healthcare, medical, finance, banking..."
                 />
               </div>
-                {/* Company Exclusions */}
-                <div className="space-y-2">
-                <Label>Companies</Label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {searchParams.exclusions.excludeCompanies.map((company, index) => (
-                    <Badge key={index} variant="destructive" className="flex items-center gap-1">
-                      {company}
-                      <X 
-                        className="h-3 w-3 cursor-pointer" 
-                        onClick={() => removeExcludeCompany(index)}
-                      />
-                    </Badge>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCompanyCSVUpload}
-                    className="hidden"
-                    id="company-csv-upload"
-                  />
-                  <Button 
-                    variant="outline" 
-                    className="flex items-center gap-2"
-                    onClick={() => document.getElementById('company-csv-upload')?.click()}
-                  >
-                    <Upload className="h-4 w-4" />
-                    Upload CSV
-                  </Button>
-                </div>
-              </div>
 
-              {/* People Exclusions */}
               <div className="space-y-2">
-                <Label>People</Label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {searchParams.exclusions.excludePeople.map((person, index) => (
-                    <Badge key={index} variant="destructive" className="flex items-center gap-1">
-                      {person}
-                      <X 
-                        className="h-3 w-3 cursor-pointer" 
-                        onClick={() => removeExcludePerson(index)}
-                      />
-                    </Badge>
-                  ))}
+                  <div className="flex items-center space-x-2 pt-6">
+                    <Switch
+                      checked={searchParams.managementLevelExclusions === 'C-Level, Director, Manager, VP, Owner, Founder'}
+                      onCheckedChange={(checked) => {
+                        const exclusions = checked 
+                          ? 'C-Level, Director, Manager, VP, Owner, Founder'
+                          : ''
+                        setSearchParams({ ...searchParams, managementLevelExclusions: exclusions })
+                      }}
+                    />
+                    <Label className="text-sm">Exclude Current or Previous Managers & Executives</Label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {searchParams.managementLevelExclusions 
+                      ? `Excludes: ${searchParams.managementLevelExclusions}`
+                      : 'All management levels will be included in results'
+                    }
+                  </p>
                 </div>
-                <div className="flex gap-2">
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCSVUpload}
-                    className="hidden"
-                    id="csv-upload"
-                  />
-                  <Button 
-                    variant="outline" 
-                    className="flex items-center gap-2"
-                    onClick={() => document.getElementById('csv-upload')?.click()}
-                  >
-                    <Upload className="h-4 w-4" />
-                    Upload CSV
-                  </Button>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -860,25 +779,6 @@ export function SearchTab({
                 </Button>
               </div>
             </div>
-            
-            {/* Search Criteria Display */}
-            {(searchParams.jobTitles.length > 0 || searchParams.skills.length > 0) && (
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="text-sm font-semibold mb-2">Search Criteria:</h4>
-                <div className="flex flex-wrap gap-2">
-                  {searchParams.jobTitles.map((title, index) => (
-                    <Badge key={`title-${index}`} variant="secondary" className="text-xs">
-                      Job: {title}
-                    </Badge>
-                  ))}
-                  {searchParams.skills.map((skill, index) => (
-                    <Badge key={`skill-${index}`} variant="outline" className="text-xs">
-                      Skill: {skill}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Sample Candidates */}

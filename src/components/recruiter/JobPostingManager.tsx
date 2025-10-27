@@ -151,7 +151,7 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
                         onClick={() => onSearchClick(job.id)}
                       >
                         <Search className="h-4 w-4 mr-1" />
-                        View Candidates
+                        Search Candidates
                       </Button>
                     </div>
                   </div>
