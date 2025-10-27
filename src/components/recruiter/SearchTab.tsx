@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,8 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Modal } from '@/components/ui/modal'
 import { User, Briefcase, MapPin, GraduationCap, X, Search, Target, Code, Upload, RefreshCw, Send, Save } from 'lucide-react'
 import { useDepartments, useStates, useCities, useIndustries } from '@/hooks/useDropdowns'
-import { useCreateSearch, useUpdateSearchName } from '@/hooks/useSearch'
-import { mapSearchParamsToRequest } from '@/lib/search-api'
+import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useRunSearch, useSavedSearches } from '@/hooks/useSearch'
+import { mapSearchParamsToRequest, mapSavedSearchToParams, SearchResponse } from '@/lib/search-api'
 
 export interface SearchParams {
   // Original fields
@@ -111,6 +111,9 @@ export function SearchTab({
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false)
   const [searchTitle, setSearchTitle] = useState('')
   const [currentSearchId, setCurrentSearchId] = useState<number | null>(null)
+  const [selectedSavedSearchId, setSelectedSavedSearchId] = useState<string>('')
+  const [isSearchModified, setIsSearchModified] = useState(false)
+  const [pendingLocationCity, setPendingLocationCity] = useState<string>('')
 
   // Dropdown data hooks
   const { data: departmentsData, isLoading: isLoadingDepartments } = useDepartments()
@@ -121,6 +124,60 @@ export function SearchTab({
   // Search functionality
   const createSearch = useCreateSearch()
   const updateSearchName = useUpdateSearchName()
+  const updateSearchMutation = useUpdateSearch()
+  const runSearchMutation = useRunSearch()
+  const { data: savedSearches, isLoading: isLoadingSavedSearches } = useSavedSearches()
+
+  // Track if searchParams has been loaded (to avoid marking as modified on initial load)
+  const isInitialLoad = useRef(true)
+  const isLoadingSavedSearch = useRef(false)
+  const skipNextModificationCheck = useRef(0) // Count of checks to skip
+
+  // Track when search params change after loading a saved search
+  useEffect(() => {
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false
+      return
+    }
+
+    // Don't mark as modified if we're currently loading a saved search
+    if (isLoadingSavedSearch.current || skipNextModificationCheck.current > 0) {
+      console.log('[ModificationCheck] Skipping - currently loading saved search', {
+        isLoadingSavedSearch: isLoadingSavedSearch.current,
+        skipCount: skipNextModificationCheck.current
+      })
+      if (skipNextModificationCheck.current > 0) {
+        skipNextModificationCheck.current--
+      }
+      return
+    }
+
+    // Only mark as modified if we have a saved search loaded AND params changed
+    if (selectedSavedSearchId && currentSearchId) {
+      console.log('[ModificationCheck] Marking search as modified', {
+        selectedSavedSearchId,
+        currentSearchId
+      })
+      setIsSearchModified(true)
+    }
+  }, [searchParams, selectedSavedSearchId, currentSearchId])
+
+  // Set city when cities data loads and we have a pending city
+  useEffect(() => {
+    if (pendingLocationCity && citiesData && citiesData.length > 0) {
+      const cityExists = citiesData.find(c => c.city === pendingLocationCity)
+      if (cityExists) {
+        console.log('[CityLoad] Setting pending city:', pendingLocationCity)
+        // This will trigger one more modification check, so skip it
+        skipNextModificationCheck.current++
+        setSearchParams({ ...searchParams, locationCity: pendingLocationCity })
+      }
+      setPendingLocationCity('')
+      isLoadingSavedSearch.current = false
+      console.log('[CityLoad] Loading complete')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [citiesData, pendingLocationCity])
 
   const isValidLinkedInUrl = (url: string): boolean => {
     return url.includes('linkedin.com/company/') || url.includes('linkedin.com/in/')
@@ -332,15 +389,30 @@ export function SearchTab({
   }
 
   const handleSearch = async () => {
+    console.log('[HandleSearch] Called with state:', {
+      selectedSavedSearchId,
+      isSearchModified,
+      currentSearchId,
+      willRunExisting: selectedSavedSearchId && !isSearchModified && currentSearchId
+    })
+
     try {
-      // Map search params to API request format
-      const searchRequest = mapSearchParamsToRequest(searchParams, 'Candidate Search')
+      let response: SearchResponse
 
-      // Call the search API
-      const response = await createSearch.mutateAsync(searchRequest)
+      // If we have a loaded search that hasn't been modified, just run it
+      if (selectedSavedSearchId && !isSearchModified && currentSearchId) {
+        console.log('[HandleSearch] Running existing search:', currentSearchId)
+        response = await runSearchMutation.mutateAsync(currentSearchId)
+      } else {
+        console.log('[HandleSearch] Creating new search')
+        // Otherwise create a new search
+        const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle || 'Candidate Search')
+        response = await createSearch.mutateAsync(searchRequest)
 
-      // Store the search ID for later use
-      setCurrentSearchId(response.search_id)
+        // Store the search ID for later use
+        setCurrentSearchId(response.search_id)
+        setIsSearchModified(false)
+      }
 
       // Update candidate yield with real results
       setCandidateYield(response.total_results)
@@ -360,6 +432,25 @@ export function SearchTab({
     }
   }
 
+  const handleUpdateSearch = async () => {
+    if (!currentSearchId || !selectedSavedSearchId) {
+      console.error('No search ID available for update')
+      return
+    }
+
+    try {
+      const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle)
+      await updateSearchMutation.mutateAsync({
+        searchId: currentSearchId,
+        data: searchRequest
+      })
+      setIsSearchModified(false)
+      console.log('Search updated successfully')
+    } catch (error) {
+      console.error('Failed to update search:', error)
+    }
+  }
+
   const handleSaveSearch = async () => {
     if (!currentSearchId) {
       console.error('No search ID available')
@@ -372,6 +463,7 @@ export function SearchTab({
     }
 
     try {
+      // Save as new search (just update the name)
       await updateSearchName.mutateAsync({
         searchId: currentSearchId,
         searchTitle: searchTitle.trim()
@@ -414,9 +506,127 @@ export function SearchTab({
     setSelectedCandidate(null)
   }
 
+  const handleLoadSavedSearch = (searchId: string) => {
+    if (searchId === 'clear-selection') {
+      setSelectedSavedSearchId('')
+      setSearchTitle('')
+      setCurrentSearchId(null)
+      setIsSearchModified(false)
+      // Reset form to initial state
+      setSearchParams({
+        education: '',
+        graduationYear: '',
+        geography: '',
+        radius: 25,
+        jobTitles: [],
+        skills: [],
+        exclusions: {
+          keywords: [],
+          excludeCompanies: [],
+          excludePeople: []
+        },
+        experienceLength: '',
+        titleMatch: false,
+        profilePhoto: false,
+        connections: 0,
+        numExperiences: 0,
+        graduationYearFrom: 0,
+        graduationYearTo: 0,
+        maxExperience: 5,
+        department: '',
+        deptYears: 0,
+        managementLevelExclusions: '',
+        recency: 0,
+        timeInRole: 6,
+        locationCity: '',
+        locationState: '',
+        searchRadius: 25,
+        includeWorkLocation: false,
+        industryExclusions: [],
+        titleExclusions: '',
+        keywordExclusions: '',
+        companyExclusions: '',
+        maxJobDuration: 5
+      })
+      return
+    }
+
+    const savedSearch = savedSearches?.find(s => s.id.toString() === searchId)
+    if (!savedSearch) return
+
+    const mappedParams = mapSavedSearchToParams(savedSearch)
+
+    // Mark that we're loading a saved search to prevent marking as modified
+    isLoadingSavedSearch.current = true
+
+    // Set these FIRST before setting searchParams to avoid race conditions
+    setSelectedSavedSearchId(searchId)
+    setCurrentSearchId(savedSearch.id)
+    setSearchTitle(savedSearch.search_title)
+    setIsSearchModified(false)
+
+    console.log('[LoadSavedSearch] Loading search:', {
+      searchId,
+      savedSearchId: savedSearch.id,
+      isSearchModified: false,
+      hasCity: !!mappedParams.locationCity
+    })
+
+    // If there's a location city, we need to set state first, then city after cities load
+    if (mappedParams.locationCity && mappedParams.locationState) {
+      // Store the city to set it after cities load
+      setPendingLocationCity(mappedParams.locationCity)
+      // Set params without city first - this will trigger one modification check, skip it
+      skipNextModificationCheck.current++
+      setSearchParams({ ...mappedParams, locationCity: '' })
+      // Note: isLoadingSavedSearch.current will be set to false in the city effect
+    } else {
+      // No city to load, skip the next modification check for this setSearchParams call
+      skipNextModificationCheck.current++
+      setSearchParams(mappedParams)
+      // Mark loading as complete immediately if there's no pending city
+      isLoadingSavedSearch.current = false
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div>
+            <CardTitle>Search Candidates</CardTitle>
+            <CardDescription>Configure your search parameters</CardDescription>
+          </div>
+          <div className="w-64 min-w-64">
+            <Select value={selectedSavedSearchId} onValueChange={handleLoadSavedSearch}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Load saved search..." />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedSavedSearchId && (
+                  <SelectItem value="clear-selection">
+                    <span className="text-muted-foreground italic">Clear selection</span>
+                  </SelectItem>
+                )}
+                {isLoadingSavedSearches ? (
+                  <SelectItem value="loading" disabled>
+                    Loading...
+                  </SelectItem>
+                ) : savedSearches && savedSearches.length > 0 ? (
+                  savedSearches.map((search) => (
+                    <SelectItem key={search.id} value={search.id.toString()}>
+                      {search.search_title}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="no-searches" disabled>
+                    No saved searches
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
         <CardContent className="space-y-8 pt-6">
           {/* Education Section */}
           <div className="border-b pb-6">
@@ -495,8 +705,8 @@ export function SearchTab({
                         <SelectValue placeholder="Select city..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {citiesData?.map((city) => (
-                          <SelectItem key={city.city} value={city.city}>
+                        {citiesData?.map((city, index) => (
+                          <SelectItem key={`${city.city}-${index}`} value={city.city}>
                             {city.city}
                           </SelectItem>
                         ))}
@@ -856,15 +1066,27 @@ export function SearchTab({
                   <Send className="h-4 w-4" />
                   Send All {candidateYield.toLocaleString()} to Review
                 </Button>
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2"
-                  onClick={() => setIsSaveDialogOpen(true)}
-                  disabled={!currentSearchId}
-                >
-                  <Save className="h-4 w-4" />
-                  Save Search
-                </Button>
+                {selectedSavedSearchId && isSearchModified ? (
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={handleUpdateSearch}
+                    disabled={updateSearchMutation.isPending}
+                  >
+                    <Save className="h-4 w-4" />
+                    {updateSearchMutation.isPending ? 'Updating...' : 'Update Search'}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={() => setIsSaveDialogOpen(true)}
+                    disabled={!currentSearchId || !!selectedSavedSearchId}
+                  >
+                    <Save className="h-4 w-4" />
+                    Save Search
+                  </Button>
+                )}
               </div>
             </div>
           )}
