@@ -5,43 +5,38 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Building2, Search, Trash2 } from 'lucide-react'
-
-export interface JobPosting {
-  id: string
-  title: string
-  url: string
-  targetCandidates: number
-  createdAt: Date
-}
+import { Plus, Building2, Search, Loader2 } from 'lucide-react'
+import { useJobPostings, useCreateJobPosting } from '@/hooks/useJobPostings'
 
 interface JobPostingManagerProps {
-  jobPostings: JobPosting[]
-  setJobPostings: (jobs: JobPosting[]) => void
   onSearchClick: (jobId: string) => void
 }
 
-export function JobPostingManager({ jobPostings, setJobPostings, onSearchClick }: JobPostingManagerProps) {
+export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
   const [newJobTitle, setNewJobTitle] = useState('')
   const [newJobUrl, setNewJobUrl] = useState('')
   const [newTargetCandidates, setNewTargetCandidates] = useState(500)
 
+  // React Query hooks
+  const { data: jobPostings = [], isLoading, error } = useJobPostings()
+  const createJobMutation = useCreateJobPosting()
+
   const handleSaveJob = () => {
-    const newJob: JobPosting = {
-      id: Date.now().toString(),
+    if (!newJobTitle || !newJobUrl) return
+
+    createJobMutation.mutate({
       title: newJobTitle,
       url: newJobUrl,
-      targetCandidates: newTargetCandidates,
-      createdAt: new Date()
-    }
-    setJobPostings([...jobPostings, newJob])
-    setNewJobTitle('')
-    setNewJobUrl('')
-    setNewTargetCandidates(500)
-  }
-
-  const handleDeleteJob = (jobId: string) => {
-    setJobPostings(jobPostings.filter(j => j.id !== jobId))
+      target_candidates_count: newTargetCandidates,
+      fk_organization_id: 1, // As specified by user
+    }, {
+      onSuccess: () => {
+        // Reset form on success
+        setNewJobTitle('')
+        setNewJobUrl('')
+        setNewTargetCandidates(500)
+      }
+    })
   }
 
   return (
@@ -89,18 +84,41 @@ export function JobPostingManager({ jobPostings, setJobPostings, onSearchClick }
             </p>
           </div>
           <Button 
-            disabled={!newJobTitle || !newJobUrl} 
+            disabled={!newJobTitle || !newJobUrl || createJobMutation.isPending} 
             className="flex items-center gap-2"
             onClick={handleSaveJob}
           >
-            <Plus className="h-4 w-4" />
-            Save Job Posting
+            {createJobMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            {createJobMutation.isPending ? 'Saving...' : 'Save Job Posting'}
           </Button>
         </CardContent>
       </Card>
 
       {/* Existing Job Postings */}
-      {jobPostings.length > 0 && (
+      {isLoading && (
+        <Card>
+          <CardContent className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span className="ml-2">Loading job postings...</span>
+          </CardContent>
+        </Card>
+      )}
+
+      {error && (
+        <Card>
+          <CardContent className="py-8">
+            <p className="text-red-600 text-center">
+              Error loading job postings: {error.message}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!isLoading && !error && jobPostings.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -118,8 +136,13 @@ export function JobPostingManager({ jobPostings, setJobPostings, onSearchClick }
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-medium">{job.title}</h3>
-                      <p className="text-sm text-gray-600">Target: {job.targetCandidates} candidates</p>
+                      <p className="text-sm text-gray-600">Target: {job.target_candidates_count} candidates</p>
                       <p className="text-xs text-gray-500">{job.url}</p>
+                      {job.created_at && (
+                        <p className="text-xs text-gray-400">
+                          Created: {new Date(job.created_at).toLocaleDateString()}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
@@ -128,14 +151,7 @@ export function JobPostingManager({ jobPostings, setJobPostings, onSearchClick }
                         onClick={() => onSearchClick(job.id)}
                       >
                         <Search className="h-4 w-4 mr-1" />
-                        Search
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDeleteJob(job.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
+                        View Candidates
                       </Button>
                     </div>
                   </div>
