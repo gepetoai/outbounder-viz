@@ -113,7 +113,7 @@ export function JobPostingManager({ jobPostings, setJobPostings, onSearchClick }
               {jobPostings.slice().reverse().map((job) => (
                 <div
                   key={job.id}
-                  className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                  className="p-4 border rounded-lg"
                 >
                   <div className="flex items-center justify-between">
                     <div>

@@ -19,7 +19,8 @@ import {
   ChevronDown,
   Building2,
   RefreshCw,
-  Send
+  Send,
+  Briefcase
 } from 'lucide-react'
 
 // Import our refactored components
@@ -30,6 +31,7 @@ import { OutreachTab } from '@/components/recruiter/OutreachTab'
 import { SequencerTab } from '@/components/recruiter/SequencerTab'
 import { AnalyticsTab } from '@/components/recruiter/AnalyticsTab'
 import { ApprovedRejectedCarousel } from '@/components/recruiter/ApprovedRejectedCarousel'
+import { SettingsTab } from '@/components/recruiter/SettingsTab'
 
 export default function HomePage() {
   // Main app navigation
@@ -152,7 +154,7 @@ export default function HomePage() {
 
   // Recruiter tabs
   const recruiterTabs = [
-    { id: 'job-setup', label: 'Jobs', icon: Settings, subItems: [] },
+    { id: 'job-setup', label: 'Jobs', icon: Briefcase, subItems: [] },
     { id: 'search', label: 'Search', icon: Search, subItems: [] },
     { id: 'candidates', label: 'Candidates', icon: Users, subItems: [] },
     { 
@@ -161,10 +163,11 @@ export default function HomePage() {
       icon: MessageSquare, 
       subItems: [
         { id: 'candidates', label: 'List', icon: Users },
-        { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-        { id: 'sequencer', label: 'Sequencer', icon: Play }
+        { id: 'sequencer', label: 'Sequencer', icon: Play },
+        { id: 'analytics', label: 'Analytics', icon: BarChart3 }
       ]
-    }
+    },
+    { id: 'settings', label: 'Settings', icon: Settings, subItems: [] }
   ]
 
   // Researcher tabs
@@ -301,6 +304,8 @@ export default function HomePage() {
         )
       case 'sequencer':
         return <SequencerTab />
+      case 'settings':
+        return <SettingsTab />
       default:
         return null
     }

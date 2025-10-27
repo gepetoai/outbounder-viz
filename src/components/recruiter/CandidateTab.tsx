@@ -146,6 +146,7 @@ export function CandidateTab({
                         src={stagingCandidates[0].photo}
                         alt={stagingCandidates[0].name}
                         className="w-24 h-24 rounded-full object-cover border-4 border-gray-200 grayscale cursor-pointer hover:border-gray-400 transition-colors"
+                        draggable={false}
                         onClick={() => {
                           setSelectedCandidate(stagingCandidates[0])
                           setIsProfilePanelOpen(true)
@@ -216,6 +217,7 @@ export function CandidateTab({
                         src={candidate.photo}
                         alt={candidate.name}
                         className="w-20 h-20 rounded-full object-cover border-2 border-gray-300 grayscale"
+                        draggable={false}
                       />
                     </div>
                     <div>
@@ -295,6 +297,7 @@ export function CandidateTab({
                     src={selectedCandidate.photo}
                     alt={selectedCandidate.name}
                     className="w-24 h-24 rounded-full object-cover mx-auto mb-4 grayscale"
+                    draggable={false}
                   />
                   <h3 className="text-xl font-bold">{selectedCandidate.name}</h3>
                   <p className="text-gray-600">{selectedCandidate.title}</p>

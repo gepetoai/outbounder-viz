@@ -177,6 +177,7 @@ export function ApprovedRejectedCarousel({
                       src={currentCandidate.photo}
                       alt={currentCandidate.name}
                       className="w-24 h-24 rounded-full object-cover border-4 border-gray-200 grayscale cursor-pointer hover:border-gray-400 transition-colors"
+                      draggable={false}
                       onClick={() => {
                         setSelectedCandidate(currentCandidate)
                         setIsProfilePanelOpen(true)
@@ -257,6 +258,7 @@ export function ApprovedRejectedCarousel({
                     src={selectedCandidate.photo}
                     alt={selectedCandidate.name}
                     className="w-24 h-24 rounded-full object-cover mx-auto mb-4 grayscale"
+                    draggable={false}
                   />
                   <h3 className="text-xl font-bold">{selectedCandidate.name}</h3>
                   <p className="text-gray-600">{selectedCandidate.title}</p>
