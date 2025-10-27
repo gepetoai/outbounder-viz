@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { 
   Users, 
   Play, 
@@ -11,13 +12,14 @@ import {
   Settings,
   Menu,
   X,
-
   Search,
   User,
   Globe,
   Zap,
   ChevronDown,
-  Building2
+  Building2,
+  RefreshCw,
+  Send
 } from 'lucide-react'
 
 // Import our refactored components
@@ -25,6 +27,8 @@ import { JobPostingManager, type JobPosting } from '@/components/recruiter/JobPo
 import { SearchTab, type SearchParams, type Candidate } from '@/components/recruiter/SearchTab'
 import { CandidateTab } from '@/components/recruiter/CandidateTab'
 import { OutreachTab } from '@/components/recruiter/OutreachTab'
+import { SequencerTab } from '@/components/recruiter/SequencerTab'
+import { ApprovedRejectedCarousel } from '@/components/recruiter/ApprovedRejectedCarousel'
 
 export default function HomePage() {
   // Main app navigation
@@ -35,9 +39,11 @@ export default function HomePage() {
   const [leadsExpanded, setLeadsExpanded] = useState(true)
   const [sequencerExpanded, setSequencerExpanded] = useState(false)
   const [messagingExpanded, setMessagingExpanded] = useState(false)
+  const [outreachExpanded, setOutreachExpanded] = useState(false)
   
   // Recruiter specific state
   const [recruiterTab, setRecruiterTab] = useState('job-setup')
+  const [recruiterSubTab, setRecruiterSubTab] = useState('candidates')
   const [researcherTab, setResearcherTab] = useState('finder')
   
   // Job postings state
@@ -145,10 +151,19 @@ export default function HomePage() {
 
   // Recruiter tabs
   const recruiterTabs = [
-    { id: 'job-setup', label: 'Job Setup', icon: Settings, subItems: [] },
+    { id: 'job-setup', label: 'Jobs', icon: Settings, subItems: [] },
     { id: 'search', label: 'Search', icon: Search, subItems: [] },
     { id: 'candidates', label: 'Candidates', icon: Users, subItems: [] },
-    { id: 'outreach', label: 'Outreach', icon: MessageSquare, subItems: [] }
+    { 
+      id: 'outreach', 
+      label: 'Outreach', 
+      icon: MessageSquare, 
+      subItems: [
+        { id: 'candidates', label: 'List', icon: Users },
+        { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+        { id: 'sequencer', label: 'Sequencer', icon: Play }
+      ]
+    }
   ]
 
   // Researcher tabs
@@ -253,26 +268,66 @@ export default function HomePage() {
           />
         )
       case 'outreach':
+        switch (recruiterSubTab) {
+          case 'candidates':
+            return (
+              <ApprovedRejectedCarousel
+                approvedCandidatesData={approvedCandidatesData}
+                rejectedCandidatesData={rejectedCandidatesData}
+                setApprovedCandidatesData={setApprovedCandidatesData}
+                setRejectedCandidatesData={setRejectedCandidatesData}
+              />
+            )
+          case 'analytics':
+            return (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Outreach Analytics</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="p-4 border rounded-lg">
+                        <h3 className="text-sm font-medium text-muted-foreground">Connection Requests</h3>
+                        <p className="text-2xl font-bold">{connectionRequestsSent}</p>
+                      </div>
+                      <div className="p-4 border rounded-lg">
+                        <h3 className="text-sm font-medium text-muted-foreground">Initial Messages</h3>
+                        <p className="text-2xl font-bold">{initialMessagesSent}</p>
+                      </div>
+                      <div className="p-4 border rounded-lg">
+                        <h3 className="text-sm font-medium text-muted-foreground">Positive Replies</h3>
+                        <p className="text-2xl font-bold">{positiveReplies}</p>
+                      </div>
+                      <div className="p-4 border rounded-lg">
+                        <h3 className="text-sm font-medium text-muted-foreground">Applicants</h3>
+                        <p className="text-2xl font-bold">{applicants}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )
+          case 'sequencer':
+            return <SequencerTab />
+          default:
+            return null
+        }
+      case 'analytics':
         return (
-          <OutreachTab
-            approvedCandidates={approvedCandidates}
-            setApprovedCandidates={setApprovedCandidates}
-            rejectedCandidates={rejectedCandidates}
-            setRejectedCandidates={setRejectedCandidates}
-            stagingCandidates={stagingCandidates}
-            reviewCandidates={reviewCandidates}
-            approvedCandidatesData={approvedCandidatesData}
-            rejectedCandidatesData={rejectedCandidatesData}
-            connectionRequestsSent={connectionRequestsSent}
-            setConnectionRequestsSent={setConnectionRequestsSent}
-            initialMessagesSent={initialMessagesSent}
-            setInitialMessagesSent={setInitialMessagesSent}
-            positiveReplies={positiveReplies}
-            setPositiveReplies={setPositiveReplies}
-            applicants={applicants}
-            setApplicants={setApplicants}
-          />
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Analytics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Analytics content will be implemented here.</p>
+              </CardContent>
+            </Card>
+          </div>
         )
+      case 'sequencer':
+        return <SequencerTab />
       default:
         return null
     }
@@ -283,7 +338,7 @@ export default function HomePage() {
       {/* Main App Sidebar */}
       <div className="w-12 bg-card border-r border-border flex flex-col">
         <div className="p-2 border-b border-border min-h-[72px] flex items-center justify-center">
-          <h1 className="text-lg font-bold text-foreground">248</h1>
+          <h1 className="text-xl font-bold text-foreground">248</h1>
         </div>
 
         {/* Applications Navigation */}
@@ -332,6 +387,7 @@ export default function HomePage() {
               const isLeadsTab = tab.id === 'leads'
               const isSequencerTab = tab.id === 'sequencer'
               const isMessagingTab = tab.id === 'messaging'
+              const isOutreachTab = tab.id === 'outreach'
               const hasSubItems = tab.subItems && tab.subItems.length > 0
               
               return (
@@ -343,6 +399,10 @@ export default function HomePage() {
                     onClick={() => {
                       if (activeApp === 'recruiter') {
                         setRecruiterTab(tab.id)
+                        if (isOutreachTab) {
+                          setRecruiterSubTab('candidates')
+                          setOutreachExpanded(!outreachExpanded)
+                        }
                       } else if (activeApp === 'researcher') {
                         setResearcherTab(tab.id)
                       } else {
@@ -367,7 +427,7 @@ export default function HomePage() {
                         {hasSubItems && (
                           <ChevronDown 
                             className={`h-4 w-4 ml-auto flex-shrink-0 transition-transform duration-200 ${
-                              (isLeadsTab && leadsExpanded) || (isSequencerTab && sequencerExpanded) || (isMessagingTab && messagingExpanded) ? 'rotate-180' : ''
+                              (isLeadsTab && leadsExpanded) || (isSequencerTab && sequencerExpanded) || (isMessagingTab && messagingExpanded) || (isOutreachTab && outreachExpanded) ? 'rotate-180' : ''
                             }`} 
                           />
                         )}
@@ -455,6 +515,33 @@ export default function HomePage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Sub-items for outreach with animation */}
+                  {recruiterTab === 'outreach' && isOutreachTab && tab.subItems && sidebarOpen && (
+                    <div 
+                      className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                        outreachExpanded ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0'
+                      }`}
+                    >
+                      <div className="ml-6 space-y-1">
+                        {tab.subItems.map((subItem) => {
+                          const SubIcon = subItem.icon
+                          return (
+                            <Button
+                              key={subItem.id}
+                              variant={recruiterSubTab === subItem.id ? 'secondary' : 'ghost'}
+                              size="default"
+                              className="w-full justify-start px-3 flex items-center h-9"
+                              onClick={() => setRecruiterSubTab(subItem.id)}
+                            >
+                              <SubIcon className="h-4 w-4 flex-shrink-0" />
+                              <span className="ml-2 flex items-center">{subItem.label}</span>
+                            </Button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -466,8 +553,8 @@ export default function HomePage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Content Area */}
         <main className="flex-1 overflow-auto p-6">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-foreground">
+          <div className="mb-5">
+            <h1 className="text-xl font-bold text-foreground">
               {(activeApp === 'outbounder' || activeApp === 'inbounder')
                 ? tabs.find(tab => tab.id === activeTab)?.label
                 : activeApp === 'recruiter'

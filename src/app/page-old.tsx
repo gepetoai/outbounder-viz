@@ -678,7 +678,7 @@ export default function Home() {
 
   // Recruiter tabs
   const recruiterTabs = [
-    { id: "job-setup", label: "Job Setup", icon: Settings, subItems: [] },
+    { id: "job-setup", label: "Jobs", icon: Settings, subItems: [] },
     { id: "search", label: "Search", icon: Search, subItems: [] },
     { id: "candidates", label: "Candidates", icon: Users, subItems: [] },
     { id: "outreach", label: "Outreach", icon: MessageSquare, subItems: [] },

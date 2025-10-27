@@ -87,7 +87,7 @@ export function CandidateTab({
       {/* Progress Indicators */}
       <div className="grid grid-cols-3 gap-6">
         {/* Remaining Candidates */}
-        <div className="bg-white border-2 border-gray-900 p-4 rounded-lg">
+        <div className="bg-white border border-gray-300 p-4 rounded-lg">
           <div className="text-center">
             <div className="text-3xl font-bold text-gray-900 mb-1">
               {stagingCandidates.length}
@@ -119,7 +119,7 @@ export function CandidateTab({
         </div>
 
         {/* Rejected Candidates */}
-        <div className="bg-white border-2 border-gray-900 p-4 rounded-lg">
+        <div className="bg-white border border-gray-300 p-4 rounded-lg">
           <div className="text-center">
             <div className="text-3xl font-bold text-gray-900 mb-1">
               {rejectedCandidates.length}

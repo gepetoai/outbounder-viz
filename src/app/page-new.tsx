@@ -64,7 +64,7 @@ export default function HomePage() {
   }
 
   const recruiterTabs = [
-    { id: 'job-setup', label: 'Job Setup', icon: Settings },
+    { id: 'job-setup', label: 'Jobs', icon: Settings },
     { id: 'search', label: 'Search', icon: Search },
     { id: 'candidates', label: 'Candidates', icon: Users },
     { id: 'outreach', label: 'Outreach', icon: MessageSquare }
