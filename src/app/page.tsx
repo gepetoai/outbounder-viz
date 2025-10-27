@@ -401,7 +401,9 @@ export default function HomePage() {
                         setRecruiterTab(tab.id)
                         if (isOutreachTab) {
                           setRecruiterSubTab('candidates')
-                          setOutreachExpanded(!outreachExpanded)
+                          setOutreachExpanded(true)
+                        } else {
+                          setOutreachExpanded(false)
                         }
                       } else if (activeApp === 'researcher') {
                         setResearcherTab(tab.id)
