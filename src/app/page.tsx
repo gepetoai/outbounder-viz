@@ -1270,17 +1270,6 @@ export default function HomePage() {
       case 'candidates':
         return (
           <CandidateTab
-            candidateYield={candidateYield}
-            stagingCandidates={reviewCandidates}
-            setStagingCandidates={setReviewCandidates}
-            approvedCandidates={approvedCandidates}
-            setApprovedCandidates={setApprovedCandidates}
-            rejectedCandidates={rejectedCandidates}
-            setRejectedCandidates={setRejectedCandidates}
-            approvedCandidatesData={approvedCandidatesData}
-            setApprovedCandidatesData={setApprovedCandidatesData}
-            rejectedCandidatesData={rejectedCandidatesData}
-            setRejectedCandidatesData={setRejectedCandidatesData}
             jobDescriptionId={currentJobDescriptionId}
           />
         )
