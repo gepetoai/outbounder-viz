@@ -55,281 +55,89 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-export default function Home() {
-  const [activeApp, setActiveApp] = useState("outbounder");
-  const [activeTab, setActiveTab] = useState("leads");
-  const [activeSubTab, setActiveSubTab] = useState("upload");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [appSidebarOpen, setAppSidebarOpen] = useState(true);
-  const [leadsExpanded, setLeadsExpanded] = useState(true);
-  const [sequencerExpanded, setSequencerExpanded] = useState(false);
-  const [messagingExpanded, setMessagingExpanded] = useState(false);
-  const [recruiterTab, setRecruiterTab] = useState("job-setup");
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [webhookEnabled, setWebhookEnabled] = useState(false);
-  const [webhookUrl] = useState("https://api.outbounder.com/webhooks/leads/abc123def456");
-  const [recentWebhookActivity] = useState([
-    { id: 1, timestamp: "2024-01-15 14:30:25", source: "CRM Integration", status: "success", leads: 3 },
-    { id: 2, timestamp: "2024-01-15 14:25:12", source: "Website Form", status: "success", leads: 1 },
-    { id: 3, timestamp: "2024-01-15 14:20:08", source: "API Partner", status: "success", leads: 5 },
-    { id: 4, timestamp: "2024-01-15 14:15:33", source: "CRM Integration", status: "error", leads: 0 },
-    { id: 5, timestamp: "2024-01-15 14:10:45", source: "Website Form", status: "success", leads: 2 }
-  ]);
-
-  // Settings state
-  const [voicePhoneNumber, setVoicePhoneNumber] = useState("+1 (555) 123-4567");
-  const [smsPhoneNumber, setSmsPhoneNumber] = useState("+1 (555) 123-4567");
-  const [emailAccounts] = useState([
-    { id: 1, email: "sarah@techcorp.com", provider: "Gmail", status: "connected", isPrimary: true },
-    { id: 2, email: "sales@techcorp.com", provider: "Outlook", status: "connected", isPrimary: false }
-  ]);
-  const [paymentMethods] = useState([
-    { id: 1, type: "Credit Card", last4: "4242", brand: "Visa", isDefault: true },
-    { id: 2, type: "Bank Account", last4: "1234", brand: "Chase", isDefault: false }
-  ]);
-  const [linkedinConnected] = useState(false);
-  const [linkedinProfile] = useState({
-    name: "Sarah Johnson",
-    title: "Sales Director",
-    company: "TechCorp",
-    profileUrl: "https://linkedin.com/in/sarah-johnson"
-  });
-  const [userProfile, setUserProfile] = useState({
-    firstName: "Sarah",
-    lastName: "Johnson",
-    email: "sarah@techcorp.com",
-    company: "TechCorp",
-    title: "Sales Director",
-    timezone: "America/New_York",
-    language: "English"
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [newEmail, setNewEmail] = useState("");
-  const [newEmailProvider, setNewEmailProvider] = useState("Gmail");
-  const [jobUrl, setJobUrl] = useState("");
-  const [checklistItems, setChecklistItems] = useState<string[]>([]);
-  const [editingChecklistIndex, setEditingChecklistIndex] = useState<number | null>(null);
-  const [editingChecklistText, setEditingChecklistText] = useState("");
-
-  // Dummy candidate data
-  const dummyCandidates = [
-    {
-      id: 1,
-      name: "Alex Thompson",
-      email: "alex.thompson@email.com",
-      phone: "+1 (555) 234-5678",
-      currentRole: "Senior Software Engineer",
-      currentCompany: "Tech Innovations Inc.",
-      experience: "8 years",
-      status: "New",
-      matchScore: "95%"
-    },
-    {
-      id: 2,
-      name: "Sarah Martinez",
-      email: "sarah.m@email.com",
-      phone: "+1 (555) 345-6789",
-      currentRole: "Product Manager",
-      currentCompany: "StartupCo",
-      experience: "6 years",
-      status: "Contacted",
-      matchScore: "88%"
-    },
-    {
-      id: 3,
-      name: "Michael Chen",
-      email: "mchen@email.com",
-      phone: "+1 (555) 456-7890",
-      currentRole: "Engineering Manager",
-      currentCompany: "Global Tech Solutions",
-      experience: "10 years",
-      status: "Interviewing",
-      matchScore: "92%"
-    },
-    {
-      id: 4,
-      name: "Jessica Williams",
-      email: "j.williams@email.com",
-      phone: "+1 (555) 567-8901",
-      currentRole: "Full Stack Developer",
-      currentCompany: "Digital Ventures",
-      experience: "5 years",
-      status: "New",
-      matchScore: "85%"
-    },
-    {
-      id: 5,
-      name: "David Park",
-      email: "david.park@email.com",
-      phone: "+1 (555) 678-9012",
-      currentRole: "Senior Backend Engineer",
-      currentCompany: "Cloud Systems Inc.",
-      experience: "7 years",
-      status: "Contacted",
-      matchScore: "90%"
-    }
-  ];
-
-  // Playbook state
-  const [expandedPlays, setExpandedPlays] = useState<number[]>([]);
+export default function HomePage() {
+  // Main app navigation
+  const [activeApp, setActiveApp] = useState('outbounder')
+  const [activeTab, setActiveTab] = useState('leads')
+  const [activeSubTab, setActiveSubTab] = useState('upload')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [leadsExpanded, setLeadsExpanded] = useState(true)
+  const [sequencerExpanded, setSequencerExpanded] = useState(false)
+  const [messagingExpanded, setMessagingExpanded] = useState(false)
+  const [outreachExpanded, setOutreachExpanded] = useState(false)
   
-  // Outbounder playbook (email-focused)
-  const outbounderPlays = [
-    {
-      id: 1,
-      name: "Email Kellogg alumni who live in SF",
-      description: "Targeted email campaign for Kellogg alumni in San Francisco to leverage shared educational background and local networking opportunities.",
-      category: "Email",
-      status: "Active",
-      lastUsed: "2024-01-14",
-      successRate: "65%",
-      totalRuns: 89,
-      sequence: [
-        { id: "start", type: "startNode", label: "Alumni identified", position: { x: 0, y: 0 } },
-        { id: "email1", type: "emailNode", label: "Personalized intro", position: { x: 200, y: 0 } },
-        { id: "wait1", type: "waitNode", label: "Wait 3 days", position: { x: 400, y: 0 } },
-        { id: "email2", type: "emailNode", label: "Kellogg connection", position: { x: 600, y: 0 } },
-        { id: "wait2", type: "waitNode", label: "Wait 5 days", position: { x: 800, y: 0 } },
-        { id: "email3", type: "emailNode", label: "SF networking", position: { x: 1000, y: 0 } },
-        { id: "end", type: "endNode", label: "End", position: { x: 1200, y: 0 } }
-      ],
-      edges: [
-        { id: "e1", source: "start", target: "email1" },
-        { id: "e2", source: "email1", target: "wait1" },
-        { id: "e3", source: "wait1", target: "email2" },
-        { id: "e4", source: "email2", target: "wait2" },
-        { id: "e5", source: "wait2", target: "email3" },
-        { id: "e6", source: "email3", target: "end" }
-      ]
-    }
-  ];
+  // Recruiter specific state
+  const [recruiterTab, setRecruiterTab] = useState('job-setup')
+  const [recruiterSubTab, setRecruiterSubTab] = useState('candidates')
+  const [researcherTab, setResearcherTab] = useState('finder')
+  const [currentJobDescriptionId, setCurrentJobDescriptionId] = useState<number | null>(null)
 
-  // Inbounder playbook (text-focused)
-  const inbounderPlays = [
-    {
-      id: 1,
-      name: "Text leads who fill out the Contact Us form",
-      description: "Automatically text leads who submit contact forms to engage them immediately while their interest is high.",
-      category: "SMS",
-      status: "Active",
-      lastUsed: "2024-01-15",
-      successRate: "78%",
-      totalRuns: 156,
-      sequence: [
-        { id: "start", type: "startNode", label: "Lead submits form", position: { x: 0, y: 0 } },
-        { id: "sms1", type: "smsNode", label: "Send welcome SMS", position: { x: 200, y: 0 } },
-        { id: "wait1", type: "waitNode", label: "Wait 2 hours", position: { x: 400, y: 0 } },
-        { id: "sms2", type: "smsNode", label: "Follow-up SMS", position: { x: 600, y: 0 } },
-        { id: "decision", type: "decisionNode", label: "Response?", position: { x: 800, y: 0 } },
-        { id: "email", type: "emailNode", label: "Send email", position: { x: 1000, y: 0 } },
-        { id: "end", type: "endNode", label: "End", position: { x: 1200, y: 0 } }
-      ],
-      edges: [
-        { id: "e1", source: "start", target: "sms1" },
-        { id: "e2", source: "sms1", target: "wait1" },
-        { id: "e3", source: "wait1", target: "sms2" },
-        { id: "e4", source: "sms2", target: "decision" },
-        { id: "e5", source: "decision", target: "email" },
-        { id: "e6", source: "email", target: "end" }
-      ]
-    }
-  ];
+  // Job postings state removed - now handled by React Query
 
-  // Get the appropriate playbook based on active app
-  const salesPlays = activeApp === "outbounder" ? outbounderPlays : inbounderPlays;
+  // Search state
+  const [searchParams, setSearchParams] = useState<SearchParams>({
+    education: '',
+    graduationYear: '',
+    geography: '',
+    radius: 25,
+    jobTitles: [],
+    skills: [],
+    exclusions: {
+      keywords: [],
+      excludeCompanies: [],
+      excludePeople: []
+    },
+    experienceLength: '',
+    titleMatch: false,
+    profilePhoto: false,
+    connections: 0,
+    // New fields from UnifiedSearchForm
+    numExperiences: 0,
+    graduationYearFrom: 0,
+    graduationYearTo: 0,
+    maxExperience: 5,
+    department: '',
+    deptYears: 0,
+    managementLevelExclusions: '',
+    recency: 1,
+    timeInRole: 6,
+    locationCity: '',
+    locationState: '',
+    searchRadius: 25,
+    includeWorkLocation: false,
+    industryExclusions: [],
+    titleExclusions: '',
+    keywordExclusions: '',
+    companyExclusions: '',
+    maxJobDuration: 5
+  })
+  
+  // Candidate state
+  const [candidateYield, setCandidateYield] = useState(0)
+  const [stagingCandidates, setStagingCandidates] = useState<Candidate[]>([])
+  const [approvedCandidates, setApprovedCandidates] = useState<string[]>([])
+  const [rejectedCandidates, setRejectedCandidates] = useState<string[]>([])
+  const [reviewCandidates, setReviewCandidates] = useState<Candidate[]>([])
+  const [approvedCandidatesData, setApprovedCandidatesData] = useState<Candidate[]>([])
+  const [rejectedCandidatesData, setRejectedCandidatesData] = useState<Candidate[]>([])
+  
+  // Outreach metrics state - removed unused variables
 
-  // React Flow state
-  const [, ,] = useNodesState([]);
-  const [, ,] = useEdgesState([]);
-  const [, ,] = useNodesState([]);
-  const [, ,] = useEdgesState([]);
-  const [, ,] = useNodesState([]);
-  const [, ,] = useEdgesState([]);
-
-  // Custom node types
-  const nodeTypes = useMemo(() => ({
-    emailNode: ({ data }: { data: { label: string } }) => (
-      <div className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg border-2 border-blue-600">
-        <div className="flex items-center gap-2">
-          <Mail className="h-4 w-4" />
-          <span className="font-medium">{data.label}</span>
-        </div>
-      </div>
-    ),
-    voiceNode: ({ data }: { data: { label: string } }) => (
-      <div className="bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg border-2 border-green-600">
-        <div className="flex items-center gap-2">
-          <Phone className="h-4 w-4" />
-          <span className="font-medium">{data.label}</span>
-        </div>
-      </div>
-    ),
-    smsNode: ({ data }: { data: { label: string } }) => (
-      <div className="bg-purple-500 text-white px-4 py-2 rounded-lg shadow-lg border-2 border-purple-600">
-        <div className="flex items-center gap-2">
-          <MessageCircle className="h-4 w-4" />
-          <span className="font-medium">{data.label}</span>
-        </div>
-      </div>
-    ),
-    decisionNode: ({ data }: { data: { label: string } }) => (
-      <div className="bg-yellow-500 text-white px-4 py-2 rounded-lg shadow-lg border-2 border-yellow-600">
-        <div className="flex items-center gap-2">
-          <GitBranch className="h-4 w-4" />
-          <span className="font-medium">{data.label}</span>
-        </div>
-      </div>
-    ),
-    startNode: ({ data }: { data: { label: string } }) => (
-      <div className="bg-gray-500 text-white px-4 py-2 rounded-lg shadow-lg border-2 border-gray-600">
-        <div className="flex items-center gap-2">
-          <PlayCircle className="h-4 w-4" />
-          <span className="font-medium">{data.label}</span>
-        </div>
-      </div>
-    ),
-    endNode: ({ data }: { data: { label: string } }) => (
-      <div className="bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg border-2 border-red-600">
-        <div className="flex items-center gap-2">
-          <CheckCircle className="h-4 w-4" />
-          <span className="font-medium">{data.label}</span>
-        </div>
-      </div>
-    ),
-    waitNode: ({ data }: { data: { label: string } }) => (
-      <div className="bg-orange-500 text-white px-4 py-2 rounded-lg shadow-lg border-2 border-orange-600">
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4" />
-          <span className="font-medium">{data.label}</span>
-        </div>
-      </div>
-    ),
-  }), []);
-
-  // Connection handlers (currently unused)
-  // const onEmailConnect = useCallback((params: Connection) => {
-  //   setEmailEdges((eds) => addEdge(params, eds));
-  // }, [setEmailEdges]);
-
-  // const onVoiceConnect = useCallback((params: Connection) => {
-  //   setVoiceEdges((eds) => addEdge(params, eds));
-  // }, [setVoiceEdges]);
-
-  // const onSmsConnect = useCallback((params: Connection) => {
-  //   setSmsEdges((eds) => addEdge(params, eds));
-  // }, [setSmsEdges]);
-
-  // Dummy lead data
-  const dummyLeads = [
-    {
-      id: 1,
-      name: "John Smith",
-      email: "john.smith@techcorp.com",
-      phone: "+1 (555) 123-4567",
-      company: "TechCorp Inc.",
-      title: "VP of Engineering",
-      status: "New",
-      lastContact: "2024-01-15"
+  // Applications configuration
+  const applications = [
+    { 
+      id: 'outbounder', 
+      label: 'Outbounder', 
+      icon: MessageSquare, 
+      description: 'Outbound sales automation',
+      color: 'blue'
+    },
+    { 
+      id: 'inbounder', 
+      label: 'Inbounder', 
+      icon: Globe,
+      description: 'Lead capture and qualification',
+      color: 'green'
     },
     {
       id: 2,
@@ -429,16 +237,20 @@ export default function Home() {
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
-  // Recruiter tabs
-  const recruiterTabs = [
-    { id: "job-setup", label: "Job Setup", icon: Settings, subItems: [] },
-    { id: "checklist", label: "Checklist", icon: CheckCircle, subItems: [] },
-    { id: "candidates", label: "Candidates", icon: Users, subItems: [] },
-    { id: "outreach", label: "Outreach", icon: MessageSquare, subItems: [] },
-    { id: "analytics", label: "Analytics", icon: BarChart3, subItems: [] },
-  ];
+  // Researcher tabs
+  const researcherTabs = [
+    { id: 'finder', label: 'Finder', icon: Search, subItems: [] },
+    { id: 'enricher', label: 'Enricher', icon: Zap, subItems: [] },
+    { id: 'lists', label: 'Lists', icon: Users, subItems: [] }
+  ]
 
-  const renderAppContent = () => {
+  const handleSearchClick = (jobId: string) => {
+    setCurrentJobDescriptionId(parseInt(jobId))
+    setRecruiterTab('search')
+  }
+
+
+  const renderMainContent = () => {
     switch (activeApp) {
       case "outbounder":
         return renderOutbounderContent();
@@ -1442,207 +1254,59 @@ export default function Home() {
         );
       case "checklist":
         return (
-          <div className="space-y-6">
-            <Card>
-              <CardContent className="space-y-4">
-                {/* Checklist Items */}
-                <div className="space-y-2">
-                  {checklistItems.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <CheckCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>No checklist items yet</p>
-                      <p className="text-sm">Generate a checklist from a job posting to get started</p>
-                    </div>
-                  ) : (
-                    <ul className="space-y-2">
-                      {checklistItems.map((item, index) => (
-                        <li key={index} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
-                          <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
-                          {editingChecklistIndex === index ? (
-                            <div className="flex-1 flex gap-2">
-                              <Input
-                                value={editingChecklistText}
-                                onChange={(e) => setEditingChecklistText(e.target.value)}
-                                className="flex-1"
-                                autoFocus
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    const newItems = [...checklistItems];
-                                    newItems[index] = editingChecklistText;
-                                    setChecklistItems(newItems);
-                                    setEditingChecklistIndex(null);
-                                    setEditingChecklistText("");
-                                  } else if (e.key === 'Escape') {
-                                    setEditingChecklistIndex(null);
-                                    setEditingChecklistText("");
-                                  }
-                                }}
-                              />
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  const newItems = [...checklistItems];
-                                  newItems[index] = editingChecklistText;
-                                  setChecklistItems(newItems);
-                                  setEditingChecklistIndex(null);
-                                  setEditingChecklistText("");
-                                }}
-                              >
-                                <Save className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  setEditingChecklistIndex(null);
-                                  setEditingChecklistText("");
-                                }}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <>
-                              <span className="text-sm flex-1">{item}</span>
-                              <div className="flex gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setEditingChecklistIndex(index);
-                                    setEditingChecklistText(item);
-                                  }}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-red-600 hover:text-red-700"
-                                  onClick={() => {
-                                    const newItems = checklistItems.filter((_, i) => i !== index);
-                                    setChecklistItems(newItems);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="space-y-2 pt-2">
-                  <Button 
-                    variant="outline" 
-                    className="w-full flex items-center gap-2"
-                    onClick={() => {
-                      setChecklistItems([...checklistItems, "New checklist item"]);
-                    }}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add new checklist item
-                  </Button>
-                  <Button className="w-full flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Find Candidates
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-      case "candidates":
+          <SearchTab
+            searchParams={searchParams}
+            setSearchParams={setSearchParams}
+            candidateYield={candidateYield}
+            setCandidateYield={setCandidateYield}
+            stagingCandidates={stagingCandidates}
+            setStagingCandidates={setStagingCandidates}
+            approvedCandidates={approvedCandidates}
+            setApprovedCandidates={setApprovedCandidates}
+            rejectedCandidates={rejectedCandidates}
+            setRejectedCandidates={setRejectedCandidates}
+            reviewCandidates={reviewCandidates}
+            setReviewCandidates={setReviewCandidates}
+            onGoToCandidates={() => setRecruiterTab('candidates')}
+            jobDescriptionId={currentJobDescriptionId}
+          />
+        )
+      case 'candidates':
         return (
-          <div className="space-y-6">
-            <Card>
-              <CardContent>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {dummyCandidates.length} candidates found
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex items-center gap-2">
-                      <Download className="h-4 w-4" />
-                      Export
-                    </Button>
-                  </div>
-                </div>
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Current Role</TableHead>
-                        <TableHead>Company</TableHead>
-                        <TableHead>Experience</TableHead>
-                        <TableHead>Match</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dummyCandidates.map((candidate) => (
-                        <TableRow key={candidate.id}>
-                          <TableCell className="font-medium">
-                            <div>
-                              <div>{candidate.name}</div>
-                              <div className="text-xs text-muted-foreground">{candidate.email}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell>{candidate.currentRole}</TableCell>
-                          <TableCell>{candidate.currentCompany}</TableCell>
-                          <TableCell>{candidate.experience}</TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="bg-green-100 text-green-800">
-                              {candidate.matchScore}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              candidate.status === 'New' ? 'bg-blue-100 text-blue-800' :
-                              candidate.status === 'Contacted' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-purple-100 text-purple-800'
-                            }`}>
-                              {candidate.status}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <MessageSquare className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-      case "outreach":
-        return (
-          <div className="space-y-6">
-            <Card>
-              <CardContent>
-                <p className="text-muted-foreground">Outreach content coming soon...</p>
-              </CardContent>
-            </Card>
-          </div>
-        );
-      case "analytics":
+          <CandidateTab
+            candidateYield={candidateYield}
+            stagingCandidates={reviewCandidates}
+            setStagingCandidates={setReviewCandidates}
+            approvedCandidates={approvedCandidates}
+            setApprovedCandidates={setApprovedCandidates}
+            rejectedCandidates={rejectedCandidates}
+            setRejectedCandidates={setRejectedCandidates}
+            approvedCandidatesData={approvedCandidatesData}
+            setApprovedCandidatesData={setApprovedCandidatesData}
+            rejectedCandidatesData={rejectedCandidatesData}
+            setRejectedCandidatesData={setRejectedCandidatesData}
+            jobDescriptionId={currentJobDescriptionId}
+          />
+        )
+      case 'outreach':
+        switch (recruiterSubTab) {
+          case 'candidates':
+            return (
+              <ApprovedRejectedCarousel
+                approvedCandidatesData={approvedCandidatesData.map(candidate => ({ ...candidate, status: 'approved' as const }))}
+                rejectedCandidatesData={rejectedCandidatesData.map(candidate => ({ ...candidate, status: 'rejected' as const }))}
+                setApprovedCandidatesData={(candidates) => setApprovedCandidatesData(candidates.map(candidate => ({ ...candidate, status: undefined })))}
+                setRejectedCandidatesData={(candidates) => setRejectedCandidatesData(candidates.map(candidate => ({ ...candidate, status: undefined })))}
+              />
+            )
+          case 'analytics':
+            return <AnalyticsTab />
+          case 'sequencer':
+            return <SequencerTab />
+          default:
+            return null
+        }
+      case 'analytics':
         return (
           <div className="space-y-6">
             <Card>
