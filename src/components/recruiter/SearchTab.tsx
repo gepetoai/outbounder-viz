@@ -9,8 +9,9 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Modal } from '@/components/ui/modal'
-import { Briefcase, MapPin, GraduationCap, X, Search, Target, RefreshCw, Send, Save, Sparkles } from 'lucide-react'
+import { Briefcase, MapPin, GraduationCap, X, Search, Target, RefreshCw, Send, Save, Sparkles, ChevronDown } from 'lucide-react'
 import { useStates, useCities, useIndustries } from '@/hooks/useDropdowns'
 import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useRunSearch, useEnrichCandidates } from '@/hooks/useSearch'
 import { mapSearchParamsToRequest, SearchResponse, EnrichedCandidateResponse } from '@/lib/search-api'
@@ -113,6 +114,7 @@ export function SearchTab({
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false)
+  const [isSaveNewDialogOpen, setIsSaveNewDialogOpen] = useState(false)
   const [pendingLocationCity, setPendingLocationCity] = useState<string>('')
   const [enrichLimit, setEnrichLimit] = useState<number>(10)
 
@@ -441,7 +443,7 @@ export function SearchTab({
         // Otherwise create a new search
         // Use jobDescriptionId prop
         const jobIdToUse = jobDescriptionId
-        const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle || 'Candidate Search', jobIdToUse)
+        const searchRequest = mapSearchParamsToRequest(searchParams, 'Candidate Search', jobIdToUse)
         response = await createSearch.mutateAsync(searchRequest)
 
         // Store the search ID for later use
@@ -496,15 +498,58 @@ export function SearchTab({
     }
 
     try {
-      // Save as new search (just update the name)
+      // First update the search parameters if they've been modified
+      if (isSearchModified) {
+        const jobIdToUse = jobDescriptionId
+        const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle.trim(), jobIdToUse)
+        await updateSearchMutation.mutateAsync({
+          searchId: currentSearchId,
+          data: searchRequest
+        })
+        setIsSearchModified(false)
+      }
+
+      // Then update the search name
       await updateSearchName.mutateAsync({
         searchId: currentSearchId,
         searchTitle: searchTitle.trim()
       })
+      
       setIsSaveDialogOpen(false)
       setSearchTitle('')
+      console.log('Search updated successfully')
     } catch (error) {
-      console.error('Failed to save search:', error)
+      console.error('Failed to update search:', error)
+    }
+  }
+
+  const handleSaveNewSearch = async () => {
+    if (!searchTitle.trim()) {
+      console.error('Search title is required')
+      return
+    }
+
+    if (!jobDescriptionId) {
+      console.error('Job description ID is required')
+      return
+    }
+
+    try {
+      // Map search params to API request format
+      const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle.trim(), jobDescriptionId)
+      
+      // Create new search
+      const response = await createSearch.mutateAsync(searchRequest)
+      
+      // Update current search ID and title
+      setCurrentSearchId(response.search_id)
+      setSearchTitle(searchTitle.trim())
+      setIsSearchModified(false)
+      setIsSaveNewDialogOpen(false)
+      
+      console.log('New search created successfully:', response)
+    } catch (error) {
+      console.error('Failed to create new search:', error)
     }
   }
 
@@ -763,9 +808,9 @@ export function SearchTab({
                   <div className="flex items-center gap-3">
                     <Input
                       type="number"
-                      value={searchParams.numExperiences || ''}
+                      value={searchParams.numExperiences || 0}
                       onChange={(e) => setSearchParams({ ...searchParams, numExperiences: parseInt(e.target.value) || 0 })}
-                      min="1"
+                      min="0"
                       max="10"
                       className="w-20"
                       placeholder="3"
@@ -778,9 +823,9 @@ export function SearchTab({
                   <div className="flex items-center gap-3">
                     <Input
                       type="number"
-                      value={searchParams.maxExperience || 5}
-                      onChange={(e) => setSearchParams({ ...searchParams, maxExperience: parseInt(e.target.value) || 5 })}
-                      min="1"
+                      value={searchParams.maxExperience || 0}
+                      onChange={(e) => setSearchParams({ ...searchParams, maxExperience: parseInt(e.target.value) || 0 })}
+                      min="0"
                       max="30"
                       className="w-20"
                     />
@@ -808,9 +853,9 @@ export function SearchTab({
                   <div className="flex items-center gap-3">
                     <Input
                       type="number"
-                      value={searchParams.maxJobDuration || 5}
-                      onChange={(e) => setSearchParams({ ...searchParams, maxJobDuration: parseInt(e.target.value) || 5 })}
-                      min="1"
+                      value={searchParams.maxJobDuration || 0}
+                      onChange={(e) => setSearchParams({ ...searchParams, maxJobDuration: parseInt(e.target.value) || 0 })}
+                      min="0"
                       max="20"
                       className="w-20"
                     />
@@ -821,8 +866,8 @@ export function SearchTab({
                   <div className="flex items-center gap-3">
                     <Input
                       type="number"
-                      value={searchParams.deptYears || 2}
-                      onChange={(e) => setSearchParams({ ...searchParams, deptYears: parseInt(e.target.value) || 2 })}
+                      value={searchParams.deptYears || 0}
+                      onChange={(e) => setSearchParams({ ...searchParams, deptYears: parseInt(e.target.value) || 0 })}
                       min="0"
                       max="20"
                       className="w-20"
@@ -834,8 +879,8 @@ export function SearchTab({
                   <div className="flex items-center gap-3">
                     <Input
                       type="number"
-                      value={searchParams.timeInRole || 6}
-                      onChange={(e) => setSearchParams({ ...searchParams, timeInRole: parseInt(e.target.value) || 6 })}
+                      value={searchParams.timeInRole || 0}
+                      onChange={(e) => setSearchParams({ ...searchParams, timeInRole: parseInt(e.target.value) || 0 })}
                       min="0"
                       max="60"
                       placeholder="6"
@@ -1074,6 +1119,7 @@ export function SearchTab({
                     </span>
                   </div>
                 </div>
+                
                 <div className="flex items-center gap-3">
                   <Button 
                     className="flex items-center gap-2"
@@ -1097,6 +1143,35 @@ export function SearchTab({
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="flex items-center gap-2"
+                        disabled={updateSearchMutation.isPending}
+                      >
+                        <Save className="h-4 w-4" />
+                        {updateSearchMutation.isPending ? 'Saving...' : 'Save Search'}
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-36 p-0">
+                      <div className="py-1">
+                        <button
+                          className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 transition-colors"
+                          onClick={() => setIsSaveNewDialogOpen(true)}
+                        >
+                          Save New
+                        </button>
+                        <button
+                          className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 transition-colors"
+                          onClick={handleUpdateSearch}
+                        >
+                          Update Existing
+                        </button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   <Button 
                     className="flex items-center gap-2"
                     onClick={handleSearch}
@@ -1166,7 +1241,7 @@ export function SearchTab({
                   <Send className="h-4 w-4" />
                   Send All {candidateYield.toLocaleString()} to Review
                 </Button>
-                {isSearchModified ? (
+                {/* {isSearchModified ? (
                   <Button
                     variant="outline"
                     className="flex items-center gap-2"
@@ -1186,7 +1261,7 @@ export function SearchTab({
                     <Save className="h-4 w-4" />
                     Save Search
                   </Button>
-                )}
+                )} */}
 
                 {/* Enrich Controls - Right side */}
                 <div className="flex items-center gap-2 ml-auto">
@@ -1296,15 +1371,15 @@ export function SearchTab({
       <Modal
         open={isSaveDialogOpen}
         onOpenChange={setIsSaveDialogOpen}
-        title="Save Search"
-        description="Enter a name for this search to save it for future use."
-        confirmText="Save"
+        title="Update Search"
+        description="Update the name and parameters for this existing search."
+        confirmText="Update"
         onConfirm={handleSaveSearch}
         onCancel={() => {
           setIsSaveDialogOpen(false)
           setSearchTitle('')
         }}
-        isLoading={updateSearchName.isPending}
+        isLoading={updateSearchName.isPending || updateSearchMutation.isPending}
         confirmDisabled={!searchTitle.trim()}
       >
         <div className="space-y-2">
@@ -1317,6 +1392,37 @@ export function SearchTab({
             onKeyDown={(e) => {
               if (e.key === 'Enter' && searchTitle.trim()) {
                 handleSaveSearch()
+              }
+            }}
+          />
+        </div>
+      </Modal>
+
+      {/* Save New Search Modal */}
+      <Modal
+        open={isSaveNewDialogOpen}
+        onOpenChange={setIsSaveNewDialogOpen}
+        title="Save New Search"
+        description="Enter a name for this new search to save it for future use."
+        confirmText="Create Search"
+        onConfirm={handleSaveNewSearch}
+        onCancel={() => {
+          setIsSaveNewDialogOpen(false)
+          setSearchTitle('')
+        }}
+        isLoading={createSearch.isPending}
+        confirmDisabled={!searchTitle.trim()}
+      >
+        <div className="space-y-2">
+          <Label htmlFor="new-search-title">Search Title</Label>
+          <Input
+            id="new-search-title"
+            placeholder="e.g., Senior Software Engineers in SF"
+            value={searchTitle}
+            onChange={(e) => setSearchTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && searchTitle.trim()) {
+                handleSaveNewSearch()
               }
             }}
           />

@@ -179,8 +179,8 @@ export async function runSearch(searchId: number): Promise<SearchResponse> {
   })
 }
 
-export async function getSavedSearches(): Promise<SavedSearch[]> {
-  return fetchJson<SavedSearch[]>(`${API_BASE_URL}/job-description-searches/`, {
+export async function getSavedSearchesByJobDescription(jobDescriptionId: number): Promise<SavedSearch[]> {
+  return fetchJson<SavedSearch[]>(`${API_BASE_URL}/job-description-searches/${jobDescriptionId}/searches`, {
     method: 'GET'
   })
 }

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createSearch, updateSearchName, updateSearch, runSearch, getSavedSearches, enrichCandidates, getCandidatesByJobDescription, getCandidatesForReview, SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse, CandidatesByJobDescriptionResponse, EnrichedCandidateResponse } from '@/lib/search-api'
+import { createSearch, updateSearchName, updateSearch, runSearch, getSavedSearchesByJobDescription, enrichCandidates, getCandidatesByJobDescription, getCandidatesForReview, SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse, CandidatesByJobDescriptionResponse, EnrichedCandidateResponse } from '@/lib/search-api'
 
 export function useCreateSearch() {
   const queryClient = useQueryClient()
@@ -61,10 +61,10 @@ export function useRunSearch() {
   })
 }
 
-export function useSavedSearches() {
+export function useSavedSearches(jobDescriptionId: number) {
   return useQuery<SavedSearch[], Error>({
-    queryKey: ['savedSearches'],
-    queryFn: getSavedSearches,
+    queryKey: ['savedSearches', jobDescriptionId],
+    queryFn: () => getSavedSearchesByJobDescription(jobDescriptionId),
     staleTime: 1000 * 60 * 5, // 5 minutes
   })
 }
