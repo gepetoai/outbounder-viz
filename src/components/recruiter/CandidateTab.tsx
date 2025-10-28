@@ -552,13 +552,7 @@ export function CandidateTab({
               {/* Profile Content */}
               <div className="flex-1 overflow-y-auto p-4 space-y-6">
                 <div className="text-center">
-                  <Image
-                    src={selectedCandidate.photo}
-                    alt={selectedCandidate.name}
-                    width={96}
-                    height={96}
-                    className="w-24 h-24 rounded-full object-cover mx-auto mb-4 grayscale"
-                  />
+                  <img src={selectedCandidate.photo} alt={selectedCandidate.name} className="w-24 h-24 rounded-full object-cover mx-auto mb-4 grayscale" />
                   <h3 className="text-xl font-bold">{selectedCandidate.name}</h3>
                   <p className="text-gray-600">{selectedCandidate.title}</p>
                   <p className="text-sm text-gray-500">{selectedCandidate.company}</p>

@@ -71,8 +71,8 @@ export default function HomePage() {
     graduationYearFrom: 0,
     graduationYearTo: 0,
     maxExperience: 5,
-    department: '',
-    deptYears: 0,
+    department: 'sales',
+    deptYears: 2,
     managementLevelExclusions: '',
     recency: 1,
     timeInRole: 6,
@@ -175,8 +175,8 @@ export default function HomePage() {
       icon: MessageSquare, 
       subItems: [
         { id: 'candidates', label: 'List', icon: Users },
-        { id: 'sequencer', label: 'Sequencer', icon: Play },
-        { id: 'analytics', label: 'Analytics', icon: BarChart3 }
+        // { id: 'sequencer', label: 'Sequencer', icon: Play },
+        // { id: 'analytics', label: 'Analytics', icon: BarChart3 }
       ]
     },
     { id: 'settings', label: 'Settings', icon: Settings, subItems: [] }
