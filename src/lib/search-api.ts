@@ -149,7 +149,7 @@ export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
 export async function createSearch(data: SearchRequest): Promise<SearchResponse> {
-  return fetchJson<SearchResponse>(`${API_BASE_URL}/job-description-searches/form-builder/create/`, {
+  return fetchJson<SearchResponse>(`${API_BASE_URL}/job-description-searches/form-builder/create`, {
     method: 'POST',
     body: JSON.stringify(data)
   })
@@ -261,7 +261,7 @@ export interface ApproveRejectCandidateRequest {
 }
 
 export async function approveCandidate(data: ApproveRejectCandidateRequest): Promise<void> {
-  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-shortlisted-candidate/`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-shortlisted-candidate`, {
     method: 'POST',
     body: JSON.stringify(data)
   })
@@ -272,7 +272,7 @@ export async function approveCandidate(data: ApproveRejectCandidateRequest): Pro
 }
 
 export async function rejectCandidate(data: ApproveRejectCandidateRequest): Promise<void> {
-  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-rejected-candidate/`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-rejected-candidate`, {
     method: 'POST',
     body: JSON.stringify(data)
   })
