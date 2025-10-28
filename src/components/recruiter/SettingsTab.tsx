@@ -17,11 +17,7 @@ import {
   EyeOff
 } from 'lucide-react'
 
-export interface SettingsTabProps {
-  // Add any props you might need in the future
-}
-
-export function SettingsTab({}: SettingsTabProps) {
+export function SettingsTab() {
   const [profileData, setProfileData] = useState({
     name: 'John Doe',
     company: 'Tech Corp',

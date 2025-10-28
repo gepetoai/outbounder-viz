@@ -146,7 +146,7 @@ export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle
   }
 }
 
-const API_BASE_URL = 'http://localhost:8096/api/v1'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
 export async function createSearch(data: SearchRequest): Promise<SearchResponse> {
   return fetchJson<SearchResponse>(`${API_BASE_URL}/job-description-searches/form-builder/create/`, {
