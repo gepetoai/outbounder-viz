@@ -43,9 +43,10 @@ export default function HomePage() {
   const [recruiterTab, setRecruiterTab] = useState('job-setup')
   const [recruiterSubTab, setRecruiterSubTab] = useState('candidates')
   const [researcherTab, setResearcherTab] = useState('finder')
-  
+  const [currentJobDescriptionId, setCurrentJobDescriptionId] = useState<number | null>(null)
+
   // Job postings state removed - now handled by React Query
-  
+
   // Search state
   const [searchParams, setSearchParams] = useState<SearchParams>({
     education: '',
@@ -186,7 +187,8 @@ export default function HomePage() {
     { id: 'lists', label: 'Lists', icon: Users, subItems: [] }
   ]
 
-  const handleSearchClick = () => {
+  const handleSearchClick = (jobId: string) => {
+    setCurrentJobDescriptionId(parseInt(jobId))
     setRecruiterTab('search')
   }
 
@@ -260,6 +262,7 @@ export default function HomePage() {
             reviewCandidates={reviewCandidates}
             setReviewCandidates={setReviewCandidates}
             onGoToCandidates={() => setRecruiterTab('candidates')}
+            jobDescriptionId={currentJobDescriptionId}
           />
         )
       case 'candidates':
@@ -276,6 +279,7 @@ export default function HomePage() {
             setApprovedCandidatesData={setApprovedCandidatesData}
             rejectedCandidatesData={rejectedCandidatesData}
             setRejectedCandidatesData={setRejectedCandidatesData}
+            jobDescriptionId={currentJobDescriptionId}
           />
         )
       case 'outreach':

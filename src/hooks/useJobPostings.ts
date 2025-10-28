@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 // Types
 export interface JobPosting {
-  id: string
+  id: number
   title: string
   url: string
   raw_text?: string
@@ -55,7 +55,7 @@ async function fetchJobPostings(): Promise<JobPosting[]> {
   return response.json()
 }
 
-async function deleteJobPosting(id: string): Promise<void> {
+async function deleteJobPosting(id: number): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/job-description/${id}`, {
     method: 'DELETE',
   })

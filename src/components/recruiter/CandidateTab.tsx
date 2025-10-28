@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { X, Check, ThumbsUp, ThumbsDown, ExternalLink, MapPin, GraduationCap, Briefcase } from 'lucide-react'
+import { useCandidatesByJobDescription } from '@/hooks/useSearch'
+import type { EnrichedCandidateResponse } from '@/lib/search-api'
 
 export interface Candidate {
   id: string
@@ -35,6 +37,7 @@ interface CandidateTabProps {
   setApprovedCandidatesData: (candidates: Candidate[]) => void
   rejectedCandidatesData: Candidate[]
   setRejectedCandidatesData: (candidates: Candidate[]) => void
+  jobDescriptionId?: number | null
 }
 
 export function CandidateTab({
@@ -48,10 +51,81 @@ export function CandidateTab({
   approvedCandidatesData,
   setApprovedCandidatesData,
   rejectedCandidatesData,
-  setRejectedCandidatesData
+  setRejectedCandidatesData,
+  jobDescriptionId
 }: CandidateTabProps) {
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false)
+
+  // Fetch candidates from API if we have a job description ID
+  const { data: enrichedCandidates, isLoading: isFetchingCandidates } = useCandidatesByJobDescription(jobDescriptionId)
+
+  // Map enriched candidates to Candidate format and set them
+  useEffect(() => {
+    if (enrichedCandidates?.candidates && enrichedCandidates.candidates.length > 0 && stagingCandidates.length === 0) {
+      console.log('[CandidateTab] Fetched candidates from API:', enrichedCandidates.candidates.length)
+      const mappedCandidates = enrichedCandidates.candidates.map(mapEnrichedCandidateToCandidate)
+      setStagingCandidates(mappedCandidates)
+    }
+  }, [enrichedCandidates, stagingCandidates.length, setStagingCandidates])
+
+  const mapEnrichedCandidateToCandidate = (enriched: EnrichedCandidateResponse): Candidate => {
+    const fullName = `${enriched.first_name} ${enriched.last_name}`
+    const location = enriched.city && enriched.state ? `${enriched.city}, ${enriched.state}` : enriched.city || enriched.state || 'Location not available'
+
+    // Use actual LinkedIn URL from raw_data or construct from slug
+    const linkedinUrl = enriched.raw_data.websites_linkedin
+      || (enriched.linkedin_canonical_slug ? `https://linkedin.com/in/${enriched.linkedin_canonical_slug}` : '')
+      || (enriched.linkedin_shorthand_slug ? `https://linkedin.com/in/${enriched.linkedin_shorthand_slug}` : '')
+
+    // Use actual profile picture or fallback to avatar
+    const photo = enriched.raw_data.picture_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${enriched.id}`
+
+    // Extract education from raw_data
+    let education = 'Education details not available'
+    if (enriched.raw_data.education && enriched.raw_data.education.length > 0) {
+      const edu = enriched.raw_data.education[0]
+      if (edu.major && edu.title) {
+        education = `${edu.major} at ${edu.title}`
+      } else if (edu.major) {
+        education = edu.major
+      } else if (edu.title) {
+        education = edu.title
+      }
+    }
+
+    // Extract experience from raw_data
+    const experience = enriched.raw_data.experience && enriched.raw_data.experience.length > 0
+      ? enriched.raw_data.experience.slice(0, 5).map(exp => ({
+          title: exp.title,
+          company: exp.company_name,
+          duration: exp.duration
+        }))
+      : [{
+          title: enriched.job_title || 'Position not specified',
+          company: enriched.company_name || 'Company not specified',
+          duration: 'Current'
+        }]
+
+    // Use description from raw_data or construct summary
+    const summary = enriched.raw_data.description
+      || enriched.raw_data.headline
+      || enriched.raw_data.generated_headline
+      || `${enriched.job_title || 'Professional'} at ${enriched.company_name || 'current company'} located in ${location}`
+
+    return {
+      id: enriched.id.toString(),
+      name: fullName,
+      photo: photo,
+      title: enriched.job_title || 'Position not specified',
+      company: enriched.company_name || 'Company not specified',
+      location: location,
+      education: education,
+      experience: experience,
+      linkedinUrl: linkedinUrl,
+      summary: summary
+    }
+  }
 
   const handleApprove = (candidateId: string) => {
     const candidate = stagingCandidates.find(c => c.id === candidateId)
@@ -102,18 +176,18 @@ export function CandidateTab({
         <div className="bg-gray-200 text-gray-900 p-4 relative overflow-hidden rounded-lg">
           <div className="relative z-10 text-center">
             <div className="text-3xl font-bold mb-1">
-              {approvedCandidates.length}/500
+              {enrichedCandidates?.current_candidates_count ?? approvedCandidates.length}/{enrichedCandidates?.target_candidates_count ?? 500}
             </div>
             <div className="text-xs font-medium text-gray-600 uppercase tracking-wider">
               Approved
             </div>
           </div>
-          
+
           {/* Progress Bar */}
           <div className="absolute bottom-0 left-0 right-0 h-2 bg-gray-300 rounded-b-lg">
-            <div 
+            <div
               className="h-full bg-gray-900 transition-all duration-500 ease-out rounded-b-lg"
-              style={{ width: `${Math.min((approvedCandidates.length / 500) * 100, 100)}%` }}
+              style={{ width: `${Math.min(((enrichedCandidates?.current_candidates_count ?? approvedCandidates.length) / (enrichedCandidates?.target_candidates_count ?? 500)) * 100, 100)}%` }}
             />
           </div>
         </div>
