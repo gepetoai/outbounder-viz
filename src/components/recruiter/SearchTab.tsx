@@ -1,20 +1,19 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Modal } from '@/components/ui/modal'
-import { User, Briefcase, MapPin, GraduationCap, X, Search, Target, Code, Upload, RefreshCw, Send, Save, Sparkles } from 'lucide-react'
+import { Briefcase, MapPin, GraduationCap, X, Search, Target, RefreshCw, Send, Save, Sparkles } from 'lucide-react'
 import { useStates, useCities, useIndustries } from '@/hooks/useDropdowns'
-import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useRunSearch, useSavedSearches, useEnrichCandidates, useCandidatesByJobDescription } from '@/hooks/useSearch'
-import { mapSearchParamsToRequest, mapSavedSearchToParams, SearchResponse, EnrichedCandidateResponse, EnrichedCandidatesApiResponse } from '@/lib/search-api'
-import { useJobPostings } from '@/hooks/useJobPostings'
+import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useRunSearch, useEnrichCandidates } from '@/hooks/useSearch'
+import { mapSearchParamsToRequest, SearchResponse, EnrichedCandidateResponse } from '@/lib/search-api'
 
 export interface SearchParams {
   // Original fields
@@ -49,8 +48,8 @@ export interface SearchParams {
   searchRadius: number
   includeWorkLocation: boolean
   industryExclusions: string[]
-  titleExclusions: string
-  keywordExclusions: string
+  titleExclusions: string[]
+  keywordExclusions: string[]
   companyExclusions: string
   maxJobDuration: number
 }
@@ -79,14 +78,14 @@ interface SearchTabProps {
   setCandidateYield: (candidateYield: number) => void
   stagingCandidates: Candidate[]
   setStagingCandidates: (candidates: Candidate[]) => void
-  approvedCandidates: string[]
-  setApprovedCandidates: (candidates: string[]) => void
-  rejectedCandidates: string[]
-  setRejectedCandidates: (candidates: string[]) => void
-  reviewCandidates: Candidate[]
-  setReviewCandidates: (candidates: Candidate[]) => void
   onGoToCandidates: () => void
   jobDescriptionId?: number | null
+  currentSearchId: number | null
+  setCurrentSearchId: (id: number | null) => void
+  searchTitle: string
+  setSearchTitle: (title: string) => void
+  isSearchModified: boolean
+  setIsSearchModified: (modified: boolean) => void
 }
 
 export function SearchTab({
@@ -96,35 +95,31 @@ export function SearchTab({
   setCandidateYield,
   stagingCandidates,
   setStagingCandidates,
-  approvedCandidates,
-  setApprovedCandidates,
-  rejectedCandidates,
-  setRejectedCandidates,
-  reviewCandidates,
-  setReviewCandidates,
   onGoToCandidates,
-  jobDescriptionId
+  jobDescriptionId,
+  currentSearchId,
+  setCurrentSearchId,
+  searchTitle,
+  setSearchTitle,
+  isSearchModified,
+  setIsSearchModified
 }: SearchTabProps) {
   const [tempJobTitleInput, setTempJobTitleInput] = useState('')
   const [tempSkillInput, setTempSkillInput] = useState('')
   const [tempExclusionInput, setTempExclusionInput] = useState('')
+  const [tempTitleExclusionInput, setTempTitleExclusionInput] = useState('')
+  const [tempKeywordExclusionInput, setTempKeywordExclusionInput] = useState('')
   const [inputError, setInputError] = useState('')
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false)
-  const [searchTitle, setSearchTitle] = useState('')
-  const [currentSearchId, setCurrentSearchId] = useState<number | null>(null)
-  const [selectedSavedSearchId, setSelectedSavedSearchId] = useState<string>('')
-  const [isSearchModified, setIsSearchModified] = useState(false)
   const [pendingLocationCity, setPendingLocationCity] = useState<string>('')
   const [enrichLimit, setEnrichLimit] = useState<number>(10)
-  const [selectedJobId, setSelectedJobId] = useState<number | null>(null)
 
   // Dropdown data hooks
-  const { data: statesData, isLoading: isLoadingStates } = useStates()
-  const { data: citiesData, isLoading: isLoadingCities } = useCities(searchParams.locationState, statesData)
-  const { data: industriesData, isLoading: isLoadingIndustries } = useIndustries()
-  const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
+  const { data: statesData } = useStates()
+  const { data: citiesData } = useCities(searchParams.locationState, statesData)
+  const { data: industriesData } = useIndustries()
 
   // Search functionality
   const createSearch = useCreateSearch()
@@ -132,23 +127,12 @@ export function SearchTab({
   const updateSearchMutation = useUpdateSearch()
   const runSearchMutation = useRunSearch()
   const enrichCandidatesMutation = useEnrichCandidates()
-  const { data: savedSearches, isLoading: isLoadingSavedSearches } = useSavedSearches()
 
   // Track if searchParams has been loaded (to avoid marking as modified on initial load)
   const isInitialLoad = useRef(true)
   const isLoadingSavedSearch = useRef(false)
   const skipNextModificationCheck = useRef(0) // Count of checks to skip
 
-  // Sync selectedJobId with jobDescriptionId prop when it changes
-  useEffect(() => {
-    console.log('[JobDropdown] jobDescriptionId prop changed:', jobDescriptionId)
-    console.log('[JobDropdown] Available job postings:', jobPostings?.map(j => ({ id: j.id, title: j.title })))
-    if (jobDescriptionId) {
-      console.log('[JobDropdown] Setting selectedJobId to:', jobDescriptionId)
-      console.log('[JobDropdown] Does job exist in list?', jobPostings?.some(j => j.id === jobDescriptionId))
-      setSelectedJobId(jobDescriptionId)
-    }
-  }, [jobDescriptionId, jobPostings])
 
   // Track when search params change after loading a saved search
   useEffect(() => {
@@ -170,14 +154,13 @@ export function SearchTab({
     }
 
     // Only mark as modified if we have a saved search loaded AND params changed
-    if (selectedSavedSearchId && currentSearchId) {
+    if (currentSearchId) {
       console.log('[ModificationCheck] Marking search as modified', {
-        selectedSavedSearchId,
         currentSearchId
       })
       setIsSearchModified(true)
     }
-  }, [searchParams, selectedSavedSearchId, currentSearchId])
+  }, [searchParams, currentSearchId])
 
   // Set city when cities data loads and we have a pending city
   useEffect(() => {
@@ -226,8 +209,41 @@ export function SearchTab({
   }
 
   const removeJobTitle = (index: number) => {
+    console.log('removeJobTitle called with index:', index)
+    console.log('Current jobTitles:', searchParams.jobTitles)
     const newTitles = searchParams.jobTitles.filter((_, i) => i !== index)
+    console.log('New jobTitles:', newTitles)
     setSearchParams({ ...searchParams, jobTitles: newTitles })
+  }
+
+  const addTitleExclusion = () => {
+    if (tempTitleExclusionInput.trim()) {
+      setSearchParams({
+        ...searchParams,
+        titleExclusions: [...searchParams.titleExclusions, tempTitleExclusionInput.trim()]
+      })
+      setTempTitleExclusionInput('')
+    }
+  }
+
+  const removeTitleExclusion = (index: number) => {
+    const newExclusions = searchParams.titleExclusions.filter((_, i) => i !== index)
+    setSearchParams({ ...searchParams, titleExclusions: newExclusions })
+  }
+
+  const addKeywordExclusion = () => {
+    if (tempKeywordExclusionInput.trim()) {
+      setSearchParams({
+        ...searchParams,
+        keywordExclusions: [...searchParams.keywordExclusions, tempKeywordExclusionInput.trim()]
+      })
+      setTempKeywordExclusionInput('')
+    }
+  }
+
+  const removeKeywordExclusion = (index: number) => {
+    const newExclusions = searchParams.keywordExclusions.filter((_, i) => i !== index)
+    setSearchParams({ ...searchParams, keywordExclusions: newExclusions })
   }
 
   const addSkill = () => {
@@ -408,24 +424,23 @@ export function SearchTab({
 
   const handleSearch = async () => {
     console.log('[HandleSearch] Called with state:', {
-      selectedSavedSearchId,
       isSearchModified,
       currentSearchId,
-      willRunExisting: selectedSavedSearchId && !isSearchModified && currentSearchId
+      willRunExisting: !isSearchModified && currentSearchId
     })
 
     try {
       let response: SearchResponse
 
       // If we have a loaded search that hasn't been modified, just run it
-      if (selectedSavedSearchId && !isSearchModified && currentSearchId) {
+      if (!isSearchModified && currentSearchId) {
         console.log('[HandleSearch] Running existing search:', currentSearchId)
         response = await runSearchMutation.mutateAsync(currentSearchId)
       } else {
         console.log('[HandleSearch] Creating new search')
         // Otherwise create a new search
-        // Use selectedJobId if available, otherwise use jobDescriptionId prop
-        const jobIdToUse = selectedJobId !== null ? selectedJobId : jobDescriptionId
+        // Use jobDescriptionId prop
+        const jobIdToUse = jobDescriptionId
         const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle || 'Candidate Search', jobIdToUse)
         response = await createSearch.mutateAsync(searchRequest)
 
@@ -450,13 +465,13 @@ export function SearchTab({
   }
 
   const handleUpdateSearch = async () => {
-    if (!currentSearchId || !selectedSavedSearchId) {
+    if (!currentSearchId) {
       console.error('No search ID available for update')
       return
     }
 
     try {
-      const jobIdToUse = selectedJobId !== null ? selectedJobId : jobDescriptionId
+      const jobIdToUse = jobDescriptionId
       const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle, jobIdToUse)
       await updateSearchMutation.mutateAsync({
         searchId: currentSearchId,
@@ -598,17 +613,13 @@ export function SearchTab({
   const handleSendToReview = () => {
     // If we have a job description ID, candidates will be fetched in CandidateTab
     // Otherwise, generate mock candidates
-    const jobIdToUse = selectedJobId !== null ? selectedJobId : jobDescriptionId
+    const jobIdToUse = jobDescriptionId
     if (jobIdToUse) {
       console.log('[SendToReview] Job description ID:', jobIdToUse, '- candidates will be fetched in CandidateTab')
-      // Clear review candidates - they'll be fetched in CandidateTab
-      setReviewCandidates([])
+      // Candidates will be fetched in CandidateTab
     } else {
       // Generate the full number of candidates for review (same as candidateYield)
-      const fullCandidateList = generateMockCandidates(candidateYield)
-
-      // Set the review candidates to the full list
-      setReviewCandidates(fullCandidateList)
+      // Note: Review candidates are now handled by the parent component
     }
 
     // Clear staging candidates
@@ -628,180 +639,10 @@ export function SearchTab({
     setSelectedCandidate(null)
   }
 
-  const handleJobChange = (value: string) => {
-    if (value === 'clear-job-selection') {
-      setSelectedJobId(null)
-      return
-    }
-    // Parse the string value back to number
-    const numericValue = parseInt(value, 10)
-    if (!isNaN(numericValue)) {
-      setSelectedJobId(numericValue)
-    }
-  }
-
-  const handleLoadSavedSearch = (searchId: string) => {
-    if (searchId === 'clear-selection') {
-      setSelectedSavedSearchId('')
-      setSearchTitle('')
-      setCurrentSearchId(null)
-      setIsSearchModified(false)
-      // Reset form to initial state
-      setSearchParams({
-        education: '',
-        graduationYear: '',
-        geography: '',
-        radius: 25,
-        jobTitles: [],
-        skills: [],
-        exclusions: {
-          keywords: [],
-          excludeCompanies: [],
-          excludePeople: []
-        },
-        experienceLength: '',
-        titleMatch: false,
-        profilePhoto: false,
-        connections: 0,
-        numExperiences: 0,
-        graduationYearFrom: 0,
-        graduationYearTo: 0,
-        maxExperience: 5,
-        department: 'sales',
-        deptYears: 2,
-        managementLevelExclusions: '',
-        recency: 0,
-        timeInRole: 6,
-        locationCity: '',
-        locationState: '',
-        searchRadius: 25,
-        includeWorkLocation: false,
-        industryExclusions: [],
-        titleExclusions: '',
-        keywordExclusions: '',
-        companyExclusions: '',
-        maxJobDuration: 5
-      })
-      return
-    }
-
-    const savedSearch = savedSearches?.find(s => s.id.toString() === searchId)
-    if (!savedSearch) return
-
-    const mappedParams = mapSavedSearchToParams(savedSearch)
-
-    // Mark that we're loading a saved search to prevent marking as modified
-    isLoadingSavedSearch.current = true
-
-    // Set these FIRST before setting searchParams to avoid race conditions
-    setSelectedSavedSearchId(searchId)
-    setCurrentSearchId(savedSearch.id)
-    setSearchTitle(savedSearch.search_title)
-    setIsSearchModified(false)
-
-    console.log('[LoadSavedSearch] Loading search:', {
-      searchId,
-      savedSearchId: savedSearch.id,
-      isSearchModified: false,
-      hasCity: !!mappedParams.locationCity
-    })
-
-    // If there's a location city, we need to set state first, then city after cities load
-    if (mappedParams.locationCity && mappedParams.locationState) {
-      // Store the city to set it after cities load
-      setPendingLocationCity(mappedParams.locationCity)
-      // Set params without city first - this will trigger one modification check, skip it
-      skipNextModificationCheck.current++
-      setSearchParams({ ...mappedParams, locationCity: '' })
-      // Note: isLoadingSavedSearch.current will be set to false in the city effect
-    } else {
-      // No city to load, skip the next modification check for this setSearchParams call
-      skipNextModificationCheck.current++
-      setSearchParams(mappedParams)
-      // Mark loading as complete immediately if there's no pending city
-      isLoadingSavedSearch.current = false
-    }
-  }
-
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <div>
-            <CardTitle>Search Candidates</CardTitle>
-            <CardDescription>Configure your search parameters</CardDescription>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-64 min-w-64">
-              <div className="space-y-1">
-                <Select value={selectedJobId?.toString() ?? ''} onValueChange={handleJobChange}>
-                  <SelectTrigger className={`w-full ${(!selectedJobId && !jobDescriptionId) ? 'border-red-300 focus:border-red-500' : ''}`}>
-                    <SelectValue placeholder="Select job posting..." />
-                  </SelectTrigger>
-                <SelectContent>
-                  {selectedJobId !== null && (
-                    <SelectItem value="clear-job-selection">
-                      <span className="text-muted-foreground italic">Clear selection</span>
-                    </SelectItem>
-                  )}
-                  {isLoadingJobPostings ? (
-                    <SelectItem value="loading-jobs" disabled>
-                      Loading jobs...
-                    </SelectItem>
-                  ) : jobPostings && jobPostings.length > 0 ? (
-                    jobPostings.map((job) => (
-                      <SelectItem key={job.id} value={job.id.toString()}>
-                        {job.title}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="no-jobs-available" disabled>
-                      No job postings available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              <div className="h-5">
-                {(!selectedJobId && !jobDescriptionId) && (
-                  <p className="text-xs text-red-600">
-                    Please select a job posting to continue
-                  </p>
-                )}
-              </div>
-              </div>
-            </div>
-            <div className="w-64 min-w-64">
-              <Select value={selectedSavedSearchId} onValueChange={handleLoadSavedSearch}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Load saved search..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {selectedSavedSearchId && (
-                    <SelectItem value="clear-selection">
-                      <span className="text-muted-foreground italic">Clear selection</span>
-                    </SelectItem>
-                  )}
-                  {isLoadingSavedSearches ? (
-                    <SelectItem value="loading" disabled>
-                      Loading...
-                    </SelectItem>
-                  ) : savedSearches && savedSearches.length > 0 ? (
-                    savedSearches.map((search) => (
-                      <SelectItem key={search.id} value={search.id.toString()}>
-                        {search.search_title}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="no-searches" disabled>
-                      No saved searches
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-8 pt-6">
+        <CardContent className="space-y-8 pt-2">
 
           {/* Education Section */}
           <div className="border-b pb-6">
@@ -892,9 +733,9 @@ export function SearchTab({
                     <Label className="text-xs text-gray-600">Radius (miles)</Label>
                     <Input
                       type="number"
-                      value={searchParams.searchRadius || 25}
-                      onChange={(e) => setSearchParams({ ...searchParams, searchRadius: parseInt(e.target.value) || 25 })}
-                      min="1"
+                      value={searchParams.searchRadius || 0}
+                      onChange={(e) => setSearchParams({ ...searchParams, searchRadius: parseInt(e.target.value) || 0 })}
+                      min="0"
                       max="500"
                       className="h-10"
                       placeholder="25"
@@ -914,10 +755,10 @@ export function SearchTab({
             
             <div className="space-y-4">
               {/* Experience Fields in Same Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium flex items-center gap-1">
-                    How many jobs should the candidate have had?
+                    Minimum number of past positions
                   </Label>
                   <div className="flex items-center gap-3">
                     <Input
@@ -929,11 +770,11 @@ export function SearchTab({
                       className="w-20"
                       placeholder="3"
                     />
-                    <span className="text-xs text-gray-500">Minimum number of past positions</span>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Maximum total years of experience:</Label>
+                  <Label className="text-sm font-medium">Maximum years of experience
+                  </Label>
                   <div className="flex items-center gap-3">
                     <Input
                       type="number"
@@ -943,15 +784,27 @@ export function SearchTab({
                       max="30"
                       className="w-20"
                     />
-                    <span className="text-xs text-gray-500">Avoid overqualified candidates</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Minimum number of professional connections</Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="number"
+                      value={searchParams.connections}
+                      onChange={(e) => setSearchParams({ ...searchParams, connections: parseInt(e.target.value) || 0 })}
+                      min="0"
+                      max="500"
+                      className="w-20"
+                    />
                   </div>
                 </div>
               </div>
 
               {/* Second Row of Experience Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Maximum time at one job:</Label>
+                  <Label className="text-sm font-medium">Maximum years at one job</Label>
                   <div className="flex items-center gap-3">
                     <Input
                       type="number"
@@ -961,11 +814,10 @@ export function SearchTab({
                       max="20"
                       className="w-20"
                     />
-                    <span className="text-xs text-gray-500">Filters out candidates who may be less adaptable</span>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Minimum Relevant Experience:</Label>
+                  <Label className="text-sm font-medium">Minimum months of relevant experience</Label>
                   <div className="flex items-center gap-3">
                     <Input
                       type="number"
@@ -975,7 +827,20 @@ export function SearchTab({
                       max="20"
                       className="w-20"
                     />
-                    <span className="text-xs text-gray-500">Minimum years of sales experience</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Minimum time in current role</Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="number"
+                      value={searchParams.timeInRole || 6}
+                      onChange={(e) => setSearchParams({ ...searchParams, timeInRole: parseInt(e.target.value) || 6 })}
+                      min="0"
+                      max="60"
+                      placeholder="6"
+                      className="w-20"
+                    />
                   </div>
                 </div>
               </div>
@@ -990,20 +855,8 @@ export function SearchTab({
               <h3 className="text-lg font-semibold">Job Titles</h3>
             </div>
             <div className="space-y-3">
-              <div className="flex flex-wrap gap-2 mb-3">
-                {searchParams.jobTitles.map((title, index) => (
-                  <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                    {title}
-                    <X 
-                      className="h-3 w-3 cursor-pointer" 
-                      onClick={() => removeJobTitle(index)}
-                    />
-                  </Badge>
-                ))}
-              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-gray-600">Add job title</Label>
                   <div className="flex gap-2">
                     <Input
                       placeholder="Add job title..."
@@ -1020,34 +873,25 @@ export function SearchTab({
                     </Button>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-gray-600">Minimum time in current role (months)</Label>
-                  <Input
-                    type="number"
-                    value={searchParams.timeInRole || 6}
-                    onChange={(e) => setSearchParams({ ...searchParams, timeInRole: parseInt(e.target.value) || 6 })}
-                    min="0"
-                    max="60"
-                    placeholder="6"
-                  />
-                </div>
               </div>
-                  {/* Connections */}
-                  <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center gap-2">
-                  Minimum professional connections required:
-                </Label>
-                <div className="flex items-center gap-3">
-                  <Input
-                    type="number"
-                    value={searchParams.connections}
-                    onChange={(e) => setSearchParams({ ...searchParams, connections: parseInt(e.target.value) || 0 })}
-                    min="0"
-                    max="500"
-                    className="w-20"
-                  />
-                  <span className="text-xs text-gray-500">connections</span>
-                </div>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {searchParams.jobTitles.map((title, index) => (
+                  <Badge key={index} variant="secondary" className="flex items-center gap-1 pr-1">
+                    <span className="text-sm">{title}</span>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${title}`}
+                      className="inline-flex items-center justify-center rounded p-0.5 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-300"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        removeJobTitle(index)
+                      }}
+                    >
+                      <X className="h-4 w-4 text-gray-700 hover:text-red-600" />
+                    </button>
+                  </Badge>
+                ))}
               </div>
             </div>
           </div>
@@ -1060,16 +904,10 @@ export function SearchTab({
             </div>
             
             <div className="space-y-4">
-              <p className="text-gray-600 text-sm mb-4">
-                Fine-tune your search by excluding specific industries, roles, or keywords.
-              </p>
 
               {/* Industry Exclusions */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Industry Exclusions</Label>
-                <p className="text-xs text-gray-500 mb-2">
-                  Exclude candidates with recent experience in these industries:
-                </p>
                 <Select
                   value=""
                   onValueChange={(value) => {
@@ -1097,45 +935,116 @@ export function SearchTab({
                     {searchParams.industryExclusions.map((industry, index) => (
                       <Badge key={index} variant="outline" className="flex items-center gap-1 bg-black text-white border-black hover:bg-gray-800">
                         {industry}
-                        <X
-                          className="h-3 w-3 cursor-pointer"
-                          onClick={() => setSearchParams({
-                            ...searchParams,
-                            industryExclusions: searchParams.industryExclusions.filter((_, i) => i !== index)
-                          })}
-                        />
+                        <button
+                          type="button"
+                          aria-label={`Remove ${industry}`}
+                          className="inline-flex items-center justify-center rounded p-0.5 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/40"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setSearchParams({
+                              ...searchParams,
+                              industryExclusions: searchParams.industryExclusions.filter((_, i) => i !== index)
+                            })
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
                       </Badge>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Title Exclusions */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Job Title Exclusions</Label>
-                <p className="text-xs text-gray-500 mb-2">
-                  Exclude candidates with these roles (comma-separated):
-                </p>
-                <Input
-                  value={searchParams.titleExclusions}
-                  onChange={(e) => setSearchParams({ ...searchParams, titleExclusions: e.target.value })}
-                  placeholder="e.g., CEO, CFO, Manager, Director..."
-                />
+              {/* Title and Keyword Exclusions */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-600">Job Title Exclusions</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g., CEO, CFO, Manager, Director..."
+                      value={tempTitleExclusionInput}
+                      onChange={(e) => setTempTitleExclusionInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          addTitleExclusion()
+                        }
+                      }}
+                    />
+                    <Button onClick={addTitleExclusion} variant="outline" className="mt-auto">
+                      Add
+                    </Button>
+                  </div>
+                      {/* Display Title Exclusions */}
+                      {searchParams.titleExclusions.length > 0 && (
+                        <div className="space-y-2 pt-2">
+                          <div className="flex flex-wrap gap-2">
+                            {searchParams.titleExclusions.map((exclusion, index) => (
+                             <Badge key={index} variant="outline" className="flex items-center gap-1 bg-black text-white border-black hover:bg-gray-800">
+                                {exclusion}
+                                <button
+                                  type="button"
+                                  aria-label={`Remove ${exclusion}`}
+                                  className="inline-flex items-center justify-center rounded p-0.5 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/40"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    removeTitleExclusion(index)
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-600">Profile Keyword Exclusions</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g., healthcare, medical, finance, banking..."
+                      value={tempKeywordExclusionInput}
+                      onChange={(e) => setTempKeywordExclusionInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          addKeywordExclusion()
+                        }
+                      }}
+                    />
+                    <Button onClick={addKeywordExclusion} variant="outline" className="mt-auto">
+                      Add
+                    </Button>
+                  </div>
+                      {/* Display Keyword Exclusions */}
+                      {searchParams.keywordExclusions.length > 0 && (
+                        <div className="space-y-2 pt-2">
+                          <div className="flex flex-wrap gap-2">
+                            {searchParams.keywordExclusions.map((exclusion, index) => (
+                               <Badge key={index} variant="outline" className="flex items-center gap-1 bg-black text-white border-black hover:bg-gray-800">
+                                {exclusion}
+                                <button
+                                  type="button"
+                                  aria-label={`Remove ${exclusion}`}
+                                  className="inline-flex items-center justify-center rounded p-0.5 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/40"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    removeKeywordExclusion(index)
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                </div>
+                
               </div>
-
-              {/* Keyword Exclusions */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Profile Keyword Exclusions</Label>
-                <p className="text-xs text-gray-500 mb-2">
-                  Exclude candidates whose profile mentions (comma-separated):
-                </p>
-                <Input
-                  value={searchParams.keywordExclusions}
-                  onChange={(e) => setSearchParams({ ...searchParams, keywordExclusions: e.target.value })}
-                  placeholder="e.g., healthcare, medical, finance, banking..."
-                />
-              </div>
-
+              
               <div className="space-y-2">
                   <div className="flex items-center space-x-2 pt-6">
                     <Switch
@@ -1149,19 +1058,13 @@ export function SearchTab({
                     />
                     <Label className="text-sm">Exclude Current or Previous Managers & Executives</Label>
                   </div>
-                  <p className="text-xs text-gray-500">
-                    {searchParams.managementLevelExclusions 
-                      ? `Excludes: ${searchParams.managementLevelExclusions}`
-                      : 'All management levels will be included in results'
-                    }
-                  </p>
                 </div>
             </div>
           </div>
 
           {/* Search Results */}
           <div className="space-y-4">
-            {(!selectedJobId && !jobDescriptionId) ? (
+            {!jobDescriptionId ? (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Target className="h-5 w-5 text-gray-400" />
@@ -1169,9 +1072,6 @@ export function SearchTab({
                     <span className="text-2xl font-bold text-gray-400">
                       Select a job posting first
                     </span>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Choose a job posting to search for candidates
-                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -1200,7 +1100,7 @@ export function SearchTab({
                   <Button 
                     className="flex items-center gap-2"
                     onClick={handleSearch}
-                    disabled={createSearch.isPending || (!selectedJobId && !jobDescriptionId)}
+                    disabled={createSearch.isPending || !jobDescriptionId}
                   >
                     {createSearch.isPending ? (
                       <>
@@ -1266,7 +1166,7 @@ export function SearchTab({
                   <Send className="h-4 w-4" />
                   Send All {candidateYield.toLocaleString()} to Review
                 </Button>
-                {selectedSavedSearchId && isSearchModified ? (
+                {isSearchModified ? (
                   <Button
                     variant="outline"
                     className="flex items-center gap-2"
@@ -1281,7 +1181,7 @@ export function SearchTab({
                     variant="outline"
                     className="flex items-center gap-2"
                     onClick={() => setIsSaveDialogOpen(true)}
-                    disabled={!currentSearchId || !!selectedSavedSearchId}
+                    disabled={!currentSearchId}
                   >
                     <Save className="h-4 w-4" />
                     Save Search

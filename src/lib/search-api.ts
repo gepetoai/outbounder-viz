@@ -138,8 +138,8 @@ export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle
     candidate_experience_location: searchParams.includeWorkLocation,
     number_of_min_connections: searchParams.connections,
     industry_exclusions: searchParams.industryExclusions.join(','),
-    job_title_exclusions: searchParams.titleExclusions,
-    profile_keywords_exclusions: searchParams.keywordExclusions,
+    job_title_exclusions: searchParams.titleExclusions?.length > 0 ? searchParams.titleExclusions.join(',') : '',
+    profile_keywords_exclusions: searchParams.keywordExclusions?.length > 0 ? searchParams.keywordExclusions.join(',') : '',
     company_exclusions: searchParams.companyExclusions,
     search_title: searchTitle,
     fk_job_description_id: jobDescriptionId
@@ -229,9 +229,9 @@ export function mapSavedSearchToParams(savedSearch: SavedSearch): SearchParams {
     locationState: savedSearch.candidate_location_state,
     searchRadius: savedSearch.candidate_location_radius,
     includeWorkLocation: savedSearch.candidate_experience_location,
-    industryExclusions: savedSearch.industry_exclusions ? savedSearch.industry_exclusions.split(',').map(i => i.trim()) : [],
-    titleExclusions: savedSearch.job_title_exclusions,
-    keywordExclusions: savedSearch.profile_keywords_exclusions,
+    industryExclusions: savedSearch.industry_exclusions ? savedSearch.industry_exclusions.split(',') : [],
+    titleExclusions: savedSearch.job_title_exclusions ? savedSearch.job_title_exclusions.split(',') : [],
+    keywordExclusions: savedSearch.profile_keywords_exclusions ? savedSearch.profile_keywords_exclusions.split(',') : [],
     companyExclusions: savedSearch.company_exclusions,
     maxJobDuration: 5
   }
