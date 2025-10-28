@@ -92,8 +92,8 @@ export default function HomePage() {
     graduationYearFrom: 0,
     graduationYearTo: 0,
     maxExperience: 5,
-    department: '',
-    deptYears: 0,
+    department: 'sales',
+    deptYears: 2,
     managementLevelExclusions: '',
     recency: 1,
     timeInRole: 6,
@@ -223,15 +223,13 @@ export default function HomePage() {
       label: "Leads", 
       icon: Users,
       subItems: [
-        { id: "upload", label: "Upload", icon: Upload },
-        { id: "view", label: "View", icon: Eye }
+        { id: 'candidates', label: 'List', icon: Users },
+        // { id: 'sequencer', label: 'Sequencer', icon: Play },
+        // { id: 'analytics', label: 'Analytics', icon: BarChart3 }
       ]
     },
-    { id: "sequencer", label: "Playbook", icon: Play },
-    { id: "messaging", label: "Messaging", icon: MessageSquare },
-    { id: "reporting", label: "Reporting", icon: BarChart3 },
-    { id: "settings", label: "Settings", icon: Settings },
-  ];
+    { id: 'settings', label: 'Settings', icon: Settings, subItems: [] }
+  ]
 
   // Researcher tabs
   const researcherTabs = [
