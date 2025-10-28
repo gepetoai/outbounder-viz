@@ -1,5 +1,6 @@
 "use client";
 
+<<<<<<< HEAD
 import { useState, useMemo } from "react";
 import ReactFlow, {
   useNodesState,
@@ -16,6 +17,12 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
+=======
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+>>>>>>> 4bea209 (made titleExclusions and keywordExclusions as lists)
 import { 
   Users, 
   Play, 
@@ -50,6 +57,9 @@ import { ApprovedRejectedCarousel } from '@/components/recruiter/ApprovedRejecte
 import { SettingsTab } from '@/components/recruiter/SettingsTab'
 import { AuthWrapper } from '@/components/auth/auth-wrapper';
 import { UserButton } from '@clerk/nextjs';
+import { useJobPostings } from '@/hooks/useJobPostings'
+import { useSavedSearches } from '@/hooks/useSearch'
+import { mapSavedSearchToParams } from '@/lib/search-api'
 
 export default function HomePage() {
   // Main app navigation
@@ -67,8 +77,84 @@ export default function HomePage() {
   const [recruiterSubTab, setRecruiterSubTab] = useState('candidates')
   const [researcherTab, setResearcherTab] = useState('finder')
   const [currentJobDescriptionId, setCurrentJobDescriptionId] = useState<number | null>(null)
+  const [selectedSavedSearchId, setSelectedSavedSearchId] = useState<string>('')
+  const [currentSearchId, setCurrentSearchId] = useState<number | null>(null)
+  const [searchTitle, setSearchTitle] = useState('')
+  const [isSearchModified, setIsSearchModified] = useState(false)
 
   // Job postings state removed - now handled by React Query
+  
+  // Hooks for job postings and saved searches
+  const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
+  const { data: savedSearches, isLoading: isLoadingSavedSearches } = useSavedSearches()
+
+  // Handle loading saved search
+  const handleLoadSavedSearch = (searchId: string) => {
+    if (searchId === 'clear-selection') {
+      setSelectedSavedSearchId('')
+      setSearchTitle('')
+      setCurrentSearchId(null)
+      setIsSearchModified(false)
+      // Reset form to initial state
+      setSearchParams({
+        education: '',
+        graduationYear: '',
+        geography: '',
+        radius: 25,
+        jobTitles: [],
+        skills: [],
+        exclusions: {
+          keywords: [],
+          excludeCompanies: [],
+          excludePeople: []
+        },
+        experienceLength: '',
+        titleMatch: false,
+        profilePhoto: false,
+        connections: 0,
+        numExperiences: 0,
+        graduationYearFrom: 0,
+        graduationYearTo: 0,
+        maxExperience: 5,
+        department: 'sales',
+        deptYears: 2,
+        managementLevelExclusions: '',
+        recency: 0,
+        timeInRole: 6,
+        locationCity: '',
+        locationState: '',
+        searchRadius: 25,
+        includeWorkLocation: false,
+        industryExclusions: [],
+        titleExclusions: [],
+        keywordExclusions: [],
+        companyExclusions: '',
+        maxJobDuration: 5
+      })
+      return
+    }
+
+    const savedSearch = savedSearches?.find(s => s.id.toString() === searchId)
+    if (!savedSearch) return
+
+    const mappedParams = mapSavedSearchToParams(savedSearch)
+
+    // Set these FIRST before setting searchParams to avoid race conditions
+    setSelectedSavedSearchId(searchId)
+    setCurrentSearchId(savedSearch.id)
+    setSearchTitle(savedSearch.search_title)
+    setIsSearchModified(false)
+
+    console.log('[LoadSavedSearch] Loading search:', {
+      searchId,
+      savedSearchId: savedSearch.id,
+      isSearchModified: false,
+      hasCity: !!mappedParams.locationCity
+    })
+
+    // Set the search parameters
+    setSearchParams(mappedParams)
+  }
 
   // Search state
   const [searchParams, setSearchParams] = useState<SearchParams>({
@@ -102,8 +188,8 @@ export default function HomePage() {
     searchRadius: 25,
     includeWorkLocation: false,
     industryExclusions: [],
-    titleExclusions: '',
-    keywordExclusions: '',
+    titleExclusions: [],
+    keywordExclusions: [],
     companyExclusions: '',
     maxJobDuration: 5
   })
@@ -1255,14 +1341,14 @@ export default function HomePage() {
             setCandidateYield={setCandidateYield}
             stagingCandidates={stagingCandidates}
             setStagingCandidates={setStagingCandidates}
-            approvedCandidates={approvedCandidates}
-            setApprovedCandidates={setApprovedCandidates}
-            rejectedCandidates={rejectedCandidates}
-            setRejectedCandidates={setRejectedCandidates}
-            reviewCandidates={reviewCandidates}
-            setReviewCandidates={setReviewCandidates}
             onGoToCandidates={() => setRecruiterTab('candidates')}
             jobDescriptionId={currentJobDescriptionId}
+            currentSearchId={currentSearchId}
+            setCurrentSearchId={setCurrentSearchId}
+            searchTitle={searchTitle}
+            setSearchTitle={setSearchTitle}
+            isSearchModified={isSearchModified}
+            setIsSearchModified={setIsSearchModified}
           />
         )
       case 'candidates':
@@ -1519,6 +1605,7 @@ export default function HomePage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Content Area */}
         <main className="flex-1 overflow-auto p-6">
+<<<<<<< HEAD
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-foreground">
               {(activeApp === "outbounder" || activeApp === "inbounder")
@@ -1532,6 +1619,104 @@ export default function HomePage() {
               <p className="text-muted-foreground mt-2 text-lg">
                 {applications.find(app => app.id === activeApp)?.description}
               </p>
+=======
+          <div className="mb-5 flex items-start justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-foreground">
+                {(activeApp === 'outbounder' || activeApp === 'inbounder')
+                  ? tabs.find(tab => tab.id === activeTab)?.label
+                  : activeApp === 'recruiter'
+                  ? recruiterTabs.find(tab => tab.id === recruiterTab)?.label
+                  : activeApp === 'researcher'
+                  ? researcherTabs.find(tab => tab.id === researcherTab)?.label
+                  : applications.find(app => app.id === activeApp)?.label
+                }
+              </h1>
+              {activeApp !== 'outbounder' && activeApp !== 'inbounder' && activeApp !== 'recruiter' && activeApp !== 'researcher' && (
+                <p className="text-muted-foreground mt-2 text-lg">
+                  {applications.find(app => app.id === activeApp)?.description}
+                </p>
+              )}
+            </div>
+            
+            {/* Job Posting and Saved Search Selects - Only show for recruiter search tab */}
+            {activeApp === 'recruiter' && recruiterTab === 'search' && (
+              <div className="flex items-start gap-3">
+                <div className="w-64 min-w-64">
+                  <div className="space-y-1">
+                    <Select value={currentJobDescriptionId?.toString() ?? ''} onValueChange={(value) => {
+                      if (value === 'clear-job-selection') {
+                        setCurrentJobDescriptionId(null)
+                      } else {
+                        setCurrentJobDescriptionId(parseInt(value))
+                      }
+                    }}>
+                      <SelectTrigger className={`w-full ${!currentJobDescriptionId ? 'border-red-300 focus:border-red-500' : ''}`}>
+                        <SelectValue placeholder="Select job posting..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currentJobDescriptionId && (
+                          <SelectItem value="clear-job-selection">
+                            <span className="text-muted-foreground italic">Clear selection</span>
+                          </SelectItem>
+                        )}
+                        {isLoadingJobPostings ? (
+                          <SelectItem value="loading-jobs" disabled>
+                            Loading jobs...
+                          </SelectItem>
+                        ) : jobPostings && jobPostings.length > 0 ? (
+                          jobPostings.map((job) => (
+                            <SelectItem key={job.id} value={job.id.toString()}>
+                              {job.title}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no-jobs-available" disabled>
+                            No job postings available
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <div className="h-5">
+                      {!currentJobDescriptionId && (
+                        <p className="text-xs text-red-600">
+                          Please select a job posting to continue
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="w-64 min-w-64">
+                  <Select value={selectedSavedSearchId} onValueChange={handleLoadSavedSearch}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Load saved search..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedSavedSearchId && (
+                        <SelectItem value="clear-selection">
+                          <span className="text-muted-foreground italic">Clear selection</span>
+                        </SelectItem>
+                      )}
+                      {isLoadingSavedSearches ? (
+                        <SelectItem value="loading" disabled>
+                          Loading...
+                        </SelectItem>
+                      ) : savedSearches && savedSearches.length > 0 ? (
+                        savedSearches.map((search) => (
+                          <SelectItem key={search.id} value={search.id.toString()}>
+                            {search.search_title}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-searches" disabled>
+                          No saved searches
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+>>>>>>> 4bea209 (made titleExclusions and keywordExclusions as lists)
             )}
           </div>
           {renderAppContent()}
