@@ -59,7 +59,7 @@ export default function HomePage() {
   
   // Hooks for job postings and saved searches
   const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
-  const { data: savedSearches, isLoading: isLoadingSavedSearches } = useSavedSearches()
+  const { data: savedSearches, isLoading: isLoadingSavedSearches } = useSavedSearches(currentJobDescriptionId || 0)
 
   // Handle loading saved search
   const handleLoadSavedSearch = (searchId: string) => {
