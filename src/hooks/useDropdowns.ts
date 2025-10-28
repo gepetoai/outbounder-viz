@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { fetchJson } from '@/lib/api-client'
 
-const API_BASE_URL = 'http://localhost:8096/api/v1' // Using your port 8096
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
 export interface DepartmentsResponse {
   departments: string[]
