@@ -27,6 +27,8 @@ import { SequencerTab } from '@/components/recruiter/SequencerTab'
 import { AnalyticsTab } from '@/components/recruiter/AnalyticsTab'
 import { ApprovedRejectedCarousel } from '@/components/recruiter/ApprovedRejectedCarousel'
 import { SettingsTab } from '@/components/recruiter/SettingsTab'
+import { AuthWrapper } from '@/components/auth/auth-wrapper';
+import { UserButton } from '@clerk/nextjs';
 
 export default function HomePage() {
   // Main app navigation
@@ -323,6 +325,7 @@ export default function HomePage() {
   }
 
   return (
+    <AuthWrapper>
     <div className="flex h-screen bg-background">
       {/* Main App Sidebar */}
       <div className="w-12 bg-card border-r border-border flex flex-col">
@@ -537,6 +540,18 @@ export default function HomePage() {
               )
             })}
           </nav>
+
+          {/* User Button */}
+          <div className="p-2 border-t border-border">
+            <UserButton
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  avatarBox: "w-10 h-10"
+                }
+              }}
+            />
+          </div>
         </div>
       )}
 
@@ -566,5 +581,6 @@ export default function HomePage() {
         </main>
       </div>
     </div>
+    </AuthWrapper>
   )
 }

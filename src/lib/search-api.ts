@@ -1,4 +1,5 @@
 import { SearchParams } from '@/components/recruiter/SearchTab'
+import { fetchWithAuth, fetchJson } from './api-client'
 
 export interface SearchRequest {
   number_of_jobs: number
@@ -148,27 +149,15 @@ export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle
 const API_BASE_URL = 'http://localhost:8096/api/v1'
 
 export async function createSearch(data: SearchRequest): Promise<SearchResponse> {
-  const response = await fetch(`${API_BASE_URL}/job-description-searches/form-builder/create/`, {
+  return fetchJson<SearchResponse>(`${API_BASE_URL}/job-description-searches/form-builder/create/`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify(data)
   })
-
-  if (!response.ok) {
-    throw new Error(`Failed to create search: ${response.status} ${response.statusText}`)
-  }
-
-  return response.json()
 }
 
 export async function updateSearchName(searchId: number, searchTitle: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/job-description-searches/${searchId}/name`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-searches/${searchId}/name`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify({ search_title: searchTitle })
   })
 
@@ -178,49 +167,22 @@ export async function updateSearchName(searchId: number, searchTitle: string): P
 }
 
 export async function updateSearch(searchId: number, data: SearchRequest): Promise<SearchResponse> {
-  const response = await fetch(`${API_BASE_URL}/job-description-searches/form-builder/update/${searchId}`, {
+  return fetchJson<SearchResponse>(`${API_BASE_URL}/job-description-searches/form-builder/update/${searchId}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify(data)
   })
-
-  if (!response.ok) {
-    throw new Error(`Failed to update search: ${response.status} ${response.statusText}`)
-  }
-
-  return response.json()
 }
 
 export async function runSearch(searchId: number): Promise<SearchResponse> {
-  const response = await fetch(`${API_BASE_URL}/job-description-searches/${searchId}/run-search`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    }
+  return fetchJson<SearchResponse>(`${API_BASE_URL}/job-description-searches/${searchId}/run-search`, {
+    method: 'POST'
   })
-
-  if (!response.ok) {
-    throw new Error(`Failed to run search: ${response.status} ${response.statusText}`)
-  }
-
-  return response.json()
 }
 
 export async function getSavedSearches(): Promise<SavedSearch[]> {
-  const response = await fetch(`${API_BASE_URL}/job-description-searches/`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    }
+  return fetchJson<SavedSearch[]>(`${API_BASE_URL}/job-description-searches/`, {
+    method: 'GET'
   })
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch saved searches: ${response.status} ${response.statusText}`)
-  }
-
-  return response.json()
 }
 
 export function mapSavedSearchToParams(savedSearch: SavedSearch): SearchParams {
@@ -276,31 +238,13 @@ export function mapSavedSearchToParams(savedSearch: SavedSearch): SearchParams {
 }
 
 export async function enrichCandidates(searchId: number, limit: number): Promise<EnrichedCandidatesApiResponse> {
-  const response = await fetch(`${API_BASE_URL}/candidate-generation/job-description-searches/${searchId}/limit/${limit}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    }
+  return fetchJson<EnrichedCandidatesApiResponse>(`${API_BASE_URL}/candidate-generation/job-description-searches/${searchId}/limit/${limit}`, {
+    method: 'GET'
   })
-
-  if (!response.ok) {
-    throw new Error(`Failed to enrich candidates: ${response.status} ${response.statusText}`)
-  }
-
-  return response.json()
 }
 
 export async function getCandidatesByJobDescription(jobDescriptionId: number): Promise<CandidatesByJobDescriptionResponse> {
-  const response = await fetch(`${API_BASE_URL}/candidate-generation/job-description/${jobDescriptionId}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    }
+  return fetchJson<CandidatesByJobDescriptionResponse>(`${API_BASE_URL}/candidate-generation/job-description/${jobDescriptionId}`, {
+    method: 'GET'
   })
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch candidates: ${response.status} ${response.statusText}`)
-  }
-
-  return response.json()
 }
