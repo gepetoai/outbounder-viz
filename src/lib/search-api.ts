@@ -23,6 +23,7 @@ export interface SearchRequest {
   profile_keywords_exclusions: string
   company_exclusions: string
   search_title: string
+  maximum_years_of_experience_per_role: number
   fk_job_description_id?: number | null
 }
 
@@ -56,6 +57,7 @@ export interface SavedSearch {
   job_title_exclusions: string
   profile_keywords_exclusions: string
   company_exclusions: string
+  maximum_years_of_experience_per_role: number
   total_addressable_market: number
   fk_job_description_id: number | null
   created_at: string
@@ -142,6 +144,7 @@ export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle
     profile_keywords_exclusions: searchParams.keywordExclusions?.length > 0 ? searchParams.keywordExclusions.join(',') : '',
     company_exclusions: searchParams.companyExclusions,
     search_title: searchTitle,
+    maximum_years_of_experience_per_role: searchParams.maxJobDuration,
     fk_job_description_id: jobDescriptionId
   }
 }
@@ -233,7 +236,7 @@ export function mapSavedSearchToParams(savedSearch: SavedSearch): SearchParams {
     titleExclusions: savedSearch.job_title_exclusions ? savedSearch.job_title_exclusions.split(',') : [],
     keywordExclusions: savedSearch.profile_keywords_exclusions ? savedSearch.profile_keywords_exclusions.split(',') : [],
     companyExclusions: savedSearch.company_exclusions,
-    maxJobDuration: 5
+    maxJobDuration: savedSearch.maximum_years_of_experience_per_role
   }
 }
 
