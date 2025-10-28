@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createSearch, updateSearchName, updateSearch, runSearch, getSavedSearches, enrichCandidates, getCandidatesByJobDescription, SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse, CandidatesByJobDescriptionResponse } from '@/lib/search-api'
+import { createSearch, updateSearchName, updateSearch, runSearch, getSavedSearches, enrichCandidates, getCandidatesByJobDescription, getCandidatesForReview, SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse, CandidatesByJobDescriptionResponse, EnrichedCandidateResponse } from '@/lib/search-api'
 
 export function useCreateSearch() {
   const queryClient = useQueryClient()
@@ -89,6 +89,20 @@ export function useCandidatesByJobDescription(jobDescriptionId: number | null | 
         throw new Error('Job description ID is required')
       }
       return getCandidatesByJobDescription(jobDescriptionId)
+    },
+    enabled: !!jobDescriptionId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+}
+
+export function useCandidatesForReview(jobDescriptionId: number | null | undefined) {
+  return useQuery<EnrichedCandidateResponse[], Error>({
+    queryKey: ['candidates', 'review', jobDescriptionId],
+    queryFn: () => {
+      if (!jobDescriptionId) {
+        throw new Error('Job description ID is required')
+      }
+      return getCandidatesForReview(jobDescriptionId)
     },
     enabled: !!jobDescriptionId,
     staleTime: 1000 * 60 * 5, // 5 minutes

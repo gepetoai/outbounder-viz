@@ -38,16 +38,6 @@ async function fetchJobPostings(): Promise<JobPosting[]> {
   })
 }
 
-async function deleteJobPosting(id: number): Promise<void> {
-  const response = await fetchWithAuth(`${API_BASE_URL}/job-description/${id}`, {
-    method: 'DELETE',
-  })
-
-  if (!response.ok) {
-    throw new Error(`Failed to delete job posting: ${response.statusText}`)
-  }
-}
-
 // React Query hooks
 export function useJobPostings() {
   return useQuery({
