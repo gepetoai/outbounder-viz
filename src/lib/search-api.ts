@@ -288,6 +288,7 @@ export interface ShortlistedCandidate {
   fk_candidate_id: number
   created_at: string
   updated_at: string
+  fk_candidate: EnrichedCandidateResponse
 }
 
 export interface RejectedCandidate {
@@ -296,6 +297,7 @@ export interface RejectedCandidate {
   fk_candidate_id: number
   created_at: string
   updated_at: string
+  fk_candidate: EnrichedCandidateResponse
 }
 
 export async function getShortlistedCandidates(jobDescriptionId: number): Promise<ShortlistedCandidate[]> {
