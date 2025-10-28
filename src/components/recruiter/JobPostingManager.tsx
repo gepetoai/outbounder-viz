@@ -9,7 +9,7 @@ import { Plus, Building2, Search, Loader2 } from 'lucide-react'
 import { useJobPostings, useCreateJobPosting } from '@/hooks/useJobPostings'
 
 interface JobPostingManagerProps {
-  onSearchClick: (jobId: string) => void
+  onSearchClick: (jobId: number) => void
 }
 
 export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
