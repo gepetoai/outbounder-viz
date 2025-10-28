@@ -116,7 +116,7 @@ export function ApprovedRejectedCarousel({
           <div className="text-gray-500">
             <X className="h-12 w-12 mx-auto mb-4" />
             <h3 className="text-lg font-semibold">No {activeFilter} candidates</h3>
-            <p className="text-sm">You haven't {activeFilter} any candidates yet.</p>
+            <p className="text-sm">You haven&apos;t {activeFilter} any candidates yet.</p>
           </div>
         </div>
       </div>

@@ -189,8 +189,8 @@ export default function HomePage() {
     { id: 'lists', label: 'Lists', icon: Users, subItems: [] }
   ]
 
-  const handleSearchClick = (jobId: string) => {
-    setCurrentJobDescriptionId(parseInt(jobId))
+  const handleSearchClick = (jobId: number) => {
+    setCurrentJobDescriptionId(jobId)
     setRecruiterTab('search')
   }
 

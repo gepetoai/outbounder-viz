@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchJson, fetchWithAuth } from '@/lib/api-client'
+import { fetchJson } from '@/lib/api-client'
 
 // Types
 export interface JobPosting {

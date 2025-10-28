@@ -19,16 +19,13 @@ import {
 export interface SequencerStep {
   id: string
   label: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   icon: any
   type: 'view-profile' | 'like-post' | 'connection-request' | 'initial-message' | 'respond' | 'follow-up'
 }
 
-export interface SequencerTabProps {
-  // Add any props you might need in the future
-}
 
-
-export function SequencerTab({}: SequencerTabProps) {
+export function SequencerTab() {
   const [sequence, setSequence] = useState<SequencerStep[]>([
     { id: 'view-profile', label: 'View Profile', icon: Eye, type: 'view-profile' },
     { id: 'like-post', label: 'Like Post', icon: Heart, type: 'like-post' },

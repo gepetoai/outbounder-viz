@@ -300,6 +300,7 @@ export default function Home() {
   const [finderCriteria, setFinderCriteria] = useState("");
   const [sampleSize, setSampleSize] = useState(5);
   const [totalLeadPool, setTotalLeadPool] = useState(247);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [foundLeads, setFoundLeads] = useState<any[]>([
     { id: 1, name: "Sarah Johnson", email: "sarah.j@techcorp.com", company: "TechCorp Industries", title: "VP of Sales", location: "San Francisco, CA", phone: "+1 555-234-5678", linkedin: "linkedin.com/in/sarahjohnson", selected: false },
     { id: 2, name: "Michael Chen", email: "mchen@innovate.io", company: "Innovate Solutions", title: "Sales Director", location: "Austin, TX", phone: "+1 555-345-6789", linkedin: "linkedin.com/in/michaelchen", selected: false },
@@ -307,6 +308,7 @@ export default function Home() {
     { id: 4, name: "David Kim", email: "dkim@startupxyz.com", company: "StartupXYZ", title: "Head of Growth", location: "Seattle, WA", phone: "+1 555-567-8901", linkedin: "linkedin.com/in/davidkim", selected: false },
     { id: 5, name: "Jessica Williams", email: "jwilliams@enterprise.com", company: "Enterprise Corp", title: "Sales Manager", location: "Chicago, IL", phone: "+1 555-678-9012", linkedin: "linkedin.com/in/jessicawilliams", selected: false },
   ]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [savedLists, setSavedLists] = useState<any[]>([
     { id: 1, name: "Florida Healthcare Leads", count: 45, created: "2024-01-10", type: "individual", query: "All leads in Florida working in the healthcare industry" },
     { id: 2, name: "Tech Companies West Coast", count: 128, created: "2024-01-08", type: "company", query: "B2B SaaS companies on the West Coast with 50-200 employees" },
@@ -328,10 +330,12 @@ export default function Home() {
   const [newColumnType, setNewColumnType] = useState("text");
   const [columnConstraints, setColumnConstraints] = useState("");
   const [selectedDataSources, setSelectedDataSources] = useState<string[]>(["google"]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [enrichedColumns, setEnrichedColumns] = useState<any[]>([
     { id: 1, name: "Has Free Trial", query: "Does this company offer a free trial?", type: "binary", constraint: "All rows" },
     { id: 2, name: "Recent Funding", query: "What funding has this company received in the last 6 months?", type: "text", constraint: "Only if LinkedIn present" },
   ]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [enrichedData, setEnrichedData] = useState<{[key: string]: any}>({
     "1-1": { value: "Yes", confidence: 95, source: "Company Website", method: "Googled company name + 'free trial'", sourceUrl: "https://techcorp.com/pricing", reasoning: "Found 'Start Free Trial' button on homepage and pricing page indicates 14-day trial period with no credit card required." },
     "1-2": { value: "No", confidence: 90, source: "Google Search", method: "Searched company website and pricing pages", sourceUrl: "https://innovate.io/pricing", reasoning: "No free trial mentioned on website. Only paid plans available starting at $99/mo." },
@@ -339,6 +343,7 @@ export default function Home() {
     "2-1": { value: "Series B - $50M", confidence: 92, source: "Crunchbase", method: "Googled company funding, found Crunchbase", sourceUrl: "https://crunchbase.com/organization/techcorp", reasoning: "Led by Sequoia Capital in March 2024. Previous funding: Series A $15M in 2022." },
     "2-2": { value: "Seed Round - $3M", confidence: 88, source: "TechCrunch", method: "Searched recent funding news, found TechCrunch article", sourceUrl: "https://techcrunch.com/2024/02/innovate-funding", reasoning: "Announced in February 2024. Led by Y Combinator with participation from angels." },
   });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [reasoningPopup, setReasoningPopup] = useState<{open: boolean, data: any}>({ open: false, data: null });
   const [enricherShowCount, setEnricherShowCount] = useState(3);
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
@@ -2522,7 +2527,7 @@ export default function Home() {
                       <div className="flex-1">
                         <h4 className="font-medium mb-2">Import All CRM Leads</h4>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Pull all leads from your connected CRM ({selectedCrm === "salesforce" ? "Salesforce" : selectedCrm === "hubspot" ? "HubSpot" : selectedCrm === "pipedrive" ? "Pipedrive" : "Zoho CRM"}) into a new list called "All Leads" for easy access and enrichment.
+                          Pull all leads from your connected CRM ({selectedCrm === "salesforce" ? "Salesforce" : selectedCrm === "hubspot" ? "HubSpot" : selectedCrm === "pipedrive" ? "Pipedrive" : "Zoho CRM"}) into a new list called &quot;All Leads&quot; for easy access and enrichment.
                         </p>
                         <Alert className="mb-4">
                           <AlertCircle className="h-4 w-4" />
