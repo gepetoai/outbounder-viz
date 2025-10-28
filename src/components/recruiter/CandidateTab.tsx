@@ -148,9 +148,9 @@ export function CandidateTab({
   const getCurrentCandidates = () => {
     switch (viewMode) {
       case 'approved':
-        return [] // We'll need to fetch actual candidate data for approved/rejected
+        return (shortlistedCandidates || []).map(item => mapEnrichedCandidateToCandidate(item.fk_candidate))
       case 'rejected':
-        return [] // We'll need to fetch actual candidate data for approved/rejected
+        return (rejectedCandidatesFromAPI || []).map(item => mapEnrichedCandidateToCandidate(item.fk_candidate))
       case 'review':
       default:
         return (enrichedCandidates || []).map(mapEnrichedCandidateToCandidate)
@@ -422,7 +422,9 @@ export function CandidateTab({
                             {approveCandidateMutation.isPending ? 'Approving...' : 'Approve'}
                           </Button>
                         </>
-                      ) : null}
+                      ) : (
+                        null
+                      )}
                     </div>
                   </div>
                 </CardContent>
