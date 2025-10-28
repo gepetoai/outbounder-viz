@@ -862,7 +862,7 @@ export function SearchTab({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Minimum months of relevant experience</Label>
+                  <Label className="text-sm font-medium">Minimum years of relevant experience</Label>
                   <div className="flex items-center gap-3">
                     <Input
                       type="number"
@@ -875,7 +875,7 @@ export function SearchTab({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Minimum time in current role</Label>
+                  <Label className="text-sm font-medium">Minimum months in current role</Label>
                   <div className="flex items-center gap-3">
                     <Input
                       type="number"
