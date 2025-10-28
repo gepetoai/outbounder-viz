@@ -278,6 +278,7 @@ export function SearchTab({
         
         if (invalid.length > 0) {
           setInputError(`Invalid LinkedIn URLs found: ${invalid.join(', ')}`)
+          console.log(inputError)
           setTimeout(() => setInputError(''), 5000)
         } else {
           setInputError('')
