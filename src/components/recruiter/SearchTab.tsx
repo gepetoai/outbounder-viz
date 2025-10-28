@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Modal } from '@/components/ui/modal'
 import { User, Briefcase, MapPin, GraduationCap, X, Search, Target, Code, Upload, RefreshCw, Send, Save, Sparkles } from 'lucide-react'
 import { useDepartments, useStates, useCities, useIndustries } from '@/hooks/useDropdowns'
-import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useRunSearch, useSavedSearches, useEnrichCandidates } from '@/hooks/useSearch'
+import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useRunSearch, useSavedSearches, useEnrichCandidates, useCandidatesByJobDescription } from '@/hooks/useSearch'
 import { mapSearchParamsToRequest, mapSavedSearchToParams, SearchResponse, EnrichedCandidateResponse, EnrichedCandidatesApiResponse } from '@/lib/search-api'
+import { useJobPostings } from '@/hooks/useJobPostings'
 
 export interface SearchParams {
   // Original fields
@@ -85,6 +86,7 @@ interface SearchTabProps {
   reviewCandidates: Candidate[]
   setReviewCandidates: (candidates: Candidate[]) => void
   onGoToCandidates: () => void
+  jobDescriptionId?: number | null
 }
 
 export function SearchTab({
@@ -100,7 +102,8 @@ export function SearchTab({
   setRejectedCandidates,
   reviewCandidates,
   setReviewCandidates,
-  onGoToCandidates
+  onGoToCandidates,
+  jobDescriptionId
 }: SearchTabProps) {
   const [tempJobTitleInput, setTempJobTitleInput] = useState('')
   const [tempSkillInput, setTempSkillInput] = useState('')
@@ -115,12 +118,14 @@ export function SearchTab({
   const [isSearchModified, setIsSearchModified] = useState(false)
   const [pendingLocationCity, setPendingLocationCity] = useState<string>('')
   const [enrichLimit, setEnrichLimit] = useState<number>(10)
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(null)
 
   // Dropdown data hooks
   const { data: departmentsData, isLoading: isLoadingDepartments } = useDepartments()
   const { data: statesData, isLoading: isLoadingStates } = useStates()
   const { data: citiesData, isLoading: isLoadingCities } = useCities(searchParams.locationState, statesData)
   const { data: industriesData, isLoading: isLoadingIndustries } = useIndustries()
+  const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
 
   // Search functionality
   const createSearch = useCreateSearch()
@@ -134,6 +139,17 @@ export function SearchTab({
   const isInitialLoad = useRef(true)
   const isLoadingSavedSearch = useRef(false)
   const skipNextModificationCheck = useRef(0) // Count of checks to skip
+
+  // Sync selectedJobId with jobDescriptionId prop when it changes
+  useEffect(() => {
+    console.log('[JobDropdown] jobDescriptionId prop changed:', jobDescriptionId)
+    console.log('[JobDropdown] Available job postings:', jobPostings?.map(j => ({ id: j.id, title: j.title })))
+    if (jobDescriptionId) {
+      console.log('[JobDropdown] Setting selectedJobId to:', jobDescriptionId)
+      console.log('[JobDropdown] Does job exist in list?', jobPostings?.some(j => j.id === jobDescriptionId))
+      setSelectedJobId(jobDescriptionId)
+    }
+  }, [jobDescriptionId, jobPostings])
 
   // Track when search params change after loading a saved search
   useEffect(() => {
@@ -408,7 +424,9 @@ export function SearchTab({
       } else {
         console.log('[HandleSearch] Creating new search')
         // Otherwise create a new search
-        const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle || 'Candidate Search')
+        // Use selectedJobId if available, otherwise use jobDescriptionId prop
+        const jobIdToUse = selectedJobId !== null ? selectedJobId : jobDescriptionId
+        const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle || 'Candidate Search', jobIdToUse)
         response = await createSearch.mutateAsync(searchRequest)
 
         // Store the search ID for later use
@@ -438,7 +456,8 @@ export function SearchTab({
     }
 
     try {
-      const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle)
+      const jobIdToUse = selectedJobId !== null ? selectedJobId : jobDescriptionId
+      const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle, jobIdToUse)
       await updateSearchMutation.mutateAsync({
         searchId: currentSearchId,
         data: searchRequest
@@ -577,15 +596,24 @@ export function SearchTab({
   }
 
   const handleSendToReview = () => {
-    // Generate the full number of candidates for review (same as candidateYield)
-    const fullCandidateList = generateMockCandidates(candidateYield)
-    
-    // Set the review candidates to the full list
-    setReviewCandidates(fullCandidateList)
-    
+    // If we have a job description ID, candidates will be fetched in CandidateTab
+    // Otherwise, generate mock candidates
+    const jobIdToUse = selectedJobId !== null ? selectedJobId : jobDescriptionId
+    if (jobIdToUse) {
+      console.log('[SendToReview] Job description ID:', jobIdToUse, '- candidates will be fetched in CandidateTab')
+      // Clear review candidates - they'll be fetched in CandidateTab
+      setReviewCandidates([])
+    } else {
+      // Generate the full number of candidates for review (same as candidateYield)
+      const fullCandidateList = generateMockCandidates(candidateYield)
+
+      // Set the review candidates to the full list
+      setReviewCandidates(fullCandidateList)
+    }
+
     // Clear staging candidates
     setStagingCandidates([])
-    
+
     // Redirect to candidates tab
     onGoToCandidates()
   }
@@ -598,6 +626,18 @@ export function SearchTab({
   const handleClosePanel = () => {
     setIsPanelOpen(false)
     setSelectedCandidate(null)
+  }
+
+  const handleJobChange = (value: string) => {
+    if (value === 'clear-job-selection') {
+      setSelectedJobId(null)
+      return
+    }
+    // Parse the string value back to number
+    const numericValue = parseInt(value, 10)
+    if (!isNaN(numericValue)) {
+      setSelectedJobId(numericValue)
+    }
   }
 
   const handleLoadSavedSearch = (searchId: string) => {
@@ -691,37 +731,69 @@ export function SearchTab({
             <CardTitle>Search Candidates</CardTitle>
             <CardDescription>Configure your search parameters</CardDescription>
           </div>
-          <div className="w-64 min-w-64">
-            <Select value={selectedSavedSearchId} onValueChange={handleLoadSavedSearch}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Load saved search..." />
-              </SelectTrigger>
-              <SelectContent>
-                {selectedSavedSearchId && (
-                  <SelectItem value="clear-selection">
-                    <span className="text-muted-foreground italic">Clear selection</span>
-                  </SelectItem>
-                )}
-                {isLoadingSavedSearches ? (
-                  <SelectItem value="loading" disabled>
-                    Loading...
-                  </SelectItem>
-                ) : savedSearches && savedSearches.length > 0 ? (
-                  savedSearches.map((search) => (
-                    <SelectItem key={search.id} value={search.id.toString()}>
-                      {search.search_title}
+          <div className="flex items-center gap-3">
+            <div className="w-64 min-w-64">
+              <Select value={selectedJobId?.toString() ?? ''} onValueChange={handleJobChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select job posting..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {selectedJobId !== null && (
+                    <SelectItem value="clear-job-selection">
+                      <span className="text-muted-foreground italic">Clear selection</span>
                     </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="no-searches" disabled>
-                    No saved searches
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+                  )}
+                  {isLoadingJobPostings ? (
+                    <SelectItem value="loading-jobs" disabled>
+                      Loading jobs...
+                    </SelectItem>
+                  ) : jobPostings && jobPostings.length > 0 ? (
+                    jobPostings.map((job) => (
+                      <SelectItem key={job.id} value={job.id.toString()}>
+                        {job.title}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-jobs-available" disabled>
+                      No job postings available
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-64 min-w-64">
+              <Select value={selectedSavedSearchId} onValueChange={handleLoadSavedSearch}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Load saved search..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {selectedSavedSearchId && (
+                    <SelectItem value="clear-selection">
+                      <span className="text-muted-foreground italic">Clear selection</span>
+                    </SelectItem>
+                  )}
+                  {isLoadingSavedSearches ? (
+                    <SelectItem value="loading" disabled>
+                      Loading...
+                    </SelectItem>
+                  ) : savedSearches && savedSearches.length > 0 ? (
+                    savedSearches.map((search) => (
+                      <SelectItem key={search.id} value={search.id.toString()}>
+                        {search.search_title}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-searches" disabled>
+                      No saved searches
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-8 pt-6">
+
           {/* Education Section */}
           <div className="border-b pb-6">
             <div className="flex items-center gap-2 mb-4">
