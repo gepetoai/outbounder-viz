@@ -261,7 +261,7 @@ export interface ApproveRejectCandidateRequest {
 }
 
 export async function approveCandidate(data: ApproveRejectCandidateRequest): Promise<void> {
-  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-shortlisted-candidate`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-shortlisted-candidate/`, {
     method: 'POST',
     body: JSON.stringify(data)
   })
@@ -272,7 +272,7 @@ export async function approveCandidate(data: ApproveRejectCandidateRequest): Pro
 }
 
 export async function rejectCandidate(data: ApproveRejectCandidateRequest): Promise<void> {
-  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-rejected-candidate`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-rejected-candidate/`, {
     method: 'POST',
     body: JSON.stringify(data)
   })
