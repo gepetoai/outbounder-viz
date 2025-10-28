@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { X, Check, ThumbsUp, ThumbsDown, ExternalLink, MapPin, GraduationCap, Briefcase } from 'lucide-react'
+import { X, Check, ThumbsUp, ThumbsDown, ExternalLink, MapPin, GraduationCap, Briefcase, Download } from 'lucide-react'
 import Image from 'next/image'
 import { useCandidatesForReview } from '@/hooks/useSearch'
 import { useApproveCandidate, useRejectCandidate, useShortlistedCandidates, useRejectedCandidates } from '@/hooks/useCandidates'
@@ -84,6 +84,56 @@ export function CandidateTab({
     } catch (error) {
       console.error('Failed to reject candidate:', error)
     }
+  }
+
+  const downloadApprovedCandidatesCSV = () => {
+    if (!shortlistedCandidates || shortlistedCandidates.length === 0) {
+      console.log('No approved candidates to download')
+      return
+    }
+
+    // Create CSV content
+    const headers = ['First Name', 'Last Name', 'LinkedIn Profile URL']
+    const csvContent = [
+      headers.join(','),
+      ...shortlistedCandidates.map(candidate => {
+        const firstName = candidate.fk_candidate.first_name || ''
+        const lastName = candidate.fk_candidate.last_name || ''
+        const linkedinUrl = candidate.fk_candidate.raw_data.websites_linkedin
+          || (candidate.fk_candidate.linkedin_canonical_slug ? `https://linkedin.com/in/${candidate.fk_candidate.linkedin_canonical_slug}` : '')
+          || (candidate.fk_candidate.linkedin_shorthand_slug ? `https://linkedin.com/in/${candidate.fk_candidate.linkedin_shorthand_slug}` : '')
+        
+        // Escape commas and quotes in CSV
+        const escapeCSV = (str: string) => {
+          if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return `"${str.replace(/"/g, '""')}"`
+          }
+          return str
+        }
+        
+        return [
+          escapeCSV(firstName),
+          escapeCSV(lastName),
+          escapeCSV(linkedinUrl)
+        ].join(',')
+      })
+    ].join('\n')
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    
+    // Get job title for filename
+    const jobTitle = jobPostings?.find(job => job.id.toString() === selectedJobId)?.title || 'candidates'
+    const filename = `approved_${jobTitle.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+    
+    link.setAttribute('download', filename)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   const mapEnrichedCandidateToCandidate = (enriched: EnrichedCandidateResponse): Candidate => {
@@ -309,8 +359,21 @@ export function CandidateTab({
       {selectedJobId && (
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">{getViewTitle()}</h2>
-          <div className="text-sm text-gray-600">
-            {getCurrentCandidates().length} candidate{getCurrentCandidates().length !== 1 ? 's' : ''}
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-gray-600">
+              {getCurrentCandidates().length} candidate{getCurrentCandidates().length !== 1 ? 's' : ''}
+            </div>
+            {viewMode === 'approved' && shortlistedCandidates && shortlistedCandidates.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={downloadApprovedCandidatesCSV}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download CSV
+              </Button>
+            )}
           </div>
         </div>
       )}
