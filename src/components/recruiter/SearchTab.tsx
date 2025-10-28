@@ -11,7 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Modal } from '@/components/ui/modal'
 import { User, Briefcase, MapPin, GraduationCap, X, Search, Target, Code, Upload, RefreshCw, Send, Save, Sparkles } from 'lucide-react'
-import { useDepartments, useStates, useCities, useIndustries } from '@/hooks/useDropdowns'
+import { useStates, useCities, useIndustries } from '@/hooks/useDropdowns'
 import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useRunSearch, useSavedSearches, useEnrichCandidates, useCandidatesByJobDescription } from '@/hooks/useSearch'
 import { mapSearchParamsToRequest, mapSavedSearchToParams, SearchResponse, EnrichedCandidateResponse, EnrichedCandidatesApiResponse } from '@/lib/search-api'
 import { useJobPostings } from '@/hooks/useJobPostings'
@@ -121,7 +121,6 @@ export function SearchTab({
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null)
 
   // Dropdown data hooks
-  const { data: departmentsData, isLoading: isLoadingDepartments } = useDepartments()
   const { data: statesData, isLoading: isLoadingStates } = useStates()
   const { data: citiesData, isLoading: isLoadingCities } = useCities(searchParams.locationState, statesData)
   const { data: industriesData, isLoading: isLoadingIndustries } = useIndustries()
@@ -667,8 +666,8 @@ export function SearchTab({
         graduationYearFrom: 0,
         graduationYearTo: 0,
         maxExperience: 5,
-        department: '',
-        deptYears: 0,
+        department: 'sales',
+        deptYears: 2,
         managementLevelExclusions: '',
         recency: 0,
         timeInRole: 6,
@@ -731,12 +730,13 @@ export function SearchTab({
             <CardTitle>Search Candidates</CardTitle>
             <CardDescription>Configure your search parameters</CardDescription>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-start gap-3">
             <div className="w-64 min-w-64">
-              <Select value={selectedJobId?.toString() ?? ''} onValueChange={handleJobChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select job posting..." />
-                </SelectTrigger>
+              <div className="space-y-1">
+                <Select value={selectedJobId?.toString() ?? ''} onValueChange={handleJobChange}>
+                  <SelectTrigger className={`w-full ${(!selectedJobId && !jobDescriptionId) ? 'border-red-300 focus:border-red-500' : ''}`}>
+                    <SelectValue placeholder="Select job posting..." />
+                  </SelectTrigger>
                 <SelectContent>
                   {selectedJobId !== null && (
                     <SelectItem value="clear-job-selection">
@@ -760,6 +760,14 @@ export function SearchTab({
                   )}
                 </SelectContent>
               </Select>
+              <div className="h-5">
+                {(!selectedJobId && !jobDescriptionId) && (
+                  <p className="text-xs text-red-600">
+                    Please select a job posting to continue
+                  </p>
+                )}
+              </div>
+              </div>
             </div>
             <div className="w-64 min-w-64">
               <Select value={selectedSavedSearchId} onValueChange={handleLoadSavedSearch}>
@@ -905,7 +913,7 @@ export function SearchTab({
             
             <div className="space-y-4">
               {/* Experience Fields in Same Row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium flex items-center gap-1">
                     How many jobs should the candidate have had?
@@ -937,7 +945,10 @@ export function SearchTab({
                     <span className="text-xs text-gray-500">Avoid overqualified candidates</span>
                   </div>
                 </div>
-                
+              </div>
+
+              {/* Second Row of Experience Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Maximum time at one job:</Label>
                   <div className="flex items-center gap-3">
@@ -952,29 +963,22 @@ export function SearchTab({
                     <span className="text-xs text-gray-500">Filters out candidates who may be less adaptable</span>
                   </div>
                 </div>
-              </div>
-
-              {/* Department and Management Level in Same Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Which department experience is required?</Label>
-                  <Select
-                    value={searchParams.department}
-                    onValueChange={(value) => setSearchParams({ ...searchParams, department: value })}
-                  >
-                    <SelectTrigger className="h-10 w-full">
-                      <SelectValue placeholder="Select department..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departmentsData?.departments?.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-sm font-medium">Minimum Relevant Experience:</Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="number"
+                      value={searchParams.deptYears || 2}
+                      onChange={(e) => setSearchParams({ ...searchParams, deptYears: parseInt(e.target.value) || 2 })}
+                      min="0"
+                      max="20"
+                      className="w-20"
+                    />
+                    <span className="text-xs text-gray-500">Minimum years of sales experience</span>
+                  </div>
                 </div>
               </div>
+
             </div>
           </div>
 
@@ -1156,36 +1160,62 @@ export function SearchTab({
 
           {/* Search Results */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Target className="h-5 w-5" />
-                <div>
-                  <span className="text-2xl font-bold">
-                    {candidateYield.toLocaleString()}
-                  </span>
-                  <span className="text-2xl font-bold"> candidates found</span>
+            {(!selectedJobId && !jobDescriptionId) ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Target className="h-5 w-5 text-gray-400" />
+                  <div>
+                    <span className="text-2xl font-bold text-gray-400">
+                      Select a job posting first
+                    </span>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Choose a job posting to search for candidates
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button 
+                    className="flex items-center gap-2"
+                    onClick={handleSearch}
+                    disabled={true}
+                  >
+                    <Search className="h-4 w-4" />
+                    Search Candidates
+                  </Button>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Button 
-                  className="flex items-center gap-2"
-                  onClick={handleSearch}
-                  disabled={createSearch.isPending}
-                >
-                  {createSearch.isPending ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Searching...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="h-4 w-4" />
-                      Search Candidates
-                    </>
-                  )}
-                </Button>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Target className="h-5 w-5" />
+                  <div>
+                    <span className="text-2xl font-bold">
+                      {candidateYield.toLocaleString()}
+                    </span>
+                    <span className="text-2xl font-bold"> candidates found</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button 
+                    className="flex items-center gap-2"
+                    onClick={handleSearch}
+                    disabled={createSearch.isPending || (!selectedJobId && !jobDescriptionId)}
+                  >
+                    {createSearch.isPending ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Searching...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-4 w-4" />
+                        Search Candidates
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Sample Candidates */}
