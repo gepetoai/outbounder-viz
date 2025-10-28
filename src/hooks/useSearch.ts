@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createSearch, updateSearchName, updateSearch, runSearch, getSavedSearches, SearchRequest, SearchResponse, SavedSearch } from '@/lib/search-api'
+import { createSearch, updateSearchName, updateSearch, runSearch, getSavedSearches, enrichCandidates, SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse } from '@/lib/search-api'
 
 export function useCreateSearch() {
   const queryClient = useQueryClient()
@@ -66,5 +66,17 @@ export function useSavedSearches() {
     queryKey: ['savedSearches'],
     queryFn: getSavedSearches,
     staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+}
+
+export function useEnrichCandidates() {
+  return useMutation<EnrichedCandidatesApiResponse, Error, { searchId: number; limit: number }>({
+    mutationFn: ({ searchId, limit }) => enrichCandidates(searchId, limit),
+    onSuccess: (data) => {
+      console.log('Candidates enriched successfully:', data.candidates.length, 'candidates')
+    },
+    onError: (error) => {
+      console.error('Failed to enrich candidates:', error)
+    }
   })
 }
