@@ -1,6 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { fetchJson, fetchWithAuth } from '@/lib/api-client'
 
 // Types
 export interface JobPosting {
@@ -25,38 +26,20 @@ export interface CreateJobPostingRequest {
 const API_BASE_URL = 'http://localhost:8096/api/v1'
 
 async function createJobPosting(data: CreateJobPostingRequest): Promise<JobPosting> {
-  const response = await fetch(`${API_BASE_URL}/job-description/`, {
+  return fetchJson<JobPosting>(`${API_BASE_URL}/job-description/`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify(data),
   })
-
-  if (!response.ok) {
-    throw new Error(`Failed to create job posting: ${response.statusText}`)
-  }
-
-  return response.json()
 }
 
 async function fetchJobPostings(): Promise<JobPosting[]> {
-  const response = await fetch(`${API_BASE_URL}/job-description/`, {
+  return fetchJson<JobPosting[]>(`${API_BASE_URL}/job-description/`, {
     method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
   })
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch job postings: ${response.statusText}`)
-  }
-
-  return response.json()
 }
 
 async function deleteJobPosting(id: number): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/job-description/${id}`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/job-description/${id}`, {
     method: 'DELETE',
   })
 
