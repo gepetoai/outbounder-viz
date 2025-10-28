@@ -10,10 +10,10 @@ import { Switch } from '@/components/ui/switch'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Modal } from '@/components/ui/modal'
-import { User, Briefcase, MapPin, GraduationCap, X, Search, Target, Code, Upload, RefreshCw, Send, Save } from 'lucide-react'
+import { User, Briefcase, MapPin, GraduationCap, X, Search, Target, Code, Upload, RefreshCw, Send, Save, Sparkles } from 'lucide-react'
 import { useDepartments, useStates, useCities, useIndustries } from '@/hooks/useDropdowns'
-import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useRunSearch, useSavedSearches } from '@/hooks/useSearch'
-import { mapSearchParamsToRequest, mapSavedSearchToParams, SearchResponse } from '@/lib/search-api'
+import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useRunSearch, useSavedSearches, useEnrichCandidates } from '@/hooks/useSearch'
+import { mapSearchParamsToRequest, mapSavedSearchToParams, SearchResponse, EnrichedCandidateResponse, EnrichedCandidatesApiResponse } from '@/lib/search-api'
 
 export interface SearchParams {
   // Original fields
@@ -114,6 +114,7 @@ export function SearchTab({
   const [selectedSavedSearchId, setSelectedSavedSearchId] = useState<string>('')
   const [isSearchModified, setIsSearchModified] = useState(false)
   const [pendingLocationCity, setPendingLocationCity] = useState<string>('')
+  const [enrichLimit, setEnrichLimit] = useState<number>(10)
 
   // Dropdown data hooks
   const { data: departmentsData, isLoading: isLoadingDepartments } = useDepartments()
@@ -126,6 +127,7 @@ export function SearchTab({
   const updateSearchName = useUpdateSearchName()
   const updateSearchMutation = useUpdateSearch()
   const runSearchMutation = useRunSearch()
+  const enrichCandidatesMutation = useEnrichCandidates()
   const { data: savedSearches, isLoading: isLoadingSavedSearches } = useSavedSearches()
 
   // Track if searchParams has been loaded (to avoid marking as modified on initial load)
@@ -417,18 +419,15 @@ export function SearchTab({
       // Update candidate yield with real results
       setCandidateYield(response.total_results)
 
-      // Generate mock candidates for now (you can replace this with real candidate fetching)
-      const mockCandidates = generateMockCandidates(10)
-      setStagingCandidates(mockCandidates)
+      // Clear staging candidates - users must click "Enrich Candidates" to see actual profiles
+      setStagingCandidates([])
 
       console.log('Search completed:', response)
     } catch (error) {
       console.error('Search failed:', error)
-      // Fallback to mock data on error
-      const mockYield = Math.floor(Math.random() * 5000) + 1000
-      setCandidateYield(mockYield)
-      const mockCandidates = generateMockCandidates(10)
-      setStagingCandidates(mockCandidates)
+      // Clear candidates on error
+      setCandidateYield(0)
+      setStagingCandidates([])
     }
   }
 
@@ -472,6 +471,101 @@ export function SearchTab({
       setSearchTitle('')
     } catch (error) {
       console.error('Failed to save search:', error)
+    }
+  }
+
+  const mapEnrichedCandidateToCandidate = (enriched: EnrichedCandidateResponse): Candidate => {
+    const fullName = `${enriched.first_name} ${enriched.last_name}`
+    const location = enriched.city && enriched.state ? `${enriched.city}, ${enriched.state}` : enriched.city || enriched.state || 'Location not available'
+
+    // Use actual LinkedIn URL from raw_data or construct from slug
+    const linkedinUrl = enriched.raw_data.websites_linkedin
+      || (enriched.linkedin_canonical_slug ? `https://linkedin.com/in/${enriched.linkedin_canonical_slug}` : '')
+      || (enriched.linkedin_shorthand_slug ? `https://linkedin.com/in/${enriched.linkedin_shorthand_slug}` : '')
+
+    // Use actual profile picture or fallback to avatar
+    const photo = enriched.raw_data.picture_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${enriched.id}`
+
+    // Extract education from raw_data
+    let education = 'Education details not available'
+    if (enriched.raw_data.education && enriched.raw_data.education.length > 0) {
+      const edu = enriched.raw_data.education[0]
+      if (edu.major && edu.title) {
+        education = `${edu.major} at ${edu.title}`
+      } else if (edu.major) {
+        education = edu.major
+      } else if (edu.title) {
+        education = edu.title
+      }
+    }
+
+    // Extract experience from raw_data
+    const experience = enriched.raw_data.experience && enriched.raw_data.experience.length > 0
+      ? enriched.raw_data.experience.slice(0, 5).map(exp => ({
+          title: exp.title,
+          company: exp.company_name,
+          duration: exp.duration
+        }))
+      : [{
+          title: enriched.job_title || 'Position not specified',
+          company: enriched.company_name || 'Company not specified',
+          duration: 'Current'
+        }]
+
+    // Use description from raw_data or construct summary
+    const summary = enriched.raw_data.description
+      || enriched.raw_data.headline
+      || enriched.raw_data.generated_headline
+      || `${enriched.job_title || 'Professional'} at ${enriched.company_name || 'current company'} located in ${location}`
+
+    return {
+      id: enriched.id.toString(),
+      name: fullName,
+      photo: photo,
+      title: enriched.job_title || 'Position not specified',
+      company: enriched.company_name || 'Company not specified',
+      location: location,
+      education: education,
+      experience: experience,
+      linkedinUrl: linkedinUrl,
+      summary: summary
+    }
+  }
+
+  const handleEnrichCandidates = async () => {
+    if (!currentSearchId) {
+      console.error('No search ID available for enrichment')
+      return
+    }
+
+    if (!enrichLimit || enrichLimit < 1) {
+      console.error('Invalid enrichment limit')
+      return
+    }
+
+    try {
+      console.log('[EnrichCandidates] Enriching with search ID:', currentSearchId, 'limit:', enrichLimit)
+      const enrichedResponse = await enrichCandidatesMutation.mutateAsync({
+        searchId: currentSearchId,
+        limit: enrichLimit
+      })
+
+      // Unwrap the response to get the candidates array
+      const enrichedData = enrichedResponse.candidates
+
+      // Map the enriched data to Candidate format
+      const mappedCandidates = enrichedData.map(mapEnrichedCandidateToCandidate)
+
+      // Update staging candidates with enriched data
+      setStagingCandidates(mappedCandidates)
+
+      // Update candidate yield to match the enriched count
+      setCandidateYield(enrichedData.length)
+
+      console.log('[EnrichCandidates] Successfully enriched', mappedCandidates.length, 'candidates')
+      console.log('[EnrichCandidates] Excluded count:', enrichedResponse.excluded_count)
+    } catch (error) {
+      console.error('Failed to enrich candidates:', error)
     }
   }
 
@@ -1027,13 +1121,13 @@ export function SearchTab({
             <div className="space-y-4">
               <div className="grid gap-4">
                 {stagingCandidates.slice(0, 5).map((candidate) => (
-                  <div 
-                    key={candidate.id} 
+                  <div
+                    key={candidate.id}
                     className="flex items-center gap-4 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
                     onClick={() => handleCandidateClick(candidate)}
                   >
-                    <img 
-                      src={candidate.photo} 
+                    <img
+                      src={candidate.photo}
                       alt={candidate.name}
                       className="w-12 h-12 rounded-full object-cover grayscale"
                     />
@@ -1048,9 +1142,12 @@ export function SearchTab({
                   </div>
                 ))}
               </div>
-              
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
+            </div>
+          )}
+
+          {/* Action Buttons - Always show after search */}
+          {currentSearchId && (
+            <div className="flex items-center gap-3 pt-4">
                 <Button
                   variant="outline"
                   className="flex items-center gap-2"
@@ -1087,8 +1184,38 @@ export function SearchTab({
                     Save Search
                   </Button>
                 )}
+
+                {/* Enrich Controls - Right side */}
+                <div className="flex items-center gap-2 ml-auto">
+                  <Label className="text-sm font-medium whitespace-nowrap">Limit:</Label>
+                  <Input
+                    type="number"
+                    value={enrichLimit}
+                    onChange={(e) => setEnrichLimit(parseInt(e.target.value) || 1)}
+                    min="1"
+                    max="100"
+                    className="w-20"
+                    placeholder="10"
+                  />
+                  <Button
+                    className="flex items-center gap-2"
+                    onClick={handleEnrichCandidates}
+                    disabled={!currentSearchId || enrichCandidatesMutation.isPending}
+                  >
+                    {enrichCandidatesMutation.isPending ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Enriching...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        Enrich Candidates
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
-            </div>
           )}
         </CardContent>
       </Card>
@@ -1115,7 +1242,13 @@ export function SearchTab({
                     <p className="text-sm text-gray-600">{selectedCandidate.title}</p>
                     <p className="text-xs text-gray-500">{selectedCandidate.company} • {selectedCandidate.location}</p>
                     <div className="mt-2">
-                      <Button size="sm" variant="outline" className="text-xs">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs"
+                        onClick={() => selectedCandidate.linkedinUrl && window.open(selectedCandidate.linkedinUrl, '_blank')}
+                        disabled={!selectedCandidate.linkedinUrl}
+                      >
                         View LinkedIn Profile
                       </Button>
                     </div>
@@ -1150,75 +1283,6 @@ export function SearchTab({
                   </div>
                 </div>
 
-                {/* Skills */}
-                <div>
-                  <h3 className="text-sm font-semibold mb-2">Skills</h3>
-                  <div className="flex flex-wrap gap-1">
-                    {['React', 'TypeScript', 'Node.js', 'Python', 'AWS', 'Docker', 'Git', 'Agile'].map((skill) => (
-                      <Badge key={skill} variant="secondary" className="text-xs">{skill}</Badge>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Additional Experience */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Additional Experience</h3>
-                  <div className="space-y-3">
-                    <div className="border-l-4 border-green-500 pl-4">
-                      <h4 className="font-medium">Senior Frontend Developer</h4>
-                      <p className="text-gray-600">Tech Startup Inc</p>
-                      <p className="text-sm text-gray-500">2020 - 2022</p>
-                      <p className="text-sm text-gray-700 mt-1">
-                        Led frontend development team of 5 developers. Implemented micro-frontend architecture 
-                        and improved application performance by 40%. Mentored junior developers and established 
-                        coding standards.
-                      </p>
-                    </div>
-                    <div className="border-l-4 border-green-500 pl-4">
-                      <h4 className="font-medium">Full Stack Developer</h4>
-                      <p className="text-gray-600">Digital Agency</p>
-                      <p className="text-sm text-gray-500">2018 - 2020</p>
-                      <p className="text-sm text-gray-700 mt-1">
-                        Developed full-stack web applications using React, Node.js, and PostgreSQL. 
-                        Collaborated with design team to implement responsive UIs and optimized database queries.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Certifications */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Certifications</h3>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">AWS Certified Solutions Architect</Badge>
-                      <span className="text-sm text-gray-500">2023</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">Google Cloud Professional Developer</Badge>
-                      <span className="text-sm text-gray-500">2022</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Languages */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Languages</h3>
-                  <div className="space-y-1">
-                    <div className="flex justify-between">
-                      <span>English</span>
-                      <span className="text-sm text-gray-500">Native</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Spanish</span>
-                      <span className="text-sm text-gray-500">Fluent</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>French</span>
-                      <span className="text-sm text-gray-500">Conversational</span>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           )}
