@@ -13,10 +13,11 @@ import { SearchableMultiSelect } from '@/components/ui/searchable-multi-select'
 import { RemovableBadge } from '@/components/ui/removable-badge'
 import { Briefcase, MapPin, GraduationCap, X, Search, Target, RefreshCw, Send, Save, Sparkles, ChevronDown } from 'lucide-react'
 import { useStates, useCities, useIndustries, useDepartments } from '@/hooks/useDropdowns'
-import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useRunSearch, useEnrichCandidates } from '@/hooks/useSearch'
+import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useUpdateQuery, useRunSearch, useEnrichCandidates } from '@/hooks/useSearch'
 import { useApproveCandidate, useRejectCandidate } from '@/hooks/useCandidates'
 import { mapSearchParamsToRequest, SearchResponse } from '@/lib/search-api'
 import { mapEnrichedCandidateToCandidate, type Candidate } from '@/lib/utils'
+import { parseCommaSeparatedList, isCommaSeparatedList } from '@/lib/parse-utils'
 import { CandidateListItem } from './CandidateListItem'
 import { CandidateDetailPanel } from './CandidateDetailPanel'
 
@@ -115,6 +116,7 @@ export function SearchTab({
   const createSearch = useCreateSearch()
   const updateSearchName = useUpdateSearchName()
   const updateSearchMutation = useUpdateSearch()
+  const updateQueryMutation = useUpdateQuery()
   const runSearchMutation = useRunSearch()
   const enrichCandidatesMutation = useEnrichCandidates()
   
@@ -194,10 +196,19 @@ export function SearchTab({
 
   const addJobTitle = () => {
     if (tempJobTitleInput.trim()) {
-      setSearchParams({
-        ...searchParams,
-        jobTitles: [...searchParams.jobTitles, tempJobTitleInput.trim()]
-      })
+      // Check if input contains comma-separated values
+      if (isCommaSeparatedList(tempJobTitleInput)) {
+        const parsedTitles = parseCommaSeparatedList(tempJobTitleInput)
+        setSearchParams({
+          ...searchParams,
+          jobTitles: [...searchParams.jobTitles, ...parsedTitles]
+        })
+      } else {
+        setSearchParams({
+          ...searchParams,
+          jobTitles: [...searchParams.jobTitles, tempJobTitleInput.trim()]
+        })
+      }
       setTempJobTitleInput('')
     }
   }
@@ -212,10 +223,19 @@ export function SearchTab({
 
   const addTitleExclusion = () => {
     if (tempTitleExclusionInput.trim()) {
-      setSearchParams({
-        ...searchParams,
-        titleExclusions: [...searchParams.titleExclusions, tempTitleExclusionInput.trim()]
-      })
+      // Check if input contains comma-separated values
+      if (isCommaSeparatedList(tempTitleExclusionInput)) {
+        const parsedExclusions = parseCommaSeparatedList(tempTitleExclusionInput)
+        setSearchParams({
+          ...searchParams,
+          titleExclusions: [...searchParams.titleExclusions, ...parsedExclusions]
+        })
+      } else {
+        setSearchParams({
+          ...searchParams,
+          titleExclusions: [...searchParams.titleExclusions, tempTitleExclusionInput.trim()]
+        })
+      }
       setTempTitleExclusionInput('')
     }
   }
@@ -227,10 +247,19 @@ export function SearchTab({
 
   const addKeywordExclusion = () => {
     if (tempKeywordExclusionInput.trim()) {
-      setSearchParams({
-        ...searchParams,
-        keywordExclusions: [...searchParams.keywordExclusions, tempKeywordExclusionInput.trim()]
-      })
+      // Check if input contains comma-separated values
+      if (isCommaSeparatedList(tempKeywordExclusionInput)) {
+        const parsedKeywords = parseCommaSeparatedList(tempKeywordExclusionInput)
+        setSearchParams({
+          ...searchParams,
+          keywordExclusions: [...searchParams.keywordExclusions, ...parsedKeywords]
+        })
+      } else {
+        setSearchParams({
+          ...searchParams,
+          keywordExclusions: [...searchParams.keywordExclusions, tempKeywordExclusionInput.trim()]
+        })
+      }
       setTempKeywordExclusionInput('')
     }
   }
@@ -557,7 +586,17 @@ export function SearchTab({
     }
 
     try {
+      console.log('[EnrichCandidates] Updating query for search ID:', currentSearchId)
+      // First, update the query with current search parameters
+      const jobIdToUse = jobDescriptionId
+      const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle || 'Candidate Search', jobIdToUse)
+      await updateQueryMutation.mutateAsync({
+        searchId: currentSearchId,
+        data: searchRequest
+      })
+      
       console.log('[EnrichCandidates] Enriching with search ID:', currentSearchId, 'limit:', enrichLimit)
+      // Then enrich candidates
       const enrichedResponse = await enrichCandidatesMutation.mutateAsync({
         searchId: currentSearchId,
         limit: enrichLimit
@@ -571,9 +610,6 @@ export function SearchTab({
 
       // Update staging candidates with enriched data
       setStagingCandidates(mappedCandidates)
-
-      // Update candidate yield to match the enriched count
-      setCandidateYield(enrichedData.length)
 
       console.log('[EnrichCandidates] Successfully enriched', mappedCandidates.length, 'candidates')
       console.log('[EnrichCandidates] Excluded count:', enrichedResponse.excluded_count)
@@ -613,38 +649,41 @@ export function SearchTab({
     setIsPanelOpen(true)
   }
 
-  const handleClosePanel = () => {
-    setIsPanelOpen(false)
-    setSelectedCandidate(null)
-  }
-
   const handleApprove = async (candidateId: string) => {
     if (!jobDescriptionId) return
+    
+    // Immediately remove from UI for better UX
+    const updatedCandidates = stagingCandidates.filter(c => c.id !== candidateId)
+    setStagingCandidates(updatedCandidates)
     
     try {
       await approveCandidateMutation.mutateAsync({
         fk_job_description_id: jobDescriptionId,
         fk_candidate_id: parseInt(candidateId)
       })
-      // Remove the approved candidate from staging
-      setStagingCandidates(stagingCandidates.filter(c => c.id !== candidateId))
     } catch (error) {
       console.error('Failed to approve candidate:', error)
+      // Restore candidate on error
+      setStagingCandidates(stagingCandidates)
     }
   }
 
   const handleReject = async (candidateId: string) => {
     if (!jobDescriptionId) return
     
+    // Immediately remove from UI for better UX
+    const updatedCandidates = stagingCandidates.filter(c => c.id !== candidateId)
+    setStagingCandidates(updatedCandidates)
+    
     try {
       await rejectCandidateMutation.mutateAsync({
         fk_job_description_id: jobDescriptionId,
         fk_candidate_id: parseInt(candidateId)
       })
-      // Remove the rejected candidate from staging
-      setStagingCandidates(stagingCandidates.filter(c => c.id !== candidateId))
     } catch (error) {
       console.error('Failed to reject candidate:', error)
+      // Restore candidate on error
+      setStagingCandidates(stagingCandidates)
     }
   }
 
@@ -870,7 +909,7 @@ export function SearchTab({
                 <div className="space-y-1">
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Add job title..."
+                      placeholder="Add job title (comma-separated for multiple)..."
                       value={tempJobTitleInput}
                       onChange={(e) => setTempJobTitleInput(e.target.value)}
                       onKeyDown={(e) => {
@@ -945,7 +984,7 @@ export function SearchTab({
                   <Label className="text-xs text-gray-600">Job Title Exclusions</Label>
                   <div className="flex gap-2">
                     <Input
-                      placeholder="e.g., CEO, CFO, Manager, Director..."
+                      placeholder="e.g., CEO, CFO, Manager (comma-separated)..."
                       value={tempTitleExclusionInput}
                       onChange={(e) => setTempTitleExclusionInput(e.target.value)}
                       onKeyDown={(e) => {
@@ -977,7 +1016,7 @@ export function SearchTab({
                   <Label className="text-xs text-gray-600">Profile Keyword Exclusions</Label>
                   <div className="flex gap-2">
                     <Input
-                      placeholder="e.g., healthcare, medical, finance, banking..."
+                      placeholder="e.g., healthcare, medical (comma-separated)..."
                       value={tempKeywordExclusionInput}
                       onChange={(e) => setTempKeywordExclusionInput(e.target.value)}
                       onKeyDown={(e) => {
@@ -1116,7 +1155,7 @@ export function SearchTab({
           {stagingCandidates.length > 0 && (
             <div className="space-y-4">
               <div className="grid gap-4">
-                {stagingCandidates.slice(0, 5).map((candidate) => (
+                {stagingCandidates.map((candidate) => (
                   <CandidateListItem
                     key={candidate.id}
                     candidate={candidate}

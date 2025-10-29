@@ -176,6 +176,17 @@ export async function updateSearch(searchId: number, data: SearchRequest): Promi
   })
 }
 
+export async function updateQuery(searchId: number, data: SearchRequest): Promise<void> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-searches/${searchId}/update-query`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to update query: ${response.status} ${response.statusText}`)
+  }
+}
+
 export async function runSearch(searchId: number): Promise<SearchResponse> {
   return fetchJson<SearchResponse>(`${API_BASE_URL}/job-description-searches/${searchId}/run-search`, {
     method: 'POST'
