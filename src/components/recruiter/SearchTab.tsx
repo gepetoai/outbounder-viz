@@ -13,9 +13,10 @@ import { Modal } from '@/components/ui/modal'
 import { Briefcase, MapPin, GraduationCap, X, Search, Target, RefreshCw, Send, Save, Sparkles, ChevronDown } from 'lucide-react'
 import { useStates, useCities, useIndustries } from '@/hooks/useDropdowns'
 import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useRunSearch, useEnrichCandidates } from '@/hooks/useSearch'
+import { useApproveCandidate, useRejectCandidate } from '@/hooks/useCandidates'
 import { mapSearchParamsToRequest, SearchResponse } from '@/lib/search-api'
 import { mapEnrichedCandidateToCandidate, type Candidate } from '@/lib/utils'
-import { CandidateCard } from './CandidateCard'
+import { CandidateListItem } from './CandidateListItem'
 import { CandidateDetailPanel } from './CandidateDetailPanel'
 
 export interface SearchParams {
@@ -114,6 +115,10 @@ export function SearchTab({
   const updateSearchMutation = useUpdateSearch()
   const runSearchMutation = useRunSearch()
   const enrichCandidatesMutation = useEnrichCandidates()
+  
+  // Candidate approval/rejection
+  const approveCandidateMutation = useApproveCandidate()
+  const rejectCandidateMutation = useRejectCandidate()
 
   // Track if searchParams has been loaded (to avoid marking as modified on initial load)
   const isInitialLoad = useRef(true)
@@ -609,6 +614,36 @@ export function SearchTab({
   const handleClosePanel = () => {
     setIsPanelOpen(false)
     setSelectedCandidate(null)
+  }
+
+  const handleApprove = async (candidateId: string) => {
+    if (!jobDescriptionId) return
+    
+    try {
+      await approveCandidateMutation.mutateAsync({
+        fk_job_description_id: jobDescriptionId,
+        fk_candidate_id: parseInt(candidateId)
+      })
+      // Remove the approved candidate from staging
+      setStagingCandidates(stagingCandidates.filter(c => c.id !== candidateId))
+    } catch (error) {
+      console.error('Failed to approve candidate:', error)
+    }
+  }
+
+  const handleReject = async (candidateId: string) => {
+    if (!jobDescriptionId) return
+    
+    try {
+      await rejectCandidateMutation.mutateAsync({
+        fk_job_description_id: jobDescriptionId,
+        fk_candidate_id: parseInt(candidateId)
+      })
+      // Remove the rejected candidate from staging
+      setStagingCandidates(stagingCandidates.filter(c => c.id !== candidateId))
+    } catch (error) {
+      console.error('Failed to reject candidate:', error)
+    }
   }
 
   return (
@@ -1126,11 +1161,15 @@ export function SearchTab({
             <div className="space-y-4">
               <div className="grid gap-4">
                 {stagingCandidates.slice(0, 5).map((candidate) => (
-                  <CandidateCard
+                  <CandidateListItem
                     key={candidate.id}
                     candidate={candidate}
-                    variant="simple"
                     onClick={handleCandidateClick}
+                    onApprove={handleApprove}
+                    onReject={handleReject}
+                    showActions={true}
+                    isApproving={approveCandidateMutation.isPending}
+                    isRejecting={rejectCandidateMutation.isPending}
                   />
                 ))}
               </div>
