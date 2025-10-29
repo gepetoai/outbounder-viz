@@ -56,7 +56,7 @@ import { AnalyticsTab } from '@/components/recruiter/AnalyticsTab'
 import { ApprovedRejectedCarousel } from '@/components/recruiter/ApprovedRejectedCarousel'
 import { SettingsTab } from '@/components/recruiter/SettingsTab'
 import { AuthWrapper } from '@/components/auth/auth-wrapper';
-import { UserButton } from '@clerk/nextjs';
+// import { UserButton } from '@clerk/nextjs'; // Temporarily disabled for mock data testing
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useSavedSearches } from '@/hooks/useSearch'
 import { mapSavedSearchToParams } from '@/lib/search-api'
@@ -293,17 +293,14 @@ export default function HomePage() {
       description: "Talent acquisition tools",
       color: "orange"
     },
-    { 
-      id: "reporter", 
-      label: "Reporter", 
-      icon: BarChart3,
-      description: "Analytics and reporting",
-      color: "indigo"
-    },
-  ];
+    { id: 'analytics', label: 'Analytics', icon: BarChart3, subItems: [] }
+  ]
 
-  // Outbounder tabs
-  const tabs = [
+  // Recruiter tabs
+  const recruiterTabs = [
+    { id: 'job-setup', label: 'Open Roles', icon: Briefcase, subItems: [] },
+    { id: 'search', label: 'Search', icon: Search, subItems: [] },
+    { id: 'candidates', label: 'Candidates', icon: Users, subItems: [] },
     { 
       id: "leads", 
       label: "Leads", 
@@ -1589,14 +1586,19 @@ export default function HomePage() {
 
           {/* User Button */}
           <div className="p-2 border-t border-border">
-            <UserButton
+            {/* <UserButton
               afterSignOutUrl="/"
               appearance={{
                 elements: {
                   avatarBox: "w-10 h-10"
                 }
               }}
-            />
+            /> */}
+            <div className="flex items-center gap-2 p-2">
+              <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                <User className="h-5 w-5 text-gray-600" />
+              </div>
+            </div>
           </div>
         </div>
       )}

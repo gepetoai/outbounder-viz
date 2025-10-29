@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Building2, Search, Loader2 } from 'lucide-react'
+import { Plus, Building2, Search, Loader2, Pencil, Trash2 } from 'lucide-react'
 import { useJobPostings, useCreateJobPosting } from '@/hooks/useJobPostings'
 
 interface JobPostingManagerProps {
@@ -41,12 +41,12 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
 
   return (
     <div className="space-y-6">
-      {/* Add New Job Posting */}
+      {/* Add New Open Role */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
-            Add New Job Posting
+            Add New Open Role
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -60,11 +60,11 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="job-url">Job URL</Label>
+            <Label htmlFor="job-url">Application URL</Label>
             <Input
               id="job-url"
               type="url"
-              placeholder="Paste job posting URL here..."
+              placeholder="Paste application URL here..."
               value={newJobUrl}
               onChange={(e) => setNewJobUrl(e.target.value)}
             />
@@ -89,17 +89,17 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
             ) : (
               <Plus className="h-4 w-4" />
             )}
-            {createJobMutation.isPending ? 'Saving...' : 'Save Job Posting'}
+            {createJobMutation.isPending ? 'Saving...' : 'Save Open Role'}
           </Button>
         </CardContent>
       </Card>
 
-      {/* Existing Job Postings */}
+      {/* Existing Open Roles */}
       {isLoading && (
         <Card>
           <CardContent className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin" />
-            <span className="ml-2">Loading job postings...</span>
+            <span className="ml-2">Loading open roles...</span>
           </CardContent>
         </Card>
       )}
@@ -108,7 +108,7 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
         <Card>
           <CardContent className="py-8">
             <p className="text-red-600 text-center">
-              Error loading job postings: {error.message}
+              Error loading open roles: {error.message}
             </p>
           </CardContent>
         </Card>
@@ -119,7 +119,7 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5" />
-              Job Postings ({jobPostings.length})
+              Open Roles ({jobPostings.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -132,7 +132,6 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-medium">{job.title}</h3>
-                      <p className="text-sm text-gray-600">{job.target_candidates_count} candidates</p>
                       <p className="text-xs text-gray-500">{job.url}</p>
                       {job.created_at && (
                         <p className="text-xs text-gray-400">
@@ -141,6 +140,28 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          // Edit functionality - to be implemented
+                          console.log('Edit job:', job.id)
+                        }}
+                      >
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          // Delete functionality - to be implemented
+                          console.log('Delete job:', job.id)
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"

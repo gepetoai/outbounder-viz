@@ -1,5 +1,89 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createSearch, updateSearchName, updateSearch, runSearch, getSavedSearchesByJobDescription, enrichCandidates, getCandidatesByJobDescription, getCandidatesForReview, SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse, CandidatesByJobDescriptionResponse, EnrichedCandidateResponse } from '@/lib/search-api'
+import { SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse, CandidatesByJobDescriptionResponse, EnrichedCandidateResponse } from '@/lib/search-api'
+import { getMockCandidates, getMockShortlistedCandidates, getMockRejectedCandidates, getMockCandidatesForJob, getMockJobPostings } from '@/lib/mock-data'
+
+// Mock API functions
+async function createSearch(data: SearchRequest): Promise<SearchResponse> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 500))
+  return {
+    total_results: 150,
+    search_id: 1,
+    query_json: data as unknown as Record<string, unknown>
+  }
+}
+
+async function updateSearchName(searchId: number, searchTitle: string): Promise<void> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 300))
+  console.log('Mock: Updated search name', searchId, searchTitle)
+}
+
+async function updateSearch(searchId: number, data: SearchRequest): Promise<SearchResponse> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 500))
+  return {
+    total_results: 150,
+    search_id: searchId,
+    query_json: data as unknown as Record<string, unknown>
+  }
+}
+
+async function runSearch(searchId: number): Promise<SearchResponse> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 800))
+  return {
+    total_results: 150,
+    search_id: searchId,
+    query_json: {}
+  }
+}
+
+async function getSavedSearchesByJobDescription(jobDescriptionId: number): Promise<SavedSearch[]> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 300))
+  // Return empty array for now - user can create searches
+  return []
+}
+
+async function enrichCandidates(searchId: number, limit: number): Promise<EnrichedCandidatesApiResponse> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 1000))
+  const allCandidates = getMockCandidates()
+  const candidates = allCandidates.slice(0, Math.min(limit, allCandidates.length))
+  
+  return {
+    candidates: candidates,
+    excluded_count: 0
+  }
+}
+
+async function getCandidatesByJobDescription(jobDescriptionId: number): Promise<CandidatesByJobDescriptionResponse> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 300))
+  const jobCandidates = getMockCandidatesForJob(jobDescriptionId)
+  const jobPostings = getMockJobPostings()
+  const job = jobPostings.find(j => j.id === jobDescriptionId)
+  
+  return {
+    candidates: jobCandidates,
+    target_candidates_count: job?.target_candidates_count || 500,
+    current_candidates_count: jobCandidates.length
+  }
+}
+
+async function getCandidatesForReview(jobDescriptionId: number): Promise<EnrichedCandidateResponse[]> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 300))
+  const jobCandidates = getMockCandidatesForJob(jobDescriptionId)
+  const shortlistedIds = getMockShortlistedCandidates()
+  const rejectedIds = getMockRejectedCandidates()
+  
+  // Filter out already reviewed candidates
+  return jobCandidates.filter(candidate => 
+    !shortlistedIds.includes(candidate.id) && !rejectedIds.includes(candidate.id)
+  )
+}
 
 export function useCreateSearch() {
   const queryClient = useQueryClient()
