@@ -22,7 +22,9 @@ export interface CreateJobPostingRequest {
   fk_organization_id: number
 }
 
-// Mock API functions
+// API functions
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+
 async function createJobPosting(data: CreateJobPostingRequest): Promise<JobPosting> {
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 500))

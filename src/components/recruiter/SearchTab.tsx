@@ -7,14 +7,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Modal } from '@/components/ui/modal'
 import { Briefcase, MapPin, GraduationCap, X, Search, Target, RefreshCw, Send, Save, Sparkles, ChevronDown } from 'lucide-react'
 import { useStates, useCities, useIndustries } from '@/hooks/useDropdowns'
 import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useRunSearch, useEnrichCandidates } from '@/hooks/useSearch'
-import { mapSearchParamsToRequest, SearchResponse, EnrichedCandidateResponse } from '@/lib/search-api'
+import { mapSearchParamsToRequest, SearchResponse } from '@/lib/search-api'
+import { mapEnrichedCandidateToCandidate, type Candidate } from '@/lib/utils'
+import { CandidateCard } from './CandidateCard'
+import { CandidateDetailPanel } from './CandidateDetailPanel'
 
 export interface SearchParams {
   // Original fields
@@ -53,23 +55,6 @@ export interface SearchParams {
   keywordExclusions: string[]
   companyExclusions: string
   maxJobDuration: number
-}
-
-export interface Candidate {
-  id: string
-  name: string
-  photo: string
-  title: string
-  company: string
-  location: string
-  education: string
-  experience: Array<{
-    title: string
-    company: string
-    duration: string
-  }>
-  linkedinUrl: string
-  summary: string
 }
 
 interface SearchTabProps {
@@ -550,64 +535,6 @@ export function SearchTab({
       console.log('New search created successfully:', response)
     } catch (error) {
       console.error('Failed to create new search:', error)
-    }
-  }
-
-  const mapEnrichedCandidateToCandidate = (enriched: EnrichedCandidateResponse): Candidate => {
-    const fullName = `${enriched.first_name} ${enriched.last_name}`
-    const location = enriched.city && enriched.state ? `${enriched.city}, ${enriched.state}` : enriched.city || enriched.state || 'Location not available'
-
-    // Use actual LinkedIn URL from raw_data or construct from slug
-    const linkedinUrl = enriched.raw_data.websites_linkedin
-      || (enriched.linkedin_canonical_slug ? `https://linkedin.com/in/${enriched.linkedin_canonical_slug}` : '')
-      || (enriched.linkedin_shorthand_slug ? `https://linkedin.com/in/${enriched.linkedin_shorthand_slug}` : '')
-
-    // Use actual profile picture or fallback to avatar
-    const photo = enriched.raw_data.picture_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${enriched.id}`
-
-    // Extract education from raw_data
-    let education = 'Education details not available'
-    if (enriched.raw_data.education && enriched.raw_data.education.length > 0) {
-      const edu = enriched.raw_data.education[0]
-      if (edu.major && edu.title) {
-        education = `${edu.major} at ${edu.title}`
-      } else if (edu.major) {
-        education = edu.major
-      } else if (edu.title) {
-        education = edu.title
-      }
-    }
-
-    // Extract experience from raw_data
-    const experience = enriched.raw_data.experience && enriched.raw_data.experience.length > 0
-      ? enriched.raw_data.experience.slice(0, 5).map(exp => ({
-          title: exp.title,
-          company: exp.company_name,
-          duration: exp.duration
-        }))
-      : [{
-          title: enriched.job_title || 'Position not specified',
-          company: enriched.company_name || 'Company not specified',
-          duration: 'Current'
-        }]
-
-    // Use description from raw_data or construct summary
-    const summary = enriched.raw_data.description
-      || enriched.raw_data.headline
-      || enriched.raw_data.generated_headline
-      || `${enriched.job_title || 'Professional'} at ${enriched.company_name || 'current company'} located in ${location}`
-
-    return {
-      id: enriched.id.toString(),
-      name: fullName,
-      photo: photo,
-      title: enriched.job_title || 'Position not specified',
-      company: enriched.company_name || 'Company not specified',
-      location: location,
-      education: education,
-      experience: experience,
-      linkedinUrl: linkedinUrl,
-      summary: summary
     }
   }
 
@@ -1199,25 +1126,12 @@ export function SearchTab({
             <div className="space-y-4">
               <div className="grid gap-4">
                 {stagingCandidates.slice(0, 5).map((candidate) => (
-                  <div
+                  <CandidateCard
                     key={candidate.id}
-                    className="flex items-center gap-4 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                    onClick={() => handleCandidateClick(candidate)}
-                  >
-                    <img
-                      src={candidate.photo}
-                      alt={candidate.name}
-                      className="w-12 h-12 rounded-full object-cover grayscale"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-semibold">{candidate.name}</h4>
-                        <Badge variant="outline">{candidate.title}</Badge>
-                      </div>
-                      <p className="text-sm text-gray-600">{candidate.company} • {candidate.location}</p>
-                      <p className="text-sm text-gray-500">{candidate.education}</p>
-                    </div>
-                  </div>
+                    candidate={candidate}
+                    variant="simple"
+                    onClick={handleCandidateClick}
+                  />
                 ))}
               </div>
             </div>
@@ -1299,73 +1213,12 @@ export function SearchTab({
       </Card>
 
       {/* Candidate Detail Panel */}
-      <Sheet open={isPanelOpen} onOpenChange={setIsPanelOpen}>
-        <SheetContent side="right" className="w-[312px] sm:max-w-[312px]">
-          <SheetHeader className="sr-only">
-            <SheetTitle>Candidate Profile</SheetTitle>
-          </SheetHeader>
-          
-          {selectedCandidate && (
-            <div className="flex-1 overflow-y-auto">
-              <div className="space-y-6 p-4">
-                {/* Profile Header */}
-                <div className="flex items-start gap-3">
-                  <img 
-                    src={selectedCandidate.photo} 
-                    alt={selectedCandidate.name}
-                    className="w-16 h-16 rounded-full object-cover grayscale"
-                  />
-                  <div className="flex-1">
-                    <h2 className="text-lg font-bold">{selectedCandidate.name}</h2>
-                    <p className="text-sm text-gray-600">{selectedCandidate.title}</p>
-                    <p className="text-xs text-gray-500">{selectedCandidate.company} • {selectedCandidate.location}</p>
-                    <div className="mt-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-xs"
-                        onClick={() => selectedCandidate.linkedinUrl && window.open(selectedCandidate.linkedinUrl, '_blank')}
-                        disabled={!selectedCandidate.linkedinUrl}
-                      >
-                        View LinkedIn Profile
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Summary */}
-                <div>
-                  <h3 className="text-sm font-semibold mb-2">Summary</h3>
-                  <p className="text-xs text-gray-700">{selectedCandidate.summary}</p>
-                </div>
-
-                {/* Education */}
-                <div>
-                  <h3 className="text-sm font-semibold mb-2">Education</h3>
-                  <div className="bg-gray-50 p-2 rounded-lg">
-                    <p className="text-xs font-medium">{selectedCandidate.education}</p>
-                  </div>
-                </div>
-
-                {/* Experience */}
-                <div>
-                  <h3 className="text-sm font-semibold mb-2">Experience</h3>
-                  <div className="space-y-2">
-                    {selectedCandidate.experience.map((exp, index) => (
-                      <div key={index} className="border-l-2 border-blue-500 pl-3">
-                        <h4 className="text-xs font-medium">{exp.title}</h4>
-                        <p className="text-xs text-gray-600">{exp.company}</p>
-                        <p className="text-xs text-gray-500">{exp.duration}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
+      <CandidateDetailPanel
+        candidate={selectedCandidate}
+        isOpen={isPanelOpen}
+        onClose={() => setIsPanelOpen(false)}
+        variant="sheet"
+      />
 
       {/* Save Search Modal */}
       <Modal

@@ -49,7 +49,7 @@ import {
 
 // Import our refactored components
 import { JobPostingManager } from '@/components/recruiter/JobPostingManager'
-import { SearchTab, type SearchParams, type Candidate } from '@/components/recruiter/SearchTab'
+import { SearchTab, type SearchParams } from '@/components/recruiter/SearchTab'
 import { CandidateTab } from '@/components/recruiter/CandidateTab'
 import { SequencerTab } from '@/components/recruiter/SequencerTab'
 import { AnalyticsTab } from '@/components/recruiter/AnalyticsTab'
@@ -60,6 +60,7 @@ import { AuthWrapper } from '@/components/auth/auth-wrapper';
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useSavedSearches } from '@/hooks/useSearch'
 import { mapSavedSearchToParams } from '@/lib/search-api'
+import type { Candidate } from '@/lib/utils'
 
 export default function HomePage() {
   // Main app navigation
