@@ -5,13 +5,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Modal } from '@/components/ui/modal'
+import { SearchableMultiSelect } from '@/components/ui/searchable-multi-select'
+import { RemovableBadge } from '@/components/ui/removable-badge'
 import { Briefcase, MapPin, GraduationCap, X, Search, Target, RefreshCw, Send, Save, Sparkles, ChevronDown } from 'lucide-react'
-import { useStates, useCities, useIndustries } from '@/hooks/useDropdowns'
+import { useStates, useCities, useIndustries, useDepartments } from '@/hooks/useDropdowns'
 import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useRunSearch, useEnrichCandidates } from '@/hooks/useSearch'
 import { useApproveCandidate, useRejectCandidate } from '@/hooks/useCandidates'
 import { mapSearchParamsToRequest, SearchResponse } from '@/lib/search-api'
@@ -108,6 +109,7 @@ export function SearchTab({
   const { data: statesData } = useStates()
   const { data: citiesData } = useCities(searchParams.locationState, statesData)
   const { data: industriesData } = useIndustries()
+  const { data: departmentsData } = useDepartments()
 
   // Search functionality
   const createSearch = useCreateSearch()
@@ -761,6 +763,27 @@ export function SearchTab({
             </div>
             
             <div className="space-y-4">
+              {/* Department Selection */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Department</Label>
+                <Select
+                  value={searchParams.department}
+                  onValueChange={(value) => setSearchParams({ ...searchParams, department: value })}
+                >
+                  <SelectTrigger className="h-10 w-full max-w-md">
+                    <SelectValue placeholder="Select department..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {departmentsData?.departments?.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* First Row of Experience Fields */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
@@ -864,21 +887,12 @@ export function SearchTab({
               </div>
               <div className="flex flex-wrap gap-2 mb-3">
                 {searchParams.jobTitles.map((title, index) => (
-                  <Badge key={index} variant="secondary" className="flex items-center gap-1 pr-1">
-                    <span className="text-sm">{title}</span>
-                    <button
-                      type="button"
-                      aria-label={`Remove ${title}`}
-                      className="inline-flex items-center justify-center rounded p-0.5 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-300"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        removeJobTitle(index)
-                      }}
-                    >
-                      <X className="h-4 w-4 text-gray-700 hover:text-red-600" />
-                    </button>
-                  </Badge>
+                  <RemovableBadge
+                    key={index}
+                    label={title}
+                    onRemove={() => removeJobTitle(index)}
+                    variant="secondary"
+                  />
                 ))}
               </div>
             </div>
@@ -896,49 +910,30 @@ export function SearchTab({
               {/* Industry Exclusions */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Industry Exclusions</Label>
-                <Select
-                  value=""
-                  onValueChange={(value) => {
-                    if (value && !searchParams.industryExclusions.includes(value)) {
-                      setSearchParams({ 
-                        ...searchParams, 
-                        industryExclusions: [...searchParams.industryExclusions, value] 
-                      })
-                    }
+                <SearchableMultiSelect
+                  placeholder="Select industry to exclude..."
+                  options={industriesData?.industries || []}
+                  selectedValues={searchParams.industryExclusions}
+                  onSelect={(industry) => {
+                    setSearchParams({ 
+                      ...searchParams, 
+                      industryExclusions: [...searchParams.industryExclusions, industry] 
+                    })
                   }}
-                >
-                  <SelectTrigger className="h-10 w-full">
-                    <SelectValue placeholder="Select industry to exclude..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {industriesData?.industries?.map((industry) => (
-                      <SelectItem key={industry} value={industry}>
-                        {industry}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
                 {searchParams.industryExclusions.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {searchParams.industryExclusions.map((industry, index) => (
-                      <Badge key={index} variant="outline" className="flex items-center gap-1 bg-black text-white border-black hover:bg-gray-800">
-                        {industry}
-                        <button
-                          type="button"
-                          aria-label={`Remove ${industry}`}
-                          className="inline-flex items-center justify-center rounded p-0.5 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/40"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            setSearchParams({
-                              ...searchParams,
-                              industryExclusions: searchParams.industryExclusions.filter((_, i) => i !== index)
-                            })
-                          }}
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
+                      <RemovableBadge
+                        key={index}
+                        label={industry}
+                        onRemove={() => {
+                          setSearchParams({
+                            ...searchParams,
+                            industryExclusions: searchParams.industryExclusions.filter((_, i) => i !== index)
+                          })
+                        }}
+                      />
                     ))}
                   </div>
                 )}
@@ -968,21 +963,11 @@ export function SearchTab({
                         <div className="space-y-2 pt-2">
                           <div className="flex flex-wrap gap-2">
                             {searchParams.titleExclusions.map((exclusion, index) => (
-                             <Badge key={index} variant="outline" className="flex items-center gap-1 bg-black text-white border-black hover:bg-gray-800">
-                                {exclusion}
-                                <button
-                                  type="button"
-                                  aria-label={`Remove ${exclusion}`}
-                                  className="inline-flex items-center justify-center rounded p-0.5 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/40"
-                                  onClick={(e) => {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    removeTitleExclusion(index)
-                                  }}
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </Badge>
+                              <RemovableBadge
+                                key={index}
+                                label={exclusion}
+                                onRemove={() => removeTitleExclusion(index)}
+                              />
                             ))}
                           </div>
                         </div>
@@ -1010,21 +995,11 @@ export function SearchTab({
                         <div className="space-y-2 pt-2">
                           <div className="flex flex-wrap gap-2">
                             {searchParams.keywordExclusions.map((exclusion, index) => (
-                               <Badge key={index} variant="outline" className="flex items-center gap-1 bg-black text-white border-black hover:bg-gray-800">
-                                {exclusion}
-                                <button
-                                  type="button"
-                                  aria-label={`Remove ${exclusion}`}
-                                  className="inline-flex items-center justify-center rounded p-0.5 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/40"
-                                  onClick={(e) => {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    removeKeywordExclusion(index)
-                                  }}
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </Badge>
+                              <RemovableBadge
+                                key={index}
+                                label={exclusion}
+                                onRemove={() => removeKeywordExclusion(index)}
+                              />
                             ))}
                           </div>
                         </div>
