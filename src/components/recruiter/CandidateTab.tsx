@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { X, Check, Briefcase, Download } from 'lucide-react'
+import { X, Check, Briefcase, Download, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { useCandidatesForReview } from '@/hooks/useSearch'
 import { useApproveCandidate, useRejectCandidate, useShortlistedCandidates, useRejectedCandidates } from '@/hooks/useCandidates'
 import { useJobPostings } from '@/hooks/useJobPostings'
@@ -23,6 +23,12 @@ export function CandidateTab({
   const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState<string>(jobDescriptionId?.toString() || '')
   const [viewMode, setViewMode] = useState<'review' | 'approved' | 'rejected'>('review')
+  const [currentCandidateIndex, setCurrentCandidateIndex] = useState(0)
+
+  // Reset candidate index when job or view mode changes
+  useEffect(() => {
+    setCurrentCandidateIndex(0)
+  }, [selectedJobId, viewMode])
 
   // Helper function to check if selectedJobId is a valid job ID
   const isValidJobId = (jobId: string) => {
@@ -49,6 +55,25 @@ export function CandidateTab({
     selectedJobId ? parseInt(selectedJobId) : null
   )
 
+  const moveToNextCandidate = () => {
+    const reviewCandidates = (enrichedCandidates || []).map(mapEnrichedCandidateToCandidate)
+    // Don't increment if we're at the last candidate, stay at current index
+    // The list will refresh and remove the approved/rejected candidate
+    if (currentCandidateIndex < reviewCandidates.length - 1) {
+      setCurrentCandidateIndex(currentCandidateIndex + 1)
+    }
+  }
+
+  // Reset index if it's out of bounds after a candidate is removed
+  useEffect(() => {
+    if (viewMode === 'review') {
+      const reviewCandidates = (enrichedCandidates || []).map(mapEnrichedCandidateToCandidate)
+      if (reviewCandidates.length > 0 && currentCandidateIndex >= reviewCandidates.length) {
+        setCurrentCandidateIndex(Math.max(0, reviewCandidates.length - 1))
+      }
+    }
+  }, [enrichedCandidates, currentCandidateIndex, viewMode])
+
   const handleApprove = async (candidateId: string) => {
     if (!selectedJobId) return
     
@@ -57,6 +82,8 @@ export function CandidateTab({
         fk_job_description_id: parseInt(selectedJobId),
         fk_candidate_id: parseInt(candidateId)
       })
+      // Move to next candidate after successful approval
+      moveToNextCandidate()
     } catch (error) {
       console.error('Failed to approve candidate:', error)
     }
@@ -70,8 +97,20 @@ export function CandidateTab({
         fk_job_description_id: parseInt(selectedJobId),
         fk_candidate_id: parseInt(candidateId)
       })
+      // Move to next candidate after successful rejection
+      moveToNextCandidate()
     } catch (error) {
       console.error('Failed to reject candidate:', error)
+    }
+  }
+
+  const handleSkip = () => {
+    const reviewCandidates = (enrichedCandidates || []).map(mapEnrichedCandidateToCandidate)
+    // Loop back to the beginning if we're at the last candidate
+    if (currentCandidateIndex >= reviewCandidates.length - 1) {
+      setCurrentCandidateIndex(0)
+    } else {
+      setCurrentCandidateIndex(currentCandidateIndex + 1)
     }
   }
 
@@ -169,8 +208,17 @@ export function CandidateTab({
                 setSelectedJobId(value)
               }}
             >
-              <SelectTrigger className="h-16 text-base w-full py-4" style={{ height: '4rem' }}>
-                <SelectValue placeholder="Select a job role to view candidates" />
+              <SelectTrigger className="h-16 text-base w-full py-4 gap-0" style={{ height: '4rem', paddingLeft: '0.5rem', paddingRight: '0.5rem' }}>
+                {selectedJobId && jobPostings?.find(job => job.id.toString() === selectedJobId) ? (
+                  <div className="flex flex-col w-full text-left">
+                    <span className="font-medium truncate">{jobPostings.find(job => job.id.toString() === selectedJobId)?.title}</span>
+                    <span className="text-xs text-gray-500 truncate">
+                      Target: {jobPostings.find(job => job.id.toString() === selectedJobId)?.target_candidates_count} candidates
+                    </span>
+                  </div>
+                ) : (
+                  <SelectValue placeholder="Select a job role to view candidates" />
+                )}
               </SelectTrigger>
               <SelectContent className="w-full">
                 {isLoadingJobs ? (
@@ -309,7 +357,7 @@ export function CandidateTab({
         </div>
       )}
 
-      {/* Candidates Grid */}
+      {/* Candidates Display */}
       {!selectedJobId ? (
         <div className="text-center py-12">
           <div className="text-gray-500">
@@ -318,28 +366,88 @@ export function CandidateTab({
             <p className="text-sm">Choose a job posting from the dropdown above to start reviewing candidates.</p>
           </div>
         </div>
-      ) : getCurrentCandidates().length > 0 ? (
-        <div className="space-y-6">
-          {/* Candidates Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {getCurrentCandidates().map((candidate) => (
-              <CandidateCard
-                key={candidate.id}
-                candidate={candidate}
-                variant="detailed"
-                showActions={viewMode === 'review'}
-                onApprove={handleApprove}
-                onReject={handleReject}
-                onClick={(candidate) => {
-                  setSelectedCandidate(candidate)
-                  setIsProfilePanelOpen(true)
-                }}
-                isApproving={approveCandidateMutation.isPending}
-                isRejecting={rejectCandidateMutation.isPending}
-              />
-            ))}
+      ) : getCurrentCandidates().length > 0 && getCurrentCandidates()[currentCandidateIndex] ? (
+        viewMode === 'review' ? (
+          /* Single Card Review Mode */
+          <div className="space-y-6">
+            {/* Single Candidate Card */}
+            <div className="flex justify-center">
+              <div className="w-full max-w-sm">
+                <CandidateCard
+                  key={getCurrentCandidates()[currentCandidateIndex].id}
+                  candidate={getCurrentCandidates()[currentCandidateIndex]}
+                  variant="detailed"
+                  showActions={false}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                  onClick={(candidate) => {
+                    setSelectedCandidate(candidate)
+                    setIsProfilePanelOpen(true)
+                  }}
+                  isApproving={approveCandidateMutation.isPending}
+                  isRejecting={rejectCandidateMutation.isPending}
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-center items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleReject(getCurrentCandidates()[currentCandidateIndex].id)}
+                disabled={rejectCandidateMutation.isPending || approveCandidateMutation.isPending}
+                className="h-8 text-xs"
+              >
+                <ThumbsDown className="h-3 w-3 mr-1" />
+                {rejectCandidateMutation.isPending ? 'Rejecting...' : 'Reject'}
+              </Button>
+              
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSkip}
+                disabled={rejectCandidateMutation.isPending || approveCandidateMutation.isPending}
+                className="h-8 text-xs"
+              >
+                Skip
+              </Button>
+              
+              <Button
+                size="sm"
+                onClick={() => handleApprove(getCurrentCandidates()[currentCandidateIndex].id)}
+                disabled={approveCandidateMutation.isPending || rejectCandidateMutation.isPending}
+                className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                <ThumbsUp className="h-3 w-3 mr-1" />
+                {approveCandidateMutation.isPending ? 'Approving...' : 'Approve'}
+              </Button>
+            </div>
+
+            {/* Progress Indicator */}
+            <div className="text-center text-sm text-gray-600 font-medium">
+              Candidate {currentCandidateIndex + 1} of {getCurrentCandidates().length}
+            </div>
           </div>
-        </div>
+        ) : (
+          /* Grid View for Approved/Rejected */
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {getCurrentCandidates().map((candidate) => (
+                <CandidateCard
+                  key={candidate.id}
+                  candidate={candidate}
+                  variant="detailed"
+                  showActions={false}
+                  onClick={(candidate) => {
+                    setSelectedCandidate(candidate)
+                    setIsProfilePanelOpen(true)
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )
       ) : isFetchingCandidates ? (
         <div className="text-center py-12">
           <div className="text-gray-500">

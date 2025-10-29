@@ -53,7 +53,7 @@ export function CandidateCard({
 
   // Detailed variant - used in CandidateTab
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow min-h-[360px]">
       <CardContent className="p-4">
         <div className="space-y-3">
           {/* Candidate Photo and Basic Info */}
@@ -101,7 +101,7 @@ export function CandidateCard({
 
           {/* Summary Preview */}
           <div>
-            <p className="text-xs text-gray-600 line-clamp-2">
+            <p className="text-xs text-gray-600 line-clamp-4">
               {candidate.summary}
             </p>
           </div>
