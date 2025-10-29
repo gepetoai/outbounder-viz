@@ -761,94 +761,75 @@ export function SearchTab({
             </div>
             
             <div className="space-y-4">
-              {/* Experience Fields in Same Row */}
+              {/* First Row of Experience Fields */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium flex items-center gap-1">
-                    Minimum number of past positions
-                  </Label>
-                  <div className="flex items-center gap-3">
-                    <Input
-                      type="number"
-                      value={searchParams.numExperiences || 0}
-                      onChange={(e) => setSearchParams({ ...searchParams, numExperiences: parseInt(e.target.value) || 0 })}
-                      min="0"
-                      max="10"
-                      className="w-20"
-                      placeholder="3"
-                    />
-                  </div>
+                  <Label className="text-sm font-medium">Minimum number of past positions</Label>
+                  <Input
+                    type="number"
+                    value={searchParams.numExperiences || 0}
+                    onChange={(e) => setSearchParams({ ...searchParams, numExperiences: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    max="20"
+                    className="w-20"
+                    placeholder="3"
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Maximum years of experience
-                  </Label>
-                  <div className="flex items-center gap-3">
-                    <Input
-                      type="number"
-                      value={searchParams.maxExperience || 0}
-                      onChange={(e) => setSearchParams({ ...searchParams, maxExperience: parseInt(e.target.value) || 0 })}
-                      min="0"
-                      max="30"
-                      className="w-20"
-                    />
-                  </div>
+                  <Label className="text-sm font-medium">Maximum months of experience</Label>
+                  <Input
+                    type="number"
+                    value={searchParams.maxExperience || 0}
+                    onChange={(e) => setSearchParams({ ...searchParams, maxExperience: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    className="w-20"
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Minimum number of professional connections</Label>
-                  <div className="flex items-center gap-3">
-                    <Input
-                      type="number"
-                      value={searchParams.connections}
-                      onChange={(e) => setSearchParams({ ...searchParams, connections: parseInt(e.target.value) || 0 })}
-                      min="0"
-                      max="500"
-                      className="w-20"
-                    />
-                  </div>
+                  <Label className="text-sm font-medium">Maximum months at one job</Label>
+                  <Input
+                    type="number"
+                    value={searchParams.maxJobDuration || 0}
+                    onChange={(e) => setSearchParams({ ...searchParams, maxJobDuration: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    className="w-20"
+                  />
                 </div>
               </div>
 
               {/* Second Row of Experience Fields */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Maximum years at one job</Label>
-                  <div className="flex items-center gap-3">
-                    <Input
-                      type="number"
-                      value={searchParams.maxJobDuration || 0}
-                      onChange={(e) => setSearchParams({ ...searchParams, maxJobDuration: parseInt(e.target.value) || 0 })}
-                      min="0"
-                      max="20"
-                      className="w-20"
-                    />
-                  </div>
+                  <Label className="text-sm font-medium">Minimum number of professional connections</Label>
+                  <Input
+                    type="number"
+                    value={searchParams.connections}
+                    onChange={(e) => setSearchParams({ ...searchParams, connections: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    max="500"
+                    className="w-20"
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Minimum years of relevant experience</Label>
-                  <div className="flex items-center gap-3">
-                    <Input
-                      type="number"
-                      value={searchParams.deptYears || 0}
-                      onChange={(e) => setSearchParams({ ...searchParams, deptYears: parseInt(e.target.value) || 0 })}
-                      min="0"
-                      max="20"
-                      className="w-20"
-                    />
-                  </div>
+                  <Label className="text-sm font-medium">Minimum months of relevant experience</Label>
+                  <Input
+                    type="number"
+                    value={searchParams.deptYears || 0}
+                    onChange={(e) => setSearchParams({ ...searchParams, deptYears: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    className="w-20"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Minimum months in current role</Label>
-                  <div className="flex items-center gap-3">
-                    <Input
-                      type="number"
-                      value={searchParams.timeInRole || 0}
-                      onChange={(e) => setSearchParams({ ...searchParams, timeInRole: parseInt(e.target.value) || 0 })}
-                      min="0"
-                      max="60"
-                      placeholder="6"
-                      className="w-20"
-                    />
-                  </div>
+                  <Input
+                    type="number"
+                    value={searchParams.timeInRole || 0}
+                    onChange={(e) => setSearchParams({ ...searchParams, timeInRole: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    placeholder="6"
+                    className="w-20"
+                  />
                 </div>
               </div>
 
