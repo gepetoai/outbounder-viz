@@ -132,6 +132,7 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-medium">{job.title}</h3>
+                      <p className="text-sm text-gray-600">{job.target_candidates_count} candidates</p>
                       <p className="text-xs text-gray-500">{job.url}</p>
                       {job.created_at && (
                         <p className="text-xs text-gray-400">

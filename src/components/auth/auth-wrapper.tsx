@@ -1,17 +1,10 @@
 'use client'
-// Temporarily disabled Clerk authentication for mock data testing
-// import { useAuth } from '@clerk/nextjs'
-// import { LoginPage } from './login-page'
-
+import { useAuth } from '@clerk/nextjs'
+import { LoginPage } from './login-page'
 interface AuthWrapperProps {
   children: React.ReactNode
 }
-
 export function AuthWrapper({ children }: AuthWrapperProps) {
-  // Bypass authentication for mock data testing
-  return <>{children}</>
-  
-  /* Original authentication logic - uncomment when Clerk is configured
   const { isSignedIn, isLoaded } = useAuth()
   // Show loading state while Clerk is initializing
   if (!isLoaded) {
@@ -30,5 +23,4 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
   }
   // Show main app if authenticated
   return <>{children}</>
-  */
 }

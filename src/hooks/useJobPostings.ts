@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getMockJobPostings, addMockJobPosting, initializeMockData } from '@/lib/mock-data'
+import { fetchJson } from '@/lib/api-client'
 
 // Types
 export interface JobPosting {
@@ -26,17 +26,16 @@ export interface CreateJobPostingRequest {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
 async function createJobPosting(data: CreateJobPostingRequest): Promise<JobPosting> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500))
-  return addMockJobPosting(data)
+  return fetchJson<JobPosting>(`${API_BASE_URL}/job-description/`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
 }
 
 async function fetchJobPostings(): Promise<JobPosting[]> {
-  // Initialize mock data if needed
-  initializeMockData()
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300))
-  return getMockJobPostings()
+  return fetchJson<JobPosting[]>(`${API_BASE_URL}/job-description/`, {
+    method: 'GET',
+  })
 }
 
 // React Query hooks

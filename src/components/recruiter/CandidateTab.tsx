@@ -1,13 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { X, Check, Briefcase, Download, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { useCandidatesForReview } from '@/hooks/useSearch'
-import { useApproveCandidate, useRejectCandidate, useShortlistedCandidates, useRejectedCandidates, useMoveCandidateToReview } from '@/hooks/useCandidates'
+import { useApproveCandidate, useRejectCandidate, useShortlistedCandidates, useRejectedCandidates } from '@/hooks/useCandidates'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { mapEnrichedCandidateToCandidate, type Candidate } from '@/lib/utils'
 import { CandidateCard } from './CandidateCard'
@@ -47,7 +46,6 @@ export function CandidateTab({
   // API mutation hooks
   const approveCandidateMutation = useApproveCandidate()
   const rejectCandidateMutation = useRejectCandidate()
-  const moveToReviewMutation = useMoveCandidateToReview()
 
   // Fetch approved and rejected candidates for counts
   const { data: shortlistedCandidates } = useShortlistedCandidates(
@@ -126,12 +124,12 @@ export function CandidateTab({
     const headers = ['First Name', 'Last Name', 'LinkedIn Profile URL']
     const csvContent = [
       headers.join(','),
-      ...candidatesList.map(candidate => {
-        const firstName = candidate.first_name || ''
-        const lastName = candidate.last_name || ''
-        const linkedinUrl = candidate.raw_data.websites_linkedin
-          || (candidate.linkedin_canonical_slug ? `https://linkedin.com/in/${candidate.linkedin_canonical_slug}` : '')
-          || (candidate.linkedin_shorthand_slug ? `https://linkedin.com/in/${candidate.linkedin_shorthand_slug}` : '')
+      ...shortlistedCandidates.map(candidate => {
+        const firstName = candidate.fk_candidate.first_name || ''
+        const lastName = candidate.fk_candidate.last_name || ''
+        const linkedinUrl = candidate.fk_candidate.raw_data.websites_linkedin
+          || (candidate.fk_candidate.linkedin_canonical_slug ? `https://linkedin.com/in/${candidate.fk_candidate.linkedin_canonical_slug}` : '')
+          || (candidate.fk_candidate.linkedin_shorthand_slug ? `https://linkedin.com/in/${candidate.fk_candidate.linkedin_shorthand_slug}` : '')
         
         // Escape commas and quotes in CSV
         const escapeCSV = (str: string) => {
@@ -157,7 +155,7 @@ export function CandidateTab({
     
     // Get job title for filename
     const jobTitle = jobPostings?.find(job => job.id.toString() === selectedJobId)?.title || 'candidates'
-    const filename = `${filePrefix}_${jobTitle.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+    const filename = `approved_${jobTitle.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
     
     link.setAttribute('download', filename)
     link.style.visibility = 'hidden'
@@ -199,7 +197,7 @@ export function CandidateTab({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Briefcase className="h-5 w-5" />
-            Select Open Role
+            Select Job Role
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -230,7 +228,12 @@ export function CandidateTab({
                 ) : jobPostings && jobPostings.length > 0 ? (
                   jobPostings.map((job) => (
                     <SelectItem key={job.id} value={job.id.toString()} className="w-full">
-                      <span className="font-medium truncate">{job.title}</span>
+                      <div className="flex flex-col w-full">
+                        <span className="font-medium truncate">{job.title}</span>
+                        <span className="text-xs text-gray-500 truncate">
+                          Target: {job.target_candidates_count} candidates
+                        </span>
+                      </div>
                     </SelectItem>
                   ))
                 ) : (
@@ -240,6 +243,11 @@ export function CandidateTab({
                 )}
               </SelectContent>
             </Select>
+            {selectedJobId && selectedJobId !== 'loading-jobs' && selectedJobId !== 'no-jobs-available' && (
+              <p className="text-sm text-gray-600 mt-2">
+                Selected: {jobPostings?.find(job => job.id.toString() === selectedJobId)?.title}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -250,19 +258,19 @@ export function CandidateTab({
         <div 
           className={`border p-4 rounded-lg cursor-pointer transition-all hover:shadow-md ${
             viewMode === 'review' 
-              ? 'bg-gray-100 border-gray-400' 
+              ? 'bg-blue-50 border-blue-300' 
               : 'bg-white border-gray-300 hover:border-gray-400'
           }`}
           onClick={() => setViewMode('review')}
         >
           <div className="text-center">
             <div className={`text-3xl font-bold mb-1 ${
-              viewMode === 'review' ? 'text-gray-900' : 'text-gray-900'
+              viewMode === 'review' ? 'text-blue-900' : 'text-gray-900'
             }`}>
               {enrichedCandidates?.length || 0}
             </div>
             <div className={`text-xs font-medium uppercase tracking-wider ${
-              viewMode === 'review' ? 'text-gray-700' : 'text-gray-600'
+              viewMode === 'review' ? 'text-blue-700' : 'text-gray-600'
             }`}>
               To Review
             </div>
@@ -273,19 +281,19 @@ export function CandidateTab({
         <div 
           className={`p-4 relative overflow-hidden rounded-lg cursor-pointer transition-all hover:shadow-md ${
             viewMode === 'approved' 
-              ? 'bg-gray-100 border-gray-400 border' 
+              ? 'bg-green-50 border-green-300 border' 
               : 'bg-gray-200 border-gray-300 border'
           }`}
           onClick={() => setViewMode('approved')}
         >
           <div className="relative z-10 text-center">
             <div className={`text-3xl font-bold mb-1 ${
-              viewMode === 'approved' ? 'text-gray-900' : 'text-gray-900'
+              viewMode === 'approved' ? 'text-green-900' : 'text-gray-900'
             }`}>
               {shortlistedCandidates?.length ?? 0}/{jobPostings?.find(job => job.id.toString() === selectedJobId)?.target_candidates_count ?? 500}
             </div>
             <div className={`text-xs font-medium uppercase tracking-wider ${
-              viewMode === 'approved' ? 'text-gray-700' : 'text-gray-600'
+              viewMode === 'approved' ? 'text-green-700' : 'text-gray-600'
             }`}>
               Approved
             </div>
@@ -295,7 +303,7 @@ export function CandidateTab({
           <div className="absolute bottom-0 left-0 right-0 h-2 bg-gray-300 rounded-b-lg">
             <div
               className={`h-full transition-all duration-500 ease-out rounded-b-lg ${
-                viewMode === 'approved' ? 'bg-gray-900' : 'bg-gray-900'
+                viewMode === 'approved' ? 'bg-green-600' : 'bg-gray-900'
               }`}
               style={{ width: `${Math.min(((shortlistedCandidates?.length ?? 0) / (jobPostings?.find(job => job.id.toString() === selectedJobId)?.target_candidates_count ?? 500)) * 100, 100)}%` }}
             />
@@ -306,19 +314,19 @@ export function CandidateTab({
         <div 
           className={`border p-4 rounded-lg cursor-pointer transition-all hover:shadow-md ${
             viewMode === 'rejected' 
-              ? 'bg-gray-100 border-gray-400' 
+              ? 'bg-red-50 border-red-300' 
               : 'bg-white border-gray-300 hover:border-gray-400'
           }`}
           onClick={() => setViewMode('rejected')}
         >
           <div className="text-center">
             <div className={`text-3xl font-bold mb-1 ${
-              viewMode === 'rejected' ? 'text-gray-900' : 'text-gray-900'
+              viewMode === 'rejected' ? 'text-red-900' : 'text-gray-900'
             }`}>
               {rejectedCandidatesFromAPI?.length ?? 0}
             </div>
             <div className={`text-xs font-medium uppercase tracking-wider ${
-              viewMode === 'rejected' ? 'text-gray-700' : 'text-gray-600'
+              viewMode === 'rejected' ? 'text-red-700' : 'text-gray-600'
             }`}>
               Rejected
             </div>
@@ -331,25 +339,20 @@ export function CandidateTab({
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">{getViewTitle()}</h2>
           <div className="flex items-center gap-4">
-            {/* View Type Toggle */}
-            <div className="flex items-center border rounded-lg overflow-hidden">
-              <Button
-                size="sm"
-                variant={viewType === 'single' ? 'default' : 'ghost'}
-                onClick={() => setViewType('single')}
-                className="rounded-none h-8 px-3"
-              >
-                <User className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant={viewType === 'table' ? 'default' : 'ghost'}
-                onClick={() => setViewType('table')}
-                className="rounded-none h-8 px-3"
-              >
-                <TableIcon className="h-4 w-4" />
-              </Button>
+            <div className="text-sm text-gray-600">
+              {getCurrentCandidates().length} candidate{getCurrentCandidates().length !== 1 ? 's' : ''}
             </div>
+            {viewMode === 'approved' && shortlistedCandidates && shortlistedCandidates.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={downloadApprovedCandidatesCSV}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download CSV
+              </Button>
+            )}
           </div>
         </div>
       )}
