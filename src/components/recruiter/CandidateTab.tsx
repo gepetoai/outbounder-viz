@@ -574,10 +574,6 @@ export function CandidateTab({
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">{getViewTitle()}</h2>
           <div className="flex items-center gap-4">
-            <div className="text-sm text-gray-600">
-              {getCurrentCandidates().length} candidate{getCurrentCandidates().length !== 1 ? 's' : ''}
-            </div>
-            
             {/* View Type Toggle */}
             <div className="flex items-center border rounded-lg overflow-hidden">
               <Button
@@ -696,12 +692,7 @@ export function CandidateTab({
             if (!currentCandidate) return null
             
             return (
-              <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-                {/* Progress Indicator */}
-                <div className="text-sm text-gray-600 font-medium">
-                  {currentCardIndex + 1} of {candidates.length}
-                </div>
-
+              <div className="flex flex-col items-center justify-center min-h-[400px] space-y-6">
                 {/* Compact Candidate Card */}
                 <Card className="w-full max-w-md overflow-hidden shadow-lg">
                   <CardContent className="p-6">
@@ -733,64 +724,36 @@ export function CandidateTab({
                   </CardContent>
                 </Card>
 
-                {/* Action Buttons - Three-position slider matching table view */}
+                {/* Action Buttons - Individual buttons */}
                 <div className="flex items-center justify-center gap-3">
-                  <div className="inline-flex items-center bg-gray-100 rounded-lg p-1">
-                    <button
-                      onClick={handleRejectAndNext}
-                      disabled={rejectCandidateMutation.isPending}
-                      className={`px-6 py-3 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${
-                        viewMode === 'rejected'
-                          ? 'bg-white shadow-sm text-gray-900'
-                          : 'text-gray-600 hover:text-gray-900 disabled:opacity-50'
-                      }`}
-                    >
-                      <ThumbsDown className="h-4 w-4" />
-                      <span>Reject</span>
-                    </button>
-                    <button
-                      onClick={handleSkip}
-                      className="px-6 py-3 text-sm font-medium rounded-md transition-all flex items-center gap-2 text-gray-600 hover:text-gray-900"
-                    >
-                      <SkipForward className="h-4 w-4" />
-                      <span>Skip</span>
-                    </button>
-                    <button
-                      onClick={handleApproveAndNext}
-                      disabled={approveCandidateMutation.isPending}
-                      className={`px-6 py-3 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${
-                        viewMode === 'approved'
-                          ? 'bg-gray-900 shadow-sm text-white'
-                          : 'text-gray-600 hover:text-gray-900 disabled:opacity-50'
-                      }`}
-                    >
-                      <ThumbsUp className="h-4 w-4" />
-                      <span>Approve</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Navigation */}
-                <div className="flex items-center gap-2">
                   <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handlePrevious}
-                    disabled={currentCardIndex === 0}
-                    className="h-8 px-3"
+                    onClick={handleRejectAndNext}
+                    disabled={rejectCandidateMutation.isPending}
+                    variant="outline"
+                    size="lg"
+                    className="px-6 py-3 text-sm font-medium flex items-center gap-2"
                   >
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    Previous
+                    <ThumbsDown className="h-4 w-4" />
+                    <span>Reject</span>
                   </Button>
                   <Button
-                    size="sm"
-                    variant="ghost"
                     onClick={handleSkip}
-                    disabled={currentCardIndex === candidates.length - 1}
-                    className="h-8 px-3"
+                    variant="outline"
+                    size="lg"
+                    className="px-6 py-3 text-sm font-medium flex items-center gap-2"
                   >
-                    Next
-                    <ChevronRight className="h-4 w-4 ml-1" />
+                    <SkipForward className="h-4 w-4" />
+                    <span>Skip</span>
+                  </Button>
+                  <Button
+                    onClick={handleApproveAndNext}
+                    disabled={approveCandidateMutation.isPending}
+                    variant="default"
+                    size="lg"
+                    className="px-6 py-3 text-sm font-medium flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white"
+                  >
+                    <ThumbsUp className="h-4 w-4" />
+                    <span>Approve</span>
                   </Button>
                 </div>
               </div>
@@ -821,20 +784,22 @@ export function CandidateTab({
                   </TableHeader>
                   <TableBody>
                     {getCurrentCandidates().map((candidate) => (
-                      <TableRow key={candidate.id} className="hover:bg-gray-50">
-                        <TableCell className="pl-4">
+                      <TableRow 
+                        key={candidate.id} 
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => {
+                          setSelectedCandidate(candidate)
+                          setIsProfilePanelOpen(true)
+                        }}
+                      >
+                        <TableCell className="pl-4" onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             checked={selectedCandidateIds.has(candidate.id)}
                             onCheckedChange={() => handleSelectCandidate(candidate.id)}
                           />
                         </TableCell>
                         <TableCell className="pl-2">
-                          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 cursor-pointer hover:border-gray-400 transition-colors"
-                            onClick={() => {
-                              setSelectedCandidate(candidate)
-                              setIsProfilePanelOpen(true)
-                            }}
-                          >
+                          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 hover:border-gray-400 transition-colors">
                             <img
                               src={candidate.photo}
                               alt={candidate.name}
@@ -843,15 +808,7 @@ export function CandidateTab({
                           </div>
                         </TableCell>
                         <TableCell className="font-medium">
-                          <button
-                            className="text-left hover:text-gray-700 transition-colors"
-                            onClick={() => {
-                              setSelectedCandidate(candidate)
-                              setIsProfilePanelOpen(true)
-                            }}
-                          >
-                            {candidate.name}
-                          </button>
+                          {candidate.name}
                         </TableCell>
                         <TableCell>{candidate.title}</TableCell>
                         <TableCell>{candidate.company}</TableCell>
@@ -867,7 +824,7 @@ export function CandidateTab({
                             <span className="truncate max-w-[200px]">{candidate.education}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-1 justify-end">
                             {/* Three-position status slider */}
                             <div className="inline-flex items-center bg-gray-100 rounded-lg p-0.5">
@@ -1010,9 +967,10 @@ export function CandidateTab({
               </div>
 
               {/* Footer */}
-              <div className="p-4 border-t">
+              <div className="p-4 border-t space-y-3">
                 <Button
                   className="w-full"
+                  variant="outline"
                   onClick={() => {
                     window.open(selectedCandidate.linkedinUrl, '_blank')
                   }}
@@ -1020,6 +978,47 @@ export function CandidateTab({
                   <ExternalLink className="h-4 w-4 mr-2" />
                   View on LinkedIn
                 </Button>
+                
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between gap-2">
+                  <Button
+                    onClick={() => {
+                      handleReject(selectedCandidate.id)
+                      setIsProfilePanelOpen(false)
+                    }}
+                    disabled={rejectCandidateMutation.isPending}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 flex items-center justify-center gap-1"
+                  >
+                    <ThumbsDown className="h-3 w-3" />
+                    <span>Reject</span>
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setIsProfilePanelOpen(false)
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 flex items-center justify-center gap-1"
+                  >
+                    <SkipForward className="h-3 w-3" />
+                    <span>Skip</span>
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      handleApprove(selectedCandidate.id)
+                      setIsProfilePanelOpen(false)
+                    }}
+                    disabled={approveCandidateMutation.isPending}
+                    variant="default"
+                    size="sm"
+                    className="flex-1 flex items-center justify-center gap-1 bg-gray-900 hover:bg-gray-800 text-white"
+                  >
+                    <ThumbsUp className="h-3 w-3" />
+                    <span>Approve</span>
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
