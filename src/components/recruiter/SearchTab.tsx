@@ -109,6 +109,10 @@ export function SearchTab({
   const [isSaveNewDialogOpen, setIsSaveNewDialogOpen] = useState(false)
   const [pendingLocationCity, setPendingLocationCity] = useState<string>('')
   const [enrichLimit, setEnrichLimit] = useState<number>(10)
+  const [approvedCandidateIds, setApprovedCandidateIds] = useState<Set<string>>(new Set())
+  const [rejectedCandidateIds, setRejectedCandidateIds] = useState<Set<string>>(new Set())
+  const [processingCandidateId, setProcessingCandidateId] = useState<string | null>(null)
+  const [processingAction, setProcessingAction] = useState<'approve' | 'reject' | null>(null)
 
   // Dropdown data hooks
   const { data: statesData } = useStates()
@@ -616,6 +620,12 @@ export function SearchTab({
 
       // Update staging candidates with enriched data
       setStagingCandidates(mappedCandidates)
+      
+      // Clear approved/rejected tracking for new batch
+      setApprovedCandidateIds(new Set())
+      setRejectedCandidateIds(new Set())
+      setProcessingCandidateId(null)
+      setProcessingAction(null)
 
       console.log('[EnrichCandidates] Successfully enriched', mappedCandidates.length, 'candidates')
       console.log('[EnrichCandidates] Excluded count:', enrichedResponse.excluded_count)
@@ -658,38 +668,62 @@ export function SearchTab({
   const handleApprove = async (candidateId: string) => {
     if (!jobDescriptionId) return
     
-    // Immediately remove from UI for better UX
-    const updatedCandidates = stagingCandidates.filter(c => c.id !== candidateId)
-    setStagingCandidates(updatedCandidates)
+    // Set loading state for this specific candidate
+    setProcessingCandidateId(candidateId)
+    setProcessingAction('approve')
     
     try {
       await approveCandidateMutation.mutateAsync({
         fk_job_description_id: jobDescriptionId,
         fk_candidate_id: parseInt(candidateId)
       })
+      
+      // Mark as approved after successful API call
+      const newApproved = new Set(approvedCandidateIds)
+      newApproved.add(candidateId)
+      setApprovedCandidateIds(newApproved)
+      
+      // Remove from rejected if it was there
+      const newRejected = new Set(rejectedCandidateIds)
+      newRejected.delete(candidateId)
+      setRejectedCandidateIds(newRejected)
     } catch (error) {
       console.error('Failed to approve candidate:', error)
-      // Restore candidate on error
-      setStagingCandidates(stagingCandidates)
+    } finally {
+      // Clear processing state
+      setProcessingCandidateId(null)
+      setProcessingAction(null)
     }
   }
 
   const handleReject = async (candidateId: string) => {
     if (!jobDescriptionId) return
     
-    // Immediately remove from UI for better UX
-    const updatedCandidates = stagingCandidates.filter(c => c.id !== candidateId)
-    setStagingCandidates(updatedCandidates)
+    // Set loading state for this specific candidate
+    setProcessingCandidateId(candidateId)
+    setProcessingAction('reject')
     
     try {
       await rejectCandidateMutation.mutateAsync({
         fk_job_description_id: jobDescriptionId,
         fk_candidate_id: parseInt(candidateId)
       })
+      
+      // Mark as rejected after successful API call
+      const newRejected = new Set(rejectedCandidateIds)
+      newRejected.add(candidateId)
+      setRejectedCandidateIds(newRejected)
+      
+      // Remove from approved if it was there
+      const newApproved = new Set(approvedCandidateIds)
+      newApproved.delete(candidateId)
+      setApprovedCandidateIds(newApproved)
     } catch (error) {
       console.error('Failed to reject candidate:', error)
-      // Restore candidate on error
-      setStagingCandidates(stagingCandidates)
+    } finally {
+      // Clear processing state
+      setProcessingCandidateId(null)
+      setProcessingAction(null)
     }
   }
 
@@ -1176,8 +1210,10 @@ export function SearchTab({
                     onApprove={handleApprove}
                     onReject={handleReject}
                     showActions={true}
-                    isApproving={approveCandidateMutation.isPending}
-                    isRejecting={rejectCandidateMutation.isPending}
+                    isApproved={approvedCandidateIds.has(candidate.id)}
+                    isRejected={rejectedCandidateIds.has(candidate.id)}
+                    processingCandidateId={processingCandidateId}
+                    processingAction={processingAction}
                   />
                 ))}
               </div>
