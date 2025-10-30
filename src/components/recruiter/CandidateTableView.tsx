@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { MapPin, GraduationCap, ThumbsUp, ThumbsDown, RotateCcw, Download } from 'lucide-react'
+import { MapPin, GraduationCap, ThumbsUp, ThumbsDown, Download } from 'lucide-react'
 import type { Candidate } from '@/lib/utils'
 
 interface CandidateTableViewProps {
@@ -13,12 +13,10 @@ interface CandidateTableViewProps {
   onCandidateClick: (candidate: Candidate) => void
   onApprove: (candidateId: string) => Promise<void>
   onReject: (candidateId: string) => Promise<void>
-  onMoveToReview?: (candidateId: string) => Promise<void>
   onDownloadCSV: () => void
   viewMode: 'review' | 'approved' | 'rejected'
   isApproving?: boolean
   isRejecting?: boolean
-  isMoving?: boolean
 }
 
 export function CandidateTableView({
@@ -26,12 +24,10 @@ export function CandidateTableView({
   onCandidateClick,
   onApprove,
   onReject,
-  onMoveToReview,
   onDownloadCSV,
   viewMode,
   isApproving = false,
-  isRejecting = false,
-  isMoving = false
+  isRejecting = false
 }: CandidateTableViewProps) {
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set())
 
@@ -75,26 +71,11 @@ export function CandidateTableView({
     setSelectedCandidateIds(new Set())
   }
 
-  const handleBulkMoveToReview = async () => {
-    if (!onMoveToReview) return
-
-    const movePromises = Array.from(selectedCandidateIds).map(candidateId =>
-      onMoveToReview(candidateId).catch(error => {
-        console.error(`Failed to move candidate ${candidateId} to review:`, error)
-      })
-    )
-
-    await Promise.all(movePromises)
-    setSelectedCandidateIds(new Set())
-  }
-
-  const handleStatusChange = async (candidateId: string, newStatus: 'review' | 'approved' | 'rejected') => {
+  const handleStatusChange = async (candidateId: string, newStatus: 'approved' | 'rejected') => {
     if (newStatus === 'approved') {
       await onApprove(candidateId)
     } else if (newStatus === 'rejected') {
       await onReject(candidateId)
-    } else if (onMoveToReview) {
-      await onMoveToReview(candidateId)
     }
   }
 
@@ -110,7 +91,7 @@ export function CandidateTableView({
               )}
             </div>
             <div className="flex items-center gap-1 pr-3">
-              {/* Three-position bulk status slider */}
+              {/* Two-position bulk status slider */}
               <div className="inline-flex items-center bg-gray-100 rounded-lg p-0.5">
                 <button
                   onClick={handleBulkReject}
@@ -123,18 +104,6 @@ export function CandidateTableView({
                 >
                   <ThumbsDown className="h-3 w-3" />
                   <span>Reject</span>
-                </button>
-                <button
-                  onClick={handleBulkMoveToReview}
-                  disabled={isMoving || selectedCandidateIds.size === 0 || !onMoveToReview}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${
-                    viewMode === 'review'
-                      ? 'bg-white shadow-sm text-gray-900'
-                      : 'text-gray-600 hover:text-gray-900 disabled:opacity-50'
-                  }`}
-                >
-                  <RotateCcw className="h-3 w-3" />
-                  <span>Review</span>
                 </button>
                 <button
                   onClick={handleBulkApprove}
@@ -182,7 +151,7 @@ export function CandidateTableView({
                 <TableHead>Company</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Education</TableHead>
-                <TableHead className="w-[200px] text-right"></TableHead>
+                <TableHead className="w-[180px] text-right"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -226,11 +195,11 @@ export function CandidateTableView({
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-1 justify-end">
-                      {/* Three-position status slider */}
+                      {/* Two-position status slider */}
                       <div className="inline-flex items-center bg-gray-100 rounded-lg p-0.5">
                         <button
                           onClick={() => handleStatusChange(candidate.id, 'rejected')}
-                          disabled={isRejecting || isApproving || isMoving}
+                          disabled={isRejecting || isApproving}
                           className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                             viewMode === 'rejected'
                               ? 'bg-white shadow-sm text-gray-900'
@@ -239,22 +208,9 @@ export function CandidateTableView({
                         >
                           <ThumbsDown className="h-3 w-3" />
                         </button>
-                        {onMoveToReview && (
-                          <button
-                            onClick={() => handleStatusChange(candidate.id, 'review')}
-                            disabled={isRejecting || isApproving || isMoving}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                              viewMode === 'review'
-                                ? 'bg-white shadow-sm text-gray-900'
-                                : 'text-gray-600 hover:text-gray-900 disabled:opacity-50'
-                            }`}
-                          >
-                            <RotateCcw className="h-3 w-3" />
-                          </button>
-                        )}
                         <button
                           onClick={() => handleStatusChange(candidate.id, 'approved')}
-                          disabled={isRejecting || isApproving || isMoving}
+                          disabled={isRejecting || isApproving}
                           className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                             viewMode === 'approved'
                               ? 'bg-gray-900 shadow-sm text-white'
