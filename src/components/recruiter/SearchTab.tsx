@@ -20,6 +20,7 @@ import { mapEnrichedCandidateToCandidate, type Candidate } from '@/lib/utils'
 import { parseCommaSeparatedList, isCommaSeparatedList } from '@/lib/parse-utils'
 import { CandidateListItem } from './CandidateListItem'
 import { CandidateDetailPanel } from './CandidateDetailPanel'
+import { useToast } from '@/components/ui/toast'
 
 export interface SearchParams {
   // Original fields
@@ -131,6 +132,9 @@ export function SearchTab({
   // Candidate approval/rejection
   const approveCandidateMutation = useApproveCandidate()
   const rejectCandidateMutation = useRejectCandidate()
+
+  // Toast notifications
+  const { showToast } = useToast()
 
   // Track if searchParams has been loaded (to avoid marking as modified on initial load)
   const isInitialLoad = useRef(true)
@@ -512,8 +516,10 @@ export function SearchTab({
       })
       setIsSearchModified(false)
       console.log('Search updated successfully')
+      showToast('Search updated successfully!', 'success')
     } catch (error) {
       console.error('Failed to update search:', error)
+      showToast('Failed to update search', 'error')
     }
   }
 
@@ -545,12 +551,14 @@ export function SearchTab({
         searchId: currentSearchId,
         searchTitle: searchTitle.trim()
       })
-      
+
       setIsSaveDialogOpen(false)
       setSearchTitle('')
       console.log('Search updated successfully')
+      showToast('Search saved successfully!', 'success')
     } catch (error) {
       console.error('Failed to update search:', error)
+      showToast('Failed to save search', 'error')
     }
   }
 
@@ -568,19 +576,21 @@ export function SearchTab({
     try {
       // Map search params to API request format
       const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle.trim(), jobDescriptionId)
-      
+
       // Create new search
       const response = await createSearch.mutateAsync(searchRequest)
-      
+
       // Update current search ID and title
       setCurrentSearchId(response.search_id)
       setSearchTitle(searchTitle.trim())
       setIsSearchModified(false)
       setIsSaveNewDialogOpen(false)
-      
-      console.log('New search created successfully:', response)
+
+      console.log('New search saved successfully:', response)
+      showToast('New search saved successfully!', 'success')
     } catch (error) {
-      console.error('Failed to create new search:', error)
+      console.error('Failed to saved new search:', error)
+      showToast('Failed to saved new search', 'error')
     }
   }
 
@@ -1151,11 +1161,11 @@ export function SearchTab({
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 min-w-[140px]"
                         disabled={updateSearchMutation.isPending}
                       >
                         <Save className="h-4 w-4" />
-                        {updateSearchMutation.isPending ? 'Saving...' : 'Save Search'}
+                        Save Search
                         <ChevronDown className="h-4 w-4" />
                       </Button>
                     </PopoverTrigger>
@@ -1164,14 +1174,23 @@ export function SearchTab({
                         <button
                           className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 transition-colors"
                           onClick={() => setIsSaveNewDialogOpen(true)}
+                          disabled={updateSearchMutation.isPending}
                         >
                           Save New
                         </button>
                         <button
-                          className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 transition-colors"
+                          className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           onClick={handleUpdateSearch}
+                          disabled={updateSearchMutation.isPending}
                         >
-                          Update Existing
+                          <span className="flex items-center gap-2">
+                            {updateSearchMutation.isPending && (
+                              <RefreshCw className="h-3 w-3 animate-spin" />
+                            )}
+                            <span className="flex-1">
+                              {updateSearchMutation.isPending ? 'Updating...' : 'Update Existing'}
+                            </span>
+                          </span>
                         </button>
                       </div>
                     </PopoverContent>
