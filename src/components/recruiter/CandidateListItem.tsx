@@ -11,8 +11,10 @@ interface CandidateListItemProps {
   onApprove?: (candidateId: string) => void
   onReject?: (candidateId: string) => void
   showActions?: boolean
-  isApproving?: boolean
-  isRejecting?: boolean
+  isApproved?: boolean
+  isRejected?: boolean
+  processingCandidateId?: string | null
+  processingAction?: 'approve' | 'reject' | null
 }
 
 export function CandidateListItem({
@@ -21,9 +23,14 @@ export function CandidateListItem({
   onApprove,
   onReject,
   showActions = true,
-  isApproving = false,
-  isRejecting = false
+  isApproved = false,
+  isRejected = false,
+  processingCandidateId = null,
+  processingAction = null
 }: CandidateListItemProps) {
+  const isThisCandidateProcessing = processingCandidateId === candidate.id
+  const isApproving = isThisCandidateProcessing && processingAction === 'approve'
+  const isRejecting = isThisCandidateProcessing && processingAction === 'reject'
   return (
     <div className="flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
       <img
@@ -44,22 +51,23 @@ export function CandidateListItem({
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            variant="outline"
+            variant={isRejected ? "default" : "outline"}
             onClick={() => onReject?.(candidate.id)}
-            className="h-8 text-xs"
+            className={`h-8 text-xs ${isRejected ? 'bg-red-600 hover:bg-red-700 text-white' : ''}`}
             disabled={isRejecting || isApproving}
           >
             <ThumbsDown className="h-3 w-3 mr-1" />
-            {isRejecting ? 'Rejecting...' : 'Reject'}
+            {isRejecting ? 'Rejecting...' : isRejected ? 'Rejected' : 'Reject'}
           </Button>
           <Button
             size="sm"
+            variant={isApproved ? "default" : "outline"}
             onClick={() => onApprove?.(candidate.id)}
-            className="h-8 text-xs"
+            className={`h-8 text-xs ${isApproved ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
             disabled={isApproving || isRejecting}
           >
             <ThumbsUp className="h-3 w-3 mr-1" />
-            {isApproving ? 'Approving...' : 'Approve'}
+            {isApproving ? 'Approving...' : isApproved ? 'Approved' : 'Approve'}
           </Button>
         </div>
       )}
