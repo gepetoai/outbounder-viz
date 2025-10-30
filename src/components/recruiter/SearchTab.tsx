@@ -65,6 +65,8 @@ interface SearchTabProps {
   setSearchParams: (params: SearchParams) => void
   candidateYield: number
   setCandidateYield: (candidateYield: number) => void
+  totalPopulation: number
+  setTotalPopulation: (totalPopulation: number) => void
   stagingCandidates: Candidate[]
   setStagingCandidates: (candidates: Candidate[]) => void
   onGoToCandidates: () => void
@@ -82,6 +84,8 @@ export function SearchTab({
   setSearchParams,
   candidateYield,
   setCandidateYield,
+  totalPopulation,
+  setTotalPopulation,
   stagingCandidates,
   setStagingCandidates,
   onGoToCandidates,
@@ -474,6 +478,7 @@ export function SearchTab({
 
       // Update candidate yield with real results
       setCandidateYield(response.total_results)
+      setTotalPopulation(response.total_results_from_search || 0)
 
       // Clear staging candidates - users must click "Enrich Candidates" to see actual profiles
       setStagingCandidates([])
@@ -483,6 +488,7 @@ export function SearchTab({
       console.error('Search failed:', error)
       // Clear candidates on error
       setCandidateYield(0)
+      setTotalPopulation(0)
       setStagingCandidates([])
     }
   }
@@ -1092,11 +1098,18 @@ export function SearchTab({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Target className="h-5 w-5" />
-                  <div>
-                    <span className="text-2xl font-bold">
-                      {candidateYield.toLocaleString()}
-                    </span>
-                    <span className="text-2xl font-bold"> candidates found</span>
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <span className="text-2xl font-bold">
+                        {candidateYield.toLocaleString()}
+                      </span>
+                      <span className="text-2xl font-bold"> new candidates found</span>
+                    </div>
+                    {totalPopulation > 0 && (
+                      <span className="text-sm text-gray-500">
+                        (Total Population: {totalPopulation.toLocaleString()})
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

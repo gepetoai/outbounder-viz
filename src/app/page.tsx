@@ -170,6 +170,7 @@ export default function HomePage() {
   
   // Candidate state
   const [candidateYield, setCandidateYield] = useState(0)
+  const [totalPopulation, setTotalPopulation] = useState(0)
   const [stagingCandidates, setStagingCandidates] = useState<Candidate[]>([])
   const [approvedCandidates, setApprovedCandidates] = useState<string[]>([])
   const [rejectedCandidates, setRejectedCandidates] = useState<string[]>([])
@@ -336,6 +337,8 @@ export default function HomePage() {
             setSearchParams={setSearchParams}
             candidateYield={candidateYield}
             setCandidateYield={setCandidateYield}
+            totalPopulation={totalPopulation}
+            setTotalPopulation={setTotalPopulation}
             stagingCandidates={stagingCandidates}
             setStagingCandidates={setStagingCandidates}
             onGoToCandidates={() => setRecruiterTab('candidates')}

@@ -29,6 +29,7 @@ export interface SearchRequest {
 
 export interface SearchResponse {
   total_results: number
+  total_results_from_search?: number
   search_id: number
   query_json: Record<string, unknown>
 }
