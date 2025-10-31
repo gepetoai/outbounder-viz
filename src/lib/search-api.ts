@@ -25,6 +25,7 @@ export interface SearchRequest {
   search_title: string
   maximum_years_of_experience_per_role: number
   fk_job_description_id?: number | null
+  search_id?: number
 }
 
 export interface SearchResponse {

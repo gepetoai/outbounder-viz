@@ -512,7 +512,10 @@ export function SearchTab({
       const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle, jobIdToUse)
       await updateSearchMutation.mutateAsync({
         searchId: currentSearchId,
-        data: searchRequest
+        data: {
+          ...searchRequest,
+          search_id: currentSearchId
+        }
       })
       setIsSearchModified(false)
       console.log('Search updated successfully')
