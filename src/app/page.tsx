@@ -106,7 +106,8 @@ export default function HomePage() {
         titleExclusions: [],
         keywordExclusions: [],
         companyExclusions: '',
-        maxJobDuration: 5
+        maxJobDuration: 5,
+        useExperienceFallback: false
       })
       return
     }
@@ -168,7 +169,8 @@ export default function HomePage() {
     titleExclusions: [],
     keywordExclusions: [],
     companyExclusions: '',
-    maxJobDuration: 5
+    maxJobDuration: 5,
+    useExperienceFallback: false
   })
   
   // Candidate state
