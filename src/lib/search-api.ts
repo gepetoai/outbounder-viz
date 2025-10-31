@@ -181,7 +181,7 @@ export async function updateSearch(searchId: number, data: SearchRequest): Promi
 export async function updateQuery(searchId: number, data: SearchRequest): Promise<void> {
   const response = await fetchWithAuth(`${API_BASE_URL}/job-description-searches/${searchId}/update-query`, {
     method: 'PUT',
-    body: JSON.stringify(data)
+    body: JSON.stringify({ ...data, id: searchId })
   })
 
   if (!response.ok) {
