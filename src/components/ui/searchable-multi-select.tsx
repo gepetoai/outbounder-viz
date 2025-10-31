@@ -36,7 +36,7 @@ export function SearchableMultiSelect({
           setIsOpen(true)
         }}
         onFocus={() => setIsOpen(true)}
-        className="h-10 w-full"
+        className="w-full"
       />
       {isOpen && (
         <>

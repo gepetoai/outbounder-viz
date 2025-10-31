@@ -129,7 +129,7 @@ export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle
     graduation_year_from: searchParams.graduationYearFrom,
     graduation_year_to: searchParams.graduationYearTo,
     maximum_years_of_experience: searchParams.maxExperience,
-    use_experience_fallback: true,
+    use_experience_fallback: searchParams.useExperienceFallback || false,
     department: searchParams.department === 'none' ? '' : searchParams.department,
     minimum_years_in_department: searchParams.deptYears,
     management_level: searchParams.managementLevelExclusions,
@@ -249,7 +249,8 @@ export function mapSavedSearchToParams(savedSearch: SavedSearch): SearchParams {
     titleExclusions: savedSearch.job_title_exclusions ? savedSearch.job_title_exclusions.split(',') : [],
     keywordExclusions: savedSearch.profile_keywords_exclusions ? savedSearch.profile_keywords_exclusions.split(',') : [],
     companyExclusions: savedSearch.company_exclusions,
-    maxJobDuration: savedSearch.maximum_years_of_experience_per_role
+    maxJobDuration: savedSearch.maximum_years_of_experience_per_role,
+    useExperienceFallback: savedSearch.use_experience_fallback || false
   }
 }
 

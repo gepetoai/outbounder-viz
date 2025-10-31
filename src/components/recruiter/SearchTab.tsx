@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Modal } from '@/components/ui/modal'
 import { SearchableMultiSelect } from '@/components/ui/searchable-multi-select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { RemovableBadge } from '@/components/ui/removable-badge'
 import { Briefcase, MapPin, GraduationCap, X, Search, Target, RefreshCw, Send, Save, Sparkles, ChevronDown } from 'lucide-react'
 import { useStates, useCities, useIndustries, useDepartments } from '@/hooks/useDropdowns'
@@ -60,6 +61,7 @@ export interface SearchParams {
   keywordExclusions: string[]
   companyExclusions: string
   maxJobDuration: number
+  useExperienceFallback: boolean
 }
 
 interface SearchTabProps {
@@ -824,7 +826,12 @@ export function SearchTab({
                     <Input
                       type="number"
                       value={searchParams.graduationYearFrom || ''}
-                      onChange={(e) => setSearchParams({ ...searchParams, graduationYearFrom: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setSearchParams({ ...searchParams, graduationYearFrom: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                      onBlur={(e) => {
+                        if (e.target.value === '') {
+                          setSearchParams({ ...searchParams, graduationYearFrom: 0 })
+                        }
+                      }}
                       min="1980"
                       max="2025"
                       placeholder="2018"
@@ -835,13 +842,29 @@ export function SearchTab({
                     <Input
                       type="number"
                       value={searchParams.graduationYearTo || ''}
-                      onChange={(e) => setSearchParams({ ...searchParams, graduationYearTo: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setSearchParams({ ...searchParams, graduationYearTo: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                      onBlur={(e) => {
+                        if (e.target.value === '') {
+                          setSearchParams({ ...searchParams, graduationYearTo: 0 })
+                        }
+                      }}
                       min="1980"
                       max="2025"
                       placeholder="2022"
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* Use Experience Fallback Toggle */}
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={searchParams.useExperienceFallback || false}
+                  onCheckedChange={(checked) => {
+                    setSearchParams({ ...searchParams, useExperienceFallback: checked })
+                  }}
+                />
+                <Label className="text-sm">Use Maximum Experience as Fallback if No Graduation Date</Label>
               </div>
             </div>
           </div>
@@ -858,50 +881,42 @@ export function SearchTab({
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs text-gray-600">State</Label>
-                    <Select
+                    <SearchableSelect
+                      placeholder="Select state..."
+                      options={statesData?.map(state => ({
+                        label: state.state_name,
+                        value: state.state_abbrev
+                      })) || []}
                       value={searchParams.locationState}
                       onValueChange={(value) => setSearchParams({ ...searchParams, locationState: value, locationCity: '' })}
-                    >
-                      <SelectTrigger className="h-10 w-full">
-                        <SelectValue placeholder="Select state..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {statesData?.map((state) => (
-                          <SelectItem key={state.state_abbrev} value={state.state_abbrev}>
-                            {state.state_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-gray-600">City</Label>
-                    <Select
+                    <SearchableSelect
+                      placeholder="Select city..."
+                      options={citiesData?.map((city) => ({
+                        label: city.city,
+                        value: city.city
+                      })) || []}
                       value={searchParams.locationCity}
                       onValueChange={(value) => setSearchParams({ ...searchParams, locationCity: value })}
                       disabled={!searchParams.locationState}
-                    >
-                      <SelectTrigger className="h-10 w-full">
-                        <SelectValue placeholder="Select city..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {citiesData?.map((city, index) => (
-                          <SelectItem key={`${city.city}-${index}`} value={city.city}>
-                            {city.city}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-gray-600">Radius (miles)</Label>
                     <Input
                       type="number"
-                      value={searchParams.searchRadius || 0}
-                      onChange={(e) => setSearchParams({ ...searchParams, searchRadius: parseInt(e.target.value) || 0 })}
+                      value={searchParams.searchRadius || ''}
+                      onChange={(e) => setSearchParams({ ...searchParams, searchRadius: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                      onBlur={(e) => {
+                        if (e.target.value === '') {
+                          setSearchParams({ ...searchParams, searchRadius: 0 })
+                        }
+                      }}
                       min="0"
                       max="500"
-                      className="h-10"
                       placeholder="25"
                     />
                   </div>
@@ -925,7 +940,7 @@ export function SearchTab({
                   value={searchParams.department}
                   onValueChange={(value) => setSearchParams({ ...searchParams, department: value })}
                 >
-                  <SelectTrigger className="h-10 w-full max-w-md">
+                  <SelectTrigger className="w-full max-w-md">
                     <SelectValue placeholder="Select department..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -945,8 +960,13 @@ export function SearchTab({
                   <Label className="text-sm font-medium">Minimum number of past positions</Label>
                   <Input
                     type="number"
-                    value={searchParams.numExperiences || 0}
-                    onChange={(e) => setSearchParams({ ...searchParams, numExperiences: parseInt(e.target.value) || 0 })}
+                    value={searchParams.numExperiences || ''}
+                    onChange={(e) => setSearchParams({ ...searchParams, numExperiences: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                    onBlur={(e) => {
+                      if (e.target.value === '') {
+                        setSearchParams({ ...searchParams, numExperiences: 0 })
+                      }
+                    }}
                     min="0"
                     max="20"
                     className="w-20"
@@ -957,8 +977,13 @@ export function SearchTab({
                   <Label className="text-sm font-medium">Maximum months of experience</Label>
                   <Input
                     type="number"
-                    value={searchParams.maxExperience || 0}
-                    onChange={(e) => setSearchParams({ ...searchParams, maxExperience: parseInt(e.target.value) || 0 })}
+                    value={searchParams.maxExperience || ''}
+                    onChange={(e) => setSearchParams({ ...searchParams, maxExperience: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                    onBlur={(e) => {
+                      if (e.target.value === '') {
+                        setSearchParams({ ...searchParams, maxExperience: 0 })
+                      }
+                    }}
                     min="0"
                     className="w-20"
                   />
@@ -967,8 +992,13 @@ export function SearchTab({
                   <Label className="text-sm font-medium">Maximum months at one job</Label>
                   <Input
                     type="number"
-                    value={searchParams.maxJobDuration || 0}
-                    onChange={(e) => setSearchParams({ ...searchParams, maxJobDuration: parseInt(e.target.value) || 0 })}
+                    value={searchParams.maxJobDuration || ''}
+                    onChange={(e) => setSearchParams({ ...searchParams, maxJobDuration: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                    onBlur={(e) => {
+                      if (e.target.value === '') {
+                        setSearchParams({ ...searchParams, maxJobDuration: 0 })
+                      }
+                    }}
                     min="0"
                     className="w-20"
                   />
@@ -981,8 +1011,13 @@ export function SearchTab({
                   <Label className="text-sm font-medium">Minimum number of professional connections</Label>
                   <Input
                     type="number"
-                    value={searchParams.connections}
-                    onChange={(e) => setSearchParams({ ...searchParams, connections: parseInt(e.target.value) || 0 })}
+                    value={searchParams.connections || ''}
+                    onChange={(e) => setSearchParams({ ...searchParams, connections: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                    onBlur={(e) => {
+                      if (e.target.value === '') {
+                        setSearchParams({ ...searchParams, connections: 0 })
+                      }
+                    }}
                     min="0"
                     max="500"
                     className="w-20"
@@ -992,8 +1027,13 @@ export function SearchTab({
                   <Label className="text-sm font-medium">Minimum months of relevant experience</Label>
                   <Input
                     type="number"
-                    value={searchParams.deptYears || 0}
-                    onChange={(e) => setSearchParams({ ...searchParams, deptYears: parseInt(e.target.value) || 0 })}
+                    value={searchParams.deptYears || ''}
+                    onChange={(e) => setSearchParams({ ...searchParams, deptYears: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                    onBlur={(e) => {
+                      if (e.target.value === '') {
+                        setSearchParams({ ...searchParams, deptYears: 0 })
+                      }
+                    }}
                     min="0"
                     className="w-20"
                   />
@@ -1002,8 +1042,13 @@ export function SearchTab({
                   <Label className="text-sm font-medium">Minimum months in current role</Label>
                   <Input
                     type="number"
-                    value={searchParams.timeInRole || 0}
-                    onChange={(e) => setSearchParams({ ...searchParams, timeInRole: parseInt(e.target.value) || 0 })}
+                    value={searchParams.timeInRole || ''}
+                    onChange={(e) => setSearchParams({ ...searchParams, timeInRole: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                    onBlur={(e) => {
+                      if (e.target.value === '') {
+                        setSearchParams({ ...searchParams, timeInRole: 0 })
+                      }
+                    }}
                     min="0"
                     placeholder="6"
                     className="w-20"
@@ -1162,13 +1207,33 @@ export function SearchTab({
                 </div>
                 
               </div>
-              
-              <div className="space-y-2">
-                  <div className="flex items-center space-x-2 pt-6">
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                {/* Number of experiences to look for */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Number of experiences to look for</Label>
+                  <Input
+                    type="number"
+                    value={searchParams.recency || ''}
+                    onChange={(e) => setSearchParams({ ...searchParams, recency: e.target.value === '' ? 3 : parseInt(e.target.value) })}
+                    onBlur={(e) => {
+                      if (e.target.value === '') {
+                        setSearchParams({ ...searchParams, recency: 3 })
+                      }
+                    }}
+                    min="0"
+                    className="w-20"
+                    placeholder="3"
+                  />
+                </div>
+
+                {/* Management Level Exclusions Toggle */}
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
                     <Switch
                       checked={searchParams.managementLevelExclusions === 'C-Level, Director, Manager, VP, Owner, Founder'}
                       onCheckedChange={(checked) => {
-                        const exclusions = checked 
+                        const exclusions = checked
                           ? 'C-Level, Director, Manager, VP, Owner, Founder'
                           : ''
                         setSearchParams({ ...searchParams, managementLevelExclusions: exclusions })
@@ -1177,6 +1242,7 @@ export function SearchTab({
                     <Label className="text-sm">Exclude Current or Previous Managers & Executives</Label>
                   </div>
                 </div>
+              </div>
             </div>
           </div>
 
