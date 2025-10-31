@@ -136,25 +136,26 @@ export function CandidateTableView({
       {/* Table */}
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[40px] pl-4">
-                  <Checkbox
-                    checked={selectedCandidateIds.size === candidates.length && candidates.length > 0}
-                    onCheckedChange={handleSelectAll}
-                  />
-                </TableHead>
-                <TableHead className="w-[60px] pl-2"></TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Education</TableHead>
-                <TableHead className="w-[180px] text-right"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <div className="w-full">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[40px] pl-4">
+                    <Checkbox
+                      checked={selectedCandidateIds.size === candidates.length && candidates.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                  <TableHead className="w-[60px] pl-2"></TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="hidden lg:table-cell">Title</TableHead>
+                  <TableHead className="hidden xl:table-cell">Company</TableHead>
+                  <TableHead className="hidden xl:table-cell">Location</TableHead>
+                  <TableHead className="hidden 2xl:table-cell">Education</TableHead>
+                  <TableHead className="w-[180px] text-right"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
               {candidates.map((candidate) => (
                 <TableRow
                   key={candidate.id}
@@ -177,17 +178,20 @@ export function CandidateTableView({
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">
-                    {candidate.name}
+                    <div className="flex flex-col">
+                      <span>{candidate.name}</span>
+                      <span className="text-xs text-gray-500 lg:hidden">{candidate.title}</span>
+                    </div>
                   </TableCell>
-                  <TableCell>{candidate.title}</TableCell>
-                  <TableCell>{candidate.company}</TableCell>
-                  <TableCell>
+                  <TableCell className="hidden lg:table-cell">{candidate.title}</TableCell>
+                  <TableCell className="hidden xl:table-cell">{candidate.company}</TableCell>
+                  <TableCell className="hidden xl:table-cell">
                     <div className="flex items-center gap-1 text-sm text-gray-600">
                       <MapPin className="h-3 w-3 flex-shrink-0" />
                       <span>{candidate.location}</span>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden 2xl:table-cell">
                     <div className="flex items-center gap-1 text-sm text-gray-600">
                       <GraduationCap className="h-3 w-3 flex-shrink-0" />
                       <span className="truncate max-w-[200px]">{candidate.education}</span>
@@ -226,6 +230,7 @@ export function CandidateTableView({
               ))}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

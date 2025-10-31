@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Plus, Building2, Search, Loader2, Pencil, Trash2 } from 'lucide-react'
-import { useJobPostings, useCreateJobPosting } from '@/hooks/useJobPostings'
+import { useJobPostings, useCreateJobPosting, useUpdateJobPosting, useDeleteJobPosting, type JobPosting } from '@/hooks/useJobPostings'
+import { JobPostingFormDialog } from './JobPostingFormDialog'
 
 interface JobPostingManagerProps {
   onSearchClick: (jobId: number) => void
@@ -16,10 +17,16 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
   const [newJobTitle, setNewJobTitle] = useState('')
   const [newJobUrl, setNewJobUrl] = useState('')
   const [newTargetCandidates, setNewTargetCandidates] = useState(500)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editingJob, setEditingJob] = useState<JobPosting | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deletingJobId, setDeletingJobId] = useState<number | null>(null)
 
   // React Query hooks
   const { data: jobPostings = [], isLoading, error } = useJobPostings()
   const createJobMutation = useCreateJobPosting()
+  const updateJobMutation = useUpdateJobPosting()
+  const deleteJobMutation = useDeleteJobPosting()
 
   const handleSaveJob = () => {
     if (!newJobTitle || !newJobUrl) return
@@ -37,6 +44,50 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
         setNewTargetCandidates(500)
       }
     })
+  }
+
+  const handleEditJob = (job: JobPosting) => {
+    setEditingJob(job)
+    setEditDialogOpen(true)
+  }
+
+  const handleSaveEdit = (data: { title: string; url: string; target_candidates_count: number }) => {
+    if (!editingJob) return
+
+    updateJobMutation.mutate({
+      id: editingJob.id,
+      data: {
+        title: data.title,
+        url: data.url,
+        target_candidates_count: data.target_candidates_count,
+      }
+    }, {
+      onSuccess: () => {
+        setEditDialogOpen(false)
+        setEditingJob(null)
+      }
+    })
+  }
+
+  const handleDeleteClick = (jobId: number) => {
+    setDeletingJobId(jobId)
+    setDeleteConfirmOpen(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (!deletingJobId) return
+
+    deleteJobMutation.mutate(deletingJobId, {
+      onSuccess: () => {
+        setDeleteConfirmOpen(false)
+        setDeletingJobId(null)
+      }
+    })
+  }
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmOpen(false)
+    setDeletingJobId(null)
   }
 
   return (
@@ -144,10 +195,7 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => {
-                          // Edit functionality - to be implemented
-                          console.log('Edit job:', job.id)
-                        }}
+                        onClick={() => handleEditJob(job)}
                       >
                         <Pencil className="h-4 w-4 mr-1" />
                         Edit
@@ -155,10 +203,7 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => {
-                          // Delete functionality - to be implemented
-                          console.log('Delete job:', job.id)
-                        }}
+                        onClick={() => handleDeleteClick(job.id)}
                       >
                         <Trash2 className="h-4 w-4 mr-1" />
                         Delete
@@ -178,6 +223,50 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Edit Job Dialog */}
+      <JobPostingFormDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        job={editingJob}
+        onSave={handleSaveEdit}
+        isLoading={updateJobMutation.isPending}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <h2 className="text-lg font-semibold mb-2">Delete Job Posting</h2>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete this job posting? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={handleCancelDelete}
+                disabled={deleteJobMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmDelete}
+                disabled={deleteJobMutation.isPending}
+              >
+                {deleteJobMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
