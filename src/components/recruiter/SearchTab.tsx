@@ -461,23 +461,43 @@ export function SearchTab({
     console.log('[HandleSearch] Called with state:', {
       isSearchModified,
       currentSearchId,
-      willRunExisting: !isSearchModified && currentSearchId
+      searchParams,
+      jobDescriptionId
     })
 
     try {
       let response: SearchResponse
+      const jobIdToUse = jobDescriptionId
 
-      // If we have a loaded search that hasn't been modified, just run it
-      if (!isSearchModified && currentSearchId) {
-        console.log('[HandleSearch] Running existing search:', currentSearchId)
+      if (currentSearchId) {
+        // We have an existing search
+        if (isSearchModified) {
+          // Update the search parameters first
+          console.log('[HandleSearch] Updating existing search:', currentSearchId)
+          const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle || 'Candidate Search', jobIdToUse)
+          console.log('[HandleSearch] Update payload:', searchRequest)
+
+          const updateResponse = await updateSearchMutation.mutateAsync({
+            searchId: currentSearchId,
+            data: searchRequest
+          })
+          console.log('[HandleSearch] Update response:', updateResponse)
+          setIsSearchModified(false)
+        } else {
+          console.log('[HandleSearch] Running existing search without modifications:', currentSearchId)
+        }
+
+        // Then run the search
+        console.log('[HandleSearch] Running search:', currentSearchId)
         response = await runSearchMutation.mutateAsync(currentSearchId)
+        console.log('[HandleSearch] Run response:', response)
       } else {
+        // No existing search, create a new one
         console.log('[HandleSearch] Creating new search')
-        // Otherwise create a new search
-        // Use jobDescriptionId prop
-        const jobIdToUse = jobDescriptionId
         const searchRequest = mapSearchParamsToRequest(searchParams, 'Candidate Search', jobIdToUse)
+        console.log('[HandleSearch] Create payload:', searchRequest)
         response = await createSearch.mutateAsync(searchRequest)
+        console.log('[HandleSearch] Create response:', response)
 
         // Store the search ID for later use
         setCurrentSearchId(response.search_id)
@@ -491,9 +511,11 @@ export function SearchTab({
       // Clear staging candidates - users must click "Enrich Candidates" to see actual profiles
       setStagingCandidates([])
 
-      console.log('Search completed:', response)
+      console.log('[HandleSearch] Search completed successfully')
+      showToast('Search completed successfully!', 'success')
     } catch (error) {
-      console.error('Search failed:', error)
+      console.error('[HandleSearch] Search failed:', error)
+      showToast('Search failed: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error')
       // Clear candidates on error
       setCandidateYield(0)
       setTotalPopulation(0)
@@ -1198,12 +1220,12 @@ export function SearchTab({
                       </div>
                     </PopoverContent>
                   </Popover>
-                  <Button 
+                  <Button
                     className="flex items-center gap-2"
                     onClick={handleSearch}
-                    disabled={createSearch.isPending || !jobDescriptionId}
+                    disabled={createSearch.isPending || updateSearchMutation.isPending || runSearchMutation.isPending || !jobDescriptionId}
                   >
-                    {createSearch.isPending ? (
+                    {(createSearch.isPending || updateSearchMutation.isPending || runSearchMutation.isPending) ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" />
                         Searching...
