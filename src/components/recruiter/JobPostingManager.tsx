@@ -5,9 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Plus, Building2, Search, Loader2, Pencil, Trash2 } from 'lucide-react'
 import { useJobPostings, useCreateJobPosting, useUpdateJobPosting, useDeleteJobPosting, type JobPosting } from '@/hooks/useJobPostings'
 import { JobPostingFormDialog } from './JobPostingFormDialog'
+import { useToast } from '@/components/ui/toast'
 
 interface JobPostingManagerProps {
   onSearchClick: (jobId: number) => void
@@ -27,6 +36,9 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
   const createJobMutation = useCreateJobPosting()
   const updateJobMutation = useUpdateJobPosting()
   const deleteJobMutation = useDeleteJobPosting()
+
+  // Toast notifications
+  const { showToast } = useToast()
 
   const handleSaveJob = () => {
     if (!newJobTitle || !newJobUrl) return
@@ -65,6 +77,11 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
       onSuccess: () => {
         setEditDialogOpen(false)
         setEditingJob(null)
+        showToast('Job posting updated successfully!', 'success')
+      },
+      onError: (error) => {
+        console.error('Failed to update job posting:', error)
+        showToast('Failed to update job posting', 'error')
       }
     })
   }
@@ -81,6 +98,11 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
       onSuccess: () => {
         setDeleteConfirmOpen(false)
         setDeletingJobId(null)
+        showToast('Job posting deleted successfully!', 'success')
+      },
+      onError: (error) => {
+        console.error('Failed to delete job posting:', error)
+        showToast('Failed to delete job posting', 'error')
       }
     })
   }
@@ -235,39 +257,40 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
       />
 
       {/* Delete Confirmation Dialog */}
-      {deleteConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-            <h2 className="text-lg font-semibold mb-2">Delete Job Posting</h2>
-            <p className="text-sm text-gray-600 mb-6">
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent showCloseButton={false} aria-describedby="delete-dialog-description">
+          <DialogHeader>
+            <DialogTitle>Delete Job Posting</DialogTitle>
+            <DialogDescription id="delete-dialog-description">
               Are you sure you want to delete this job posting? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={handleCancelDelete}
-                disabled={deleteJobMutation.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleConfirmDelete}
-                disabled={deleteJobMutation.isPending}
-              >
-                {deleteJobMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  'Delete'
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCancelDelete}
+              disabled={deleteJobMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteJobMutation.isPending}
+              autoFocus
+            >
+              {deleteJobMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

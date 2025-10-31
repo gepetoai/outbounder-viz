@@ -56,5 +56,16 @@ export async function fetchJson<T>(
     throw new Error(`API Error: ${response.status} ${response.statusText}`)
   }
 
-  return response.json()
+  // Handle 204 No Content responses (e.g., successful DELETE)
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return undefined as T
+  }
+
+  // Check if response has content before parsing JSON
+  const contentType = response.headers.get('content-type')
+  if (contentType && contentType.includes('application/json')) {
+    return response.json()
+  }
+
+  return undefined as T
 }
