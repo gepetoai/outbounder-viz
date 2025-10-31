@@ -1256,9 +1256,10 @@ export function SearchTab({
                 <Button
                   className="flex items-center gap-2"
                   onClick={handleSendToReview}
+                  disabled={stagingCandidates.length === 0}
                 >
                   <Send className="h-4 w-4" />
-                  Send All {candidateYield.toLocaleString()} to Review
+                  Send {stagingCandidates.length > 0 ? stagingCandidates.length : 'All'} to Review
                 </Button>
                 {/* {isSearchModified ? (
                   <Button
