@@ -13,7 +13,7 @@ import { SearchableMultiSelect } from '@/components/ui/searchable-multi-select'
 import { RemovableBadge } from '@/components/ui/removable-badge'
 import { Briefcase, MapPin, GraduationCap, X, Search, Target, RefreshCw, Send, Save, Sparkles, ChevronDown } from 'lucide-react'
 import { useStates, useCities, useIndustries, useDepartments } from '@/hooks/useDropdowns'
-import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useUpdateQuery, useRunSearch, useEnrichCandidates } from '@/hooks/useSearch'
+import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useUpdateQuery, useEnrichCandidates } from '@/hooks/useSearch'
 import { useApproveCandidate, useRejectCandidate } from '@/hooks/useCandidates'
 import { mapSearchParamsToRequest, SearchResponse } from '@/lib/search-api'
 import { mapEnrichedCandidateToCandidate, type Candidate } from '@/lib/utils'
@@ -126,7 +126,6 @@ export function SearchTab({
   const updateSearchName = useUpdateSearchName()
   const updateSearchMutation = useUpdateSearch()
   const updateQueryMutation = useUpdateQuery()
-  const runSearchMutation = useRunSearch()
   const enrichCandidatesMutation = useEnrichCandidates()
   
   // Candidate approval/rejection
@@ -459,7 +458,6 @@ export function SearchTab({
 
   const handleSearch = async () => {
     console.log('[HandleSearch] Called with state:', {
-      isSearchModified,
       currentSearchId,
       searchParams,
       jobDescriptionId
@@ -468,33 +466,22 @@ export function SearchTab({
     try {
       let response: SearchResponse
       const jobIdToUse = jobDescriptionId
+      const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle || 'Candidate Search', jobIdToUse)
 
       if (currentSearchId) {
-        // We have an existing search
-        if (isSearchModified) {
-          // Update the search parameters first
-          console.log('[HandleSearch] Updating existing search:', currentSearchId)
-          const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle || 'Candidate Search', jobIdToUse)
-          console.log('[HandleSearch] Update payload:', searchRequest)
+        // We have an existing search - update it (which also runs the search)
+        console.log('[HandleSearch] Updating existing search:', currentSearchId)
+        console.log('[HandleSearch] Update payload:', searchRequest)
 
-          const updateResponse = await updateSearchMutation.mutateAsync({
-            searchId: currentSearchId,
-            data: searchRequest
-          })
-          console.log('[HandleSearch] Update response:', updateResponse)
-          setIsSearchModified(false)
-        } else {
-          console.log('[HandleSearch] Running existing search without modifications:', currentSearchId)
-        }
-
-        // Then run the search
-        console.log('[HandleSearch] Running search:', currentSearchId)
-        response = await runSearchMutation.mutateAsync(currentSearchId)
-        console.log('[HandleSearch] Run response:', response)
+        response = await updateSearchMutation.mutateAsync({
+          searchId: currentSearchId,
+          data: searchRequest
+        })
+        console.log('[HandleSearch] Update response:', response)
+        setIsSearchModified(false)
       } else {
         // No existing search, create a new one
         console.log('[HandleSearch] Creating new search')
-        const searchRequest = mapSearchParamsToRequest(searchParams, 'Candidate Search', jobIdToUse)
         console.log('[HandleSearch] Create payload:', searchRequest)
         response = await createSearch.mutateAsync(searchRequest)
         console.log('[HandleSearch] Create response:', response)
@@ -1223,9 +1210,9 @@ export function SearchTab({
                   <Button
                     className="flex items-center gap-2"
                     onClick={handleSearch}
-                    disabled={createSearch.isPending || updateSearchMutation.isPending || runSearchMutation.isPending || !jobDescriptionId}
+                    disabled={createSearch.isPending || updateSearchMutation.isPending || !jobDescriptionId}
                   >
-                    {(createSearch.isPending || updateSearchMutation.isPending || runSearchMutation.isPending) ? (
+                    {(createSearch.isPending || updateSearchMutation.isPending) ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" />
                         Searching...
