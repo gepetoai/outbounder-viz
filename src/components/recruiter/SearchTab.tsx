@@ -21,6 +21,7 @@ import { parseCommaSeparatedList, isCommaSeparatedList } from '@/lib/parse-utils
 import { CandidateListItem } from './CandidateListItem'
 import { CandidateDetailPanel } from './CandidateDetailPanel'
 import { useToast } from '@/components/ui/toast'
+import { JobPostingRequiredModal } from './JobPostingRequiredModal'
 
 export interface SearchParams {
   // Original fields
@@ -72,6 +73,7 @@ interface SearchTabProps {
   setStagingCandidates: (candidates: Candidate[]) => void
   onGoToCandidates: () => void
   jobDescriptionId?: number | null
+  setJobDescriptionId?: (id: number | null) => void
   currentSearchId: number | null
   setCurrentSearchId: (id: number | null) => void
   searchTitle: string
@@ -91,6 +93,7 @@ export function SearchTab({
   setStagingCandidates,
   onGoToCandidates,
   jobDescriptionId,
+  setJobDescriptionId,
   currentSearchId,
   setCurrentSearchId,
   searchTitle,
@@ -114,6 +117,7 @@ export function SearchTab({
   const [rejectedCandidateIds, setRejectedCandidateIds] = useState<Set<string>>(new Set())
   const [processingCandidateId, setProcessingCandidateId] = useState<string | null>(null)
   const [processingAction, setProcessingAction] = useState<'approve' | 'reject' | null>(null)
+  const [isJobPostingModalOpen, setIsJobPostingModalOpen] = useState(false)
 
   // Dropdown data hooks
   const { data: statesData } = useStates()
@@ -461,8 +465,16 @@ export function SearchTab({
     console.log('[HandleSearch] Called with state:', {
       isSearchModified,
       currentSearchId,
-      willRunExisting: !isSearchModified && currentSearchId
+      willRunExisting: !isSearchModified && currentSearchId,
+      jobDescriptionId
     })
+
+    // Check if we need a job posting - show modal if not selected
+    if (!jobDescriptionId) {
+      console.log('[HandleSearch] No job posting selected, showing modal')
+      setIsJobPostingModalOpen(true)
+      return
+    }
 
     try {
       let response: SearchResponse
@@ -737,6 +749,16 @@ export function SearchTab({
       // Clear processing state
       setProcessingCandidateId(null)
       setProcessingAction(null)
+    }
+  }
+
+  const handleJobPostingSelected = (jobId: number) => {
+    if (setJobDescriptionId) {
+      setJobDescriptionId(jobId)
+      // After setting the job ID, automatically trigger the search
+      setTimeout(() => {
+        handleSearch()
+      }, 100)
     }
   }
 
@@ -1125,19 +1147,28 @@ export function SearchTab({
                   <Target className="h-5 w-5 text-gray-400" />
                   <div>
                     <span className="text-2xl font-bold text-gray-400">
-                      Select a job posting first
+                      No results yet
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
-                  <Button 
+                  <Button
                     className="flex items-center gap-2"
                     onClick={handleSearch}
-                    disabled={true}
+                    disabled={createSearch.isPending}
                   >
-                    <Search className="h-4 w-4" />
-                    Search Candidates
+                    {createSearch.isPending ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Searching...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-4 w-4" />
+                        Search Candidates
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
@@ -1198,10 +1229,10 @@ export function SearchTab({
                       </div>
                     </PopoverContent>
                   </Popover>
-                  <Button 
+                  <Button
                     className="flex items-center gap-2"
                     onClick={handleSearch}
-                    disabled={createSearch.isPending || !jobDescriptionId}
+                    disabled={createSearch.isPending}
                   >
                     {createSearch.isPending ? (
                       <>
@@ -1387,6 +1418,13 @@ export function SearchTab({
           />
         </div>
       </Modal>
+
+      {/* Job Posting Required Modal */}
+      <JobPostingRequiredModal
+        open={isJobPostingModalOpen}
+        onOpenChange={setIsJobPostingModalOpen}
+        onJobSelected={handleJobPostingSelected}
+      />
     </div>
   )
 }

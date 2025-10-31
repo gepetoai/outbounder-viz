@@ -4,11 +4,11 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { 
-  Users, 
-  Play, 
-  MessageSquare, 
-  BarChart3, 
+import {
+  Users,
+  Play,
+  MessageSquare,
+  BarChart3,
   Settings,
   Menu,
   X,
@@ -17,7 +17,8 @@ import {
   Globe,
   Zap,
   ChevronDown,
-  Briefcase
+  Briefcase,
+  Plus
 } from 'lucide-react'
 
 // Import our refactored components
@@ -28,6 +29,7 @@ import { SequencerTab } from '@/components/recruiter/SequencerTab'
 import { AnalyticsTab } from '@/components/recruiter/AnalyticsTab'
 import { ApprovedRejectedCarousel } from '@/components/recruiter/ApprovedRejectedCarousel'
 import { SettingsTab } from '@/components/recruiter/SettingsTab'
+import { JobPostingRequiredModal } from '@/components/recruiter/JobPostingRequiredModal'
 import { AuthWrapper } from '@/components/auth/auth-wrapper';
 import { UserButton } from '@clerk/nextjs';
 import { useJobPostings } from '@/hooks/useJobPostings'
@@ -55,6 +57,7 @@ export default function HomePage() {
   const [currentSearchId, setCurrentSearchId] = useState<number | null>(null)
   const [searchTitle, setSearchTitle] = useState('')
   const [isSearchModified, setIsSearchModified] = useState(false)
+  const [isCreateJobModalOpen, setIsCreateJobModalOpen] = useState(false)
 
   // Job postings state removed - now handled by React Query
   
@@ -343,6 +346,7 @@ export default function HomePage() {
             setStagingCandidates={setStagingCandidates}
             onGoToCandidates={() => setRecruiterTab('candidates')}
             jobDescriptionId={currentJobDescriptionId}
+            setJobDescriptionId={setCurrentJobDescriptionId}
             currentSearchId={currentSearchId}
             setCurrentSearchId={setCurrentSearchId}
             searchTitle={searchTitle}
@@ -659,14 +663,22 @@ export default function HomePage() {
                     <Select value={currentJobDescriptionId?.toString() ?? ''} onValueChange={(value) => {
                       if (value === 'clear-job-selection') {
                         setCurrentJobDescriptionId(null)
+                      } else if (value === 'create-new-job') {
+                        setIsCreateJobModalOpen(true)
                       } else {
                         setCurrentJobDescriptionId(parseInt(value))
                       }
                     }}>
-                      <SelectTrigger className={`w-full ${!currentJobDescriptionId ? 'border-red-300 focus:border-red-500' : ''}`}>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select job posting..." />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="create-new-job">
+                          <span className="flex items-center gap-2 text-primary font-medium">
+                            <Plus className="h-4 w-4" />
+                            Create Job Posting
+                          </span>
+                        </SelectItem>
                         {currentJobDescriptionId && (
                           <SelectItem value="clear-job-selection">
                             <span className="text-muted-foreground italic">Clear selection</span>
@@ -689,13 +701,6 @@ export default function HomePage() {
                         )}
                       </SelectContent>
                     </Select>
-                    <div className="h-5">
-                      {!currentJobDescriptionId && (
-                        <p className="text-xs text-red-600">
-                          Please select a job posting to continue
-                        </p>
-                      )}
-                    </div>
                   </div>
                 </div>
                 <div className="w-64 min-w-64">
@@ -735,6 +740,16 @@ export default function HomePage() {
         </main>
       </div>
     </div>
+
+    {/* Job Posting Creation Modal */}
+    <JobPostingRequiredModal
+      open={isCreateJobModalOpen}
+      onOpenChange={setIsCreateJobModalOpen}
+      onJobSelected={(jobId) => {
+        setCurrentJobDescriptionId(jobId)
+      }}
+      initialView="create"
+    />
     </AuthWrapper>
   )
 }
