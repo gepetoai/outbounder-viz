@@ -98,7 +98,7 @@ export function JobPostingRequiredModal({
             <DialogHeader>
               <DialogTitle>Job Posting Required</DialogTitle>
               <DialogDescription>
-                You don't have a job posting tied to this search. Please select an existing one or create a new one.
+                You don&apos;t have a job posting tied to this search. Please select an existing one or create a new one.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-6 py-6">
