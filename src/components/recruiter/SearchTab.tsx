@@ -760,13 +760,46 @@ export function SearchTab({
     }
   }
 
-  const handleJobPostingSelected = (jobId: number) => {
+  const handleJobPostingSelected = async (jobId: number) => {
     if (setJobDescriptionId) {
       setJobDescriptionId(jobId)
-      // After setting the job ID, automatically trigger the search
-      setTimeout(() => {
-        handleSearch()
-      }, 100)
+      setIsJobPostingModalOpen(false)
+
+      // Wait for next tick to ensure state is updated
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      // Now run the search with the updated jobId
+      try {
+        let response: SearchResponse
+        const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle || 'Candidate Search', jobId)
+
+        if (currentSearchId) {
+          console.log('[HandleSearch] Updating existing search:', currentSearchId)
+          response = await updateSearchMutation.mutateAsync({
+            searchId: currentSearchId,
+            data: searchRequest
+          })
+          setIsSearchModified(false)
+        } else {
+          console.log('[HandleSearch] Creating new search')
+          response = await createSearch.mutateAsync(searchRequest)
+          setCurrentSearchId(response.search_id)
+          setIsSearchModified(false)
+        }
+
+        setCandidateYield(response.total_results)
+        setTotalPopulation(response.total_results_from_search || 0)
+        setStagingCandidates([])
+
+        console.log('[HandleSearch] Search completed successfully')
+        showToast('Search completed successfully!', 'success')
+      } catch (error) {
+        console.error('[HandleSearch] Search failed:', error)
+        showToast('Search failed: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error')
+        setCandidateYield(0)
+        setTotalPopulation(0)
+        setStagingCandidates([])
+      }
     }
   }
 

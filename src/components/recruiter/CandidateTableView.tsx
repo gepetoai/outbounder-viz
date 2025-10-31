@@ -177,24 +177,28 @@ export function CandidateTableView({
                       />
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">
-                    <div className="flex flex-col">
-                      <span>{candidate.name}</span>
-                      <span className="text-xs text-gray-500 lg:hidden">{candidate.title}</span>
+                  <TableCell className="font-medium max-w-[200px]">
+                    <div className="flex flex-col min-w-0">
+                      <span className="truncate block" title={candidate.name}>{candidate.name}</span>
+                      <span className="text-xs text-gray-500 lg:hidden truncate block" title={candidate.title}>{candidate.title}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="hidden lg:table-cell">{candidate.title}</TableCell>
-                  <TableCell className="hidden xl:table-cell">{candidate.company}</TableCell>
-                  <TableCell className="hidden xl:table-cell">
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                  <TableCell className="hidden lg:table-cell max-w-[250px]">
+                    <div className="truncate" title={candidate.title}>{candidate.title}</div>
+                  </TableCell>
+                  <TableCell className="hidden xl:table-cell max-w-[200px]">
+                    <div className="truncate" title={candidate.company}>{candidate.company}</div>
+                  </TableCell>
+                  <TableCell className="hidden xl:table-cell max-w-[200px]">
+                    <div className="flex items-center gap-1 text-sm text-gray-600 min-w-0">
                       <MapPin className="h-3 w-3 flex-shrink-0" />
-                      <span>{candidate.location}</span>
+                      <span className="truncate block min-w-0" title={candidate.location}>{candidate.location}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="hidden 2xl:table-cell">
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                  <TableCell className="hidden 2xl:table-cell max-w-[250px]">
+                    <div className="flex items-center gap-1 text-sm text-gray-600 min-w-0">
                       <GraduationCap className="h-3 w-3 flex-shrink-0" />
-                      <span className="truncate max-w-[200px]">{candidate.education}</span>
+                      <span className="truncate block min-w-0" title={candidate.education}>{candidate.education}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -228,8 +232,8 @@ export function CandidateTableView({
                   </TableCell>
                 </TableRow>
               ))}
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>

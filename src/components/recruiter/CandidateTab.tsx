@@ -58,12 +58,15 @@ export function CandidateTab({
   )
 
   const moveToNextCandidate = () => {
+    // Don't increment the index - when the candidate is removed from the list by React Query,
+    // the same index will automatically show the next candidate
+    // Only decrement if we were at the last candidate and it's being removed
     const reviewCandidates = (enrichedCandidates || []).map(mapEnrichedCandidateToCandidate)
-    // Don't increment if we're at the last candidate, stay at current index
-    // The list will refresh and remove the approved/rejected candidate
-    if (currentCandidateIndex < reviewCandidates.length - 1) {
-      setCurrentCandidateIndex(currentCandidateIndex + 1)
+    if (currentCandidateIndex >= reviewCandidates.length - 1 && currentCandidateIndex > 0) {
+      // We're removing the last candidate, so go back one to show the new last candidate
+      setCurrentCandidateIndex(currentCandidateIndex - 1)
     }
+    // Otherwise, stay at the same index - the list will update and show the next candidate
   }
 
   // Reset index if it's out of bounds after a candidate is removed
