@@ -29,61 +29,67 @@ const lastNames = [
 ]
 
 const jobTitles = [
-  'Software Engineer', 'Senior Software Engineer', 'Staff Software Engineer',
-  'Product Manager', 'Senior Product Manager', 'Engineering Manager',
-  'Data Scientist', 'Senior Data Scientist', 'Machine Learning Engineer',
-  'Frontend Developer', 'Backend Developer', 'Full Stack Developer',
-  'DevOps Engineer', 'Site Reliability Engineer', 'Cloud Architect',
-  'UX Designer', 'Product Designer', 'Design Lead',
-  'Technical Lead', 'Principal Engineer', 'Solutions Architect',
-  'Data Engineer', 'Analytics Engineer', 'Business Analyst',
-  'QA Engineer', 'Test Automation Engineer', 'Security Engineer'
+  'Manufacturing Engineer', 'Senior Manufacturing Engineer', 'Production Manager',
+  'Plant Manager', 'Operations Manager', 'Quality Engineer',
+  'Process Engineer', 'Industrial Engineer', 'Mechanical Engineer',
+  'Production Supervisor', 'Supply Chain Manager', 'Maintenance Manager',
+  'Quality Control Manager', 'Manufacturing Director', 'Operations Director',
+  'Lean Manufacturing Specialist', 'Six Sigma Black Belt', 'Production Planner',
+  'Materials Manager', 'Assembly Line Supervisor', 'Production Coordinator',
+  'Continuous Improvement Manager', 'Manufacturing Technician', 'Quality Assurance Engineer',
+  'Automation Engineer', 'Facilities Manager', 'Safety Manager'
 ]
 
 const companies = [
-  'Google', 'Meta', 'Amazon', 'Microsoft', 'Apple',
-  'Netflix', 'Uber', 'Airbnb', 'Stripe', 'Salesforce',
-  'Adobe', 'Oracle', 'IBM', 'Intel', 'Cisco',
-  'LinkedIn', 'Twitter', 'Snapchat', 'Pinterest', 'Reddit',
-  'Shopify', 'Square', 'Dropbox', 'Slack', 'Zoom',
-  'DocuSign', 'Atlassian', 'Twilio', 'HubSpot', 'Zendesk',
-  'ServiceNow', 'Workday', 'Splunk', 'Snowflake', 'Databricks',
-  'Coinbase', 'Robinhood', 'Plaid', 'Brex', 'Carta'
+  'Texas Instruments', 'ExxonMobil', 'Phillips 66', 'Valero Energy', 'Lockheed Martin',
+  'Bell Textron', 'Caterpillar Inc', 'Deere & Company', 'Toyota Motor Manufacturing',
+  'General Motors Arlington', 'Ford Motor Company', 'Tesla Gigafactory', 'SpaceX',
+  'Blue Origin', 'Dow Chemical', 'DuPont', 'BASF Corporation', '3M Manufacturing',
+  'Honeywell Aerospace', 'Boeing Defense', 'Raytheon Technologies', 'Northrop Grumman',
+  'BAE Systems', 'L3Harris Technologies', 'Collins Aerospace', 'Pratt & Whitney',
+  'Emerson Electric', 'Rockwell Automation', 'Schneider Electric', 'ABB Group',
+  'Siemens Energy', 'General Electric', 'Parker Hannifin', 'Eaton Corporation',
+  'Continental Automotive', 'Bosch Manufacturing', 'Flex Ltd', 'Jabil Inc',
+  'Celestica', 'Sanmina Corporation', 'Benchmark Electronics', 'Plexus Corp'
 ]
 
 const cities = [
-  { city: 'San Francisco', state: 'CA' },
-  { city: 'New York', state: 'NY' },
-  { city: 'Seattle', state: 'WA' },
-  { city: 'Austin', state: 'TX' },
-  { city: 'Boston', state: 'MA' },
-  { city: 'Chicago', state: 'IL' },
-  { city: 'Los Angeles', state: 'CA' },
-  { city: 'Denver', state: 'CO' },
-  { city: 'Portland', state: 'OR' },
-  { city: 'Atlanta', state: 'GA' },
-  { city: 'Miami', state: 'FL' },
+  { city: 'Houston', state: 'TX' },
   { city: 'Dallas', state: 'TX' },
-  { city: 'San Diego', state: 'CA' },
-  { city: 'Phoenix', state: 'AZ' },
-  { city: 'Philadelphia', state: 'PA' }
+  { city: 'Austin', state: 'TX' },
+  { city: 'San Antonio', state: 'TX' },
+  { city: 'Fort Worth', state: 'TX' },
+  { city: 'El Paso', state: 'TX' },
+  { city: 'Arlington', state: 'TX' },
+  { city: 'Corpus Christi', state: 'TX' },
+  { city: 'Plano', state: 'TX' },
+  { city: 'Lubbock', state: 'TX' },
+  { city: 'Irving', state: 'TX' },
+  { city: 'Laredo', state: 'TX' },
+  { city: 'Garland', state: 'TX' },
+  { city: 'Frisco', state: 'TX' },
+  { city: 'McKinney', state: 'TX' }
 ]
 
 const universities = [
-  'Stanford University', 'MIT', 'UC Berkeley', 'Harvard University',
-  'Carnegie Mellon University', 'University of Washington', 'Georgia Tech',
-  'University of Illinois', 'University of Michigan', 'Cornell University',
-  'Columbia University', 'UCLA', 'University of Texas at Austin', 'Caltech',
-  'Princeton University', 'Yale University', 'Duke University', 'Northwestern University'
+  'University of Texas at Austin', 'Texas A&M University', 'Rice University',
+  'University of Houston', 'Texas Tech University', 'UT Dallas', 'UT Arlington',
+  'Texas State University', 'University of North Texas', 'SMU',
+  'Baylor University', 'TCU', 'UTSA', 'UTEP', 'Texas A&M Commerce',
+  'Lamar University', 'Sam Houston State University', 'Prairie View A&M'
 ]
 
 const skills = [
-  'Python', 'JavaScript', 'TypeScript', 'React', 'Node.js', 'AWS', 'Docker',
-  'Kubernetes', 'PostgreSQL', 'MongoDB', 'Redis', 'GraphQL', 'REST APIs',
-  'Machine Learning', 'Data Analysis', 'SQL', 'Git', 'CI/CD', 'Agile',
-  'System Design', 'Microservices', 'TensorFlow', 'PyTorch', 'Java', 'Go',
-  'Rust', 'C++', 'Swift', 'Kotlin', 'Flutter', 'React Native', 'Vue.js',
-  'Angular', 'Django', 'Flask', 'FastAPI', 'Spring Boot', 'Jenkins', 'Terraform'
+  'Lean Manufacturing', 'Six Sigma', 'Kaizen', 'ISO 9001', 'Quality Management',
+  'Process Improvement', 'AutoCAD', 'SolidWorks', 'CATIA', 'PLC Programming',
+  'GMP Compliance', 'Root Cause Analysis', 'Statistical Process Control',
+  'ERP Systems', 'SAP', 'Oracle Manufacturing', 'Production Planning',
+  'Supply Chain Management', 'Inventory Management', 'Safety Management',
+  'OSHA Compliance', 'Continuous Improvement', 'Value Stream Mapping',
+  'Work Instructions', '5S Implementation', 'TPM', 'Manufacturing Execution Systems',
+  'CNC Programming', 'Welding', 'Assembly Line Management', 'Quality Control',
+  'Project Management', 'Team Leadership', 'Budgeting', 'Cost Reduction',
+  'Capacity Planning', 'Preventive Maintenance', 'Problem Solving', 'Data Analysis'
 ]
 
 function generateRandomCandidate(id: number): EnrichedCandidateResponse {
@@ -103,6 +109,7 @@ function generateRandomCandidate(id: number): EnrichedCandidateResponse {
     const startYear = new Date().getFullYear() - yearsAgo - Math.floor(durationMonths / 12)
     const endYear = i === 0 ? null : startYear + Math.floor(durationMonths / 12)
     
+    const departments = ['Manufacturing', 'Operations', 'Production', 'Quality', 'Supply Chain', 'Maintenance']
     experiences.push({
       title: jobTitles[Math.floor(Math.random() * jobTitles.length)],
       company_name: companies[Math.floor(Math.random() * companies.length)],
@@ -110,21 +117,26 @@ function generateRandomCandidate(id: number): EnrichedCandidateResponse {
       duration_months: durationMonths,
       date_from: `${startYear}-01`,
       date_to: endYear ? `${endYear}-12` : null,
-      description: 'Led development of key features and collaborated with cross-functional teams.',
+      description: 'Led manufacturing process improvements and collaborated with cross-functional teams to optimize production efficiency.',
       location: `${location.city}, ${location.state}`,
-      department: 'Engineering',
+      department: departments[Math.floor(Math.random() * departments.length)],
       management_level: null
     })
   }
 
   // Generate education
   const gradYear = 2010 + Math.floor(Math.random() * 12)
+  const majors = [
+    'Industrial Engineering', 'Mechanical Engineering', 'Manufacturing Engineering',
+    'Chemical Engineering', 'Electrical Engineering', 'Operations Management',
+    'Business Administration', 'Supply Chain Management', 'Quality Management'
+  ]
   const education = [{
     title: 'Bachelor of Science',
-    major: 'Computer Science',
+    major: majors[Math.floor(Math.random() * majors.length)],
     institution_url: `https://linkedin.com/school/${university.toLowerCase().replace(/\s+/g, '-')}`,
     description: null,
-    activities_and_societies: 'Computer Science Society, Hackathons',
+    activities_and_societies: 'Engineering Society, Manufacturing Excellence Club',
     date_from: gradYear - 4,
     date_to: gradYear
   }]
@@ -151,7 +163,7 @@ function generateRandomCandidate(id: number): EnrichedCandidateResponse {
     raw_data: {
       picture_url: `https://i.pravatar.cc/150?img=${id % 70}`,
       websites_linkedin: `https://linkedin.com/in/${slug}`,
-      description: `Experienced ${currentTitle.toLowerCase()} with a passion for building scalable products. ${experiences.length}+ years of experience in the tech industry.`,
+      description: `Experienced ${currentTitle.toLowerCase()} with expertise in lean manufacturing and operational excellence. ${experiences.length}+ years of experience in the manufacturing industry.`,
       headline: `${currentTitle} at ${currentCompany}`,
       generated_headline: `${currentTitle} at ${currentCompany}`,
       skills: candidateSkills,
@@ -203,23 +215,30 @@ export const defaultJobPosting = defaultJobPostings[0]
 export function initializeMockData() {
   if (typeof window === 'undefined') return
 
+  // Version check - increment this to force regeneration of mock data
+  const MOCK_DATA_VERSION = '2.0'
+  const currentVersion = localStorage.getItem('mock_data_version')
+
   // Check if data already exists
   const existingJobs = localStorage.getItem('mock_job_postings')
   const existingCandidates = localStorage.getItem('mock_candidates')
   const existingJobCandidateMap = localStorage.getItem('mock_job_candidate_map')
 
-  if (!existingJobs) {
+  // Force regeneration if version changed
+  const shouldRegenerate = currentVersion !== MOCK_DATA_VERSION
+
+  if (!existingJobs || shouldRegenerate) {
     localStorage.setItem('mock_job_postings', JSON.stringify(defaultJobPostings))
   }
 
-  if (!existingCandidates) {
+  if (!existingCandidates || shouldRegenerate) {
     // Generate 275 candidates (150 for Senior Full Stack Engineer + 125 for Territory Manager)
     const candidates = generateMockCandidates(275)
     localStorage.setItem('mock_candidates', JSON.stringify(candidates))
   }
 
   // Initialize job-candidate mapping
-  if (!existingJobCandidateMap) {
+  if (!existingJobCandidateMap || shouldRegenerate) {
     const jobCandidateMap: Record<number, number[]> = {
       1: Array.from({ length: 150 }, (_, i) => i + 1), // Job 1: candidates 1-150
       2: Array.from({ length: 125 }, (_, i) => i + 151) // Job 2: candidates 151-275
@@ -228,13 +247,16 @@ export function initializeMockData() {
   }
 
   // Initialize empty arrays for approved/rejected candidates
-  if (!localStorage.getItem('mock_shortlisted_candidates')) {
+  if (!localStorage.getItem('mock_shortlisted_candidates') || shouldRegenerate) {
     localStorage.setItem('mock_shortlisted_candidates', JSON.stringify([]))
   }
 
-  if (!localStorage.getItem('mock_rejected_candidates')) {
+  if (!localStorage.getItem('mock_rejected_candidates') || shouldRegenerate) {
     localStorage.setItem('mock_rejected_candidates', JSON.stringify([]))
   }
+
+  // Update version
+  localStorage.setItem('mock_data_version', MOCK_DATA_VERSION)
 }
 
 // Get mock data from localStorage

@@ -2,8 +2,12 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { 
   Users, 
   Play, 
@@ -17,7 +21,18 @@ import {
   Globe,
   Zap,
   ChevronDown,
-  Briefcase
+  Briefcase,
+  Database,
+  Upload,
+  Sparkles,
+  ExternalLink,
+  Folder,
+  FolderOpen,
+  ChevronRight,
+  Home,
+  Plus,
+  Table as TableIcon,
+  MoreVertical
 } from 'lucide-react'
 
 // Import our refactored components
@@ -55,6 +70,53 @@ export default function HomePage() {
   const [currentSearchId, setCurrentSearchId] = useState<number | null>(null)
   const [searchTitle, setSearchTitle] = useState('')
   const [isSearchModified, setIsSearchModified] = useState(false)
+
+  // Researcher Finder state
+  const [finderSource, setFinderSource] = useState<'crm' | 'upload' | 'generate'>('crm')
+  const [finderCrmQuery, setFinderCrmQuery] = useState('')
+  const [finderGenerateQuery, setFinderGenerateQuery] = useState('')
+  const [finderLeads, setFinderLeads] = useState<Array<{ id: number; name: string; url: string }>>([])
+  const [isGeneratingLeads, setIsGeneratingLeads] = useState(false)
+
+  // Researcher Lists state
+  const [currentPath, setCurrentPath] = useState<string[]>([])
+  const [folderStructure, setFolderStructure] = useState<any>({
+    folders: [
+      { 
+        id: 1, 
+        name: 'Manufacturing Companies in Texas', 
+        folders: [
+          { id: 4, name: 'Automotive', folders: [], tables: [] },
+          { id: 5, name: 'Aerospace & Defense', folders: [], tables: [] }
+        ], 
+        tables: [
+          { id: 1, name: 'Houston Manufacturing Plants', rows: 45 }
+        ] 
+      },
+      { 
+        id: 2, 
+        name: 'Grocery Stores in Austin', 
+        folders: [], 
+        tables: [
+          { id: 2, name: 'HEB Locations', rows: 12 },
+          { id: 3, name: 'Whole Foods', rows: 8 }
+        ] 
+      },
+      { 
+        id: 3, 
+        name: 'SaaS Companies in San Francisco', 
+        folders: [], 
+        tables: [
+          { id: 4, name: 'Series A Startups', rows: 67 }
+        ] 
+      }
+    ],
+    tables: [
+      { id: 5, name: 'Uncategorized Leads', rows: 23 }
+    ]
+  })
+  const [newFolderName, setNewFolderName] = useState('')
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false)
 
   // Job postings state removed - now handled by React Query
   
@@ -267,7 +329,6 @@ export default function HomePage() {
   // Researcher tabs
   const researcherTabs = [
     { id: 'finder', label: 'Finder', icon: Search, subItems: [] },
-    { id: 'enricher', label: 'Enricher', icon: Zap, subItems: [] },
     { id: 'lists', label: 'Lists', icon: Users, subItems: [] }
   ]
 
@@ -308,14 +369,378 @@ export default function HomePage() {
   }
 
   const renderResearcherContent = () => {
+    switch (researcherTab) {
+      case 'finder':
+        return renderFinderContent()
+      case 'lists':
+        return renderListsContent()
+      default:
+        return null
+    }
+  }
+
+  const renderFinderContent = () => {
+    const handleGenerate = () => {
+      setIsGeneratingLeads(true)
+      
+      // Mock lead generation
+      setTimeout(() => {
+        const mockLeads = [
+          { id: 1, name: 'Acme Corp', url: 'https://acmecorp.com' },
+          { id: 2, name: 'TechStart Inc', url: 'https://techstart.io' },
+          { id: 3, name: 'John Smith', url: 'https://linkedin.com/in/johnsmith' },
+          { id: 4, name: 'Sarah Johnson', url: 'https://linkedin.com/in/sarahjohnson' },
+          { id: 5, name: 'Global Solutions LLC', url: 'https://globalsolutions.com' }
+        ]
+        setFinderLeads(mockLeads)
+        setIsGeneratingLeads(false)
+      }, 1500)
+    }
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (file) {
+        setIsGeneratingLeads(true)
+        // Mock file processing
+        setTimeout(() => {
+          const mockLeads = [
+            { id: 1, name: 'Uploaded Lead 1', url: 'https://company1.com' },
+            { id: 2, name: 'Uploaded Lead 2', url: 'https://linkedin.com/in/lead2' },
+            { id: 3, name: 'Uploaded Lead 3', url: 'https://company2.com' }
+          ]
+          setFinderLeads(mockLeads)
+          setIsGeneratingLeads(false)
+        }, 1000)
+      }
+    }
+
     return (
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Researcher Content</CardTitle>
+            <CardTitle>Lead Finder</CardTitle>
+            <CardDescription>
+              Create a starting point for your lead lists
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p>This is the researcher content area. The full functionality would be implemented here.</p>
+          <CardContent className="space-y-6">
+            {/* Source Selection */}
+            <div className="space-y-3">
+              <Label>Lead Source</Label>
+              <div className="grid grid-cols-3 gap-3">
+                <Button
+                  variant={finderSource === 'crm' ? 'default' : 'outline'}
+                  onClick={() => setFinderSource('crm')}
+                  className="h-auto py-4 flex flex-col items-center gap-2"
+                >
+                  <Database className="h-5 w-5" />
+                  <span className="text-sm">Pull from CRM</span>
+                </Button>
+                <Button
+                  variant={finderSource === 'upload' ? 'default' : 'outline'}
+                  onClick={() => setFinderSource('upload')}
+                  className="h-auto py-4 flex flex-col items-center gap-2"
+                >
+                  <Upload className="h-5 w-5" />
+                  <span className="text-sm">Upload Leads</span>
+                </Button>
+                <Button
+                  variant={finderSource === 'generate' ? 'default' : 'outline'}
+                  onClick={() => setFinderSource('generate')}
+                  className="h-auto py-4 flex flex-col items-center gap-2"
+                >
+                  <Sparkles className="h-5 w-5" />
+                  <span className="text-sm">Generate Leads</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* CRM Option */}
+            {finderSource === 'crm' && (
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                <div className="space-y-2">
+                  <Label htmlFor="crm-query">Query your CRM</Label>
+                  <Textarea
+                    id="crm-query"
+                    placeholder="Examples:&#10;• All leads in the database&#10;• Leads from TechCorp Industries&#10;• All VP-level contacts in healthcare&#10;• Leads in Florida with no activity in 90 days"
+                    value={finderCrmQuery}
+                    onChange={(e) => setFinderCrmQuery(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+                <Button 
+                  onClick={handleGenerate} 
+                  disabled={!finderCrmQuery.trim() || isGeneratingLeads}
+                  className="w-full"
+                >
+                  {isGeneratingLeads ? 'Generating...' : 'Generate'}
+                </Button>
+              </div>
+            )}
+
+            {/* Upload Option */}
+            {finderSource === 'upload' && (
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                <div className="space-y-2">
+                  <Label htmlFor="file-upload">Upload CSV or Excel file</Label>
+                  <Input
+                    id="file-upload"
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    onChange={handleFileUpload}
+                    disabled={isGeneratingLeads}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    File should contain columns: Name, URL (website or LinkedIn)
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Generate Option */}
+            {finderSource === 'generate' && (
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                <div className="space-y-2">
+                  <Label htmlFor="generate-query">Describe the leads you want</Label>
+                  <Textarea
+                    id="generate-query"
+                    placeholder="Examples:&#10;• All pharmacies in San Francisco&#10;• B2B SaaS companies in healthcare with $10M-$50M revenue&#10;• VP of Sales at tech companies in California"
+                    value={finderGenerateQuery}
+                    onChange={(e) => setFinderGenerateQuery(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+                <Button 
+                  onClick={handleGenerate} 
+                  disabled={!finderGenerateQuery.trim() || isGeneratingLeads}
+                  className="w-full"
+                >
+                  {isGeneratingLeads ? 'Generating...' : 'Generate'}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Results Table */}
+        {finderLeads.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Generated Leads ({finderLeads.length})</CardTitle>
+              <CardDescription>
+                Starting point for your list
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>URL</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {finderLeads.map((lead) => (
+                      <TableRow key={lead.id}>
+                        <TableCell className="font-medium">{lead.name}</TableCell>
+                        <TableCell>
+                          <a
+                            href={lead.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline flex items-center gap-1 text-sm"
+                          >
+                            {lead.url}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex justify-center mt-4">
+                <Button size="lg">
+                  Save as List
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    )
+  }
+
+  const renderListsContent = () => {
+    // Helper function to get current folder based on path
+    // Force recompile
+    const getCurrentFolder = () => {
+      let current = folderStructure
+      for (const folderName of currentPath) {
+        const folder = current.folders.find((f: any) => f.name === folderName)
+        if (folder) {
+          current = folder
+        }
+      }
+      return current
+    }
+
+    const currentFolder = getCurrentFolder()
+
+    const navigateToFolder = (folderName: string) => {
+      setCurrentPath([...currentPath, folderName])
+    }
+
+    const navigateToPath = (index: number) => {
+      setCurrentPath(currentPath.slice(0, index))
+    }
+
+    const createFolder = () => {
+      if (!newFolderName.trim()) return
+      
+      const newFolder = {
+        id: Date.now(),
+        name: newFolderName,
+        folders: [],
+        tables: []
+      }
+
+      // Add to current location
+      const current = getCurrentFolder()
+      current.folders.push(newFolder)
+      setFolderStructure({ ...folderStructure })
+      setNewFolderName('')
+      setIsCreatingFolder(false)
+    }
+
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-end">
+              <Button onClick={() => setIsCreatingFolder(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Folder
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Breadcrumb Navigation */}
+            <div className="flex items-center gap-2 text-sm py-2 border-b">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCurrentPath([])}
+                className="h-8 px-2"
+              >
+                <Home className="h-4 w-4" />
+              </Button>
+              {currentPath.map((folder, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigateToPath(index + 1)}
+                    className="h-8 px-2"
+                  >
+                    {folder}
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            {/* New Folder Input */}
+            {isCreatingFolder && (
+              <div className="flex gap-2 p-3 border rounded-lg bg-muted/50">
+                <Input
+                  placeholder="Folder name"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') createFolder()
+                    if (e.key === 'Escape') {
+                      setIsCreatingFolder(false)
+                      setNewFolderName('')
+                    }
+                  }}
+                  autoFocus
+                />
+                <Button onClick={createFolder} disabled={!newFolderName.trim()}>
+                  Create
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsCreatingFolder(false)
+                    setNewFolderName('')
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+
+            {/* Folders */}
+            {currentFolder.folders.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Folders</Label>
+                <div className="grid gap-2">
+                  {currentFolder.folders.map((folder: any) => (
+                    <div
+                      key={folder.id}
+                      onClick={() => navigateToFolder(folder.name)}
+                      className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    >
+                      <Folder className="h-5 w-5 text-blue-600" />
+                      <span className="font-medium flex-1">{folder.name}</span>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>{folder.folders.length} folders</span>
+                        <span>•</span>
+                        <span>{folder.tables.length} tables</span>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tables */}
+            {currentFolder.tables.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Tables</Label>
+                <div className="grid gap-2">
+                  {currentFolder.tables.map((table: any) => (
+                    <div
+                      key={table.id}
+                      className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    >
+                      <TableIcon className="h-5 w-5 text-green-600" />
+                      <span className="font-medium flex-1">{table.name}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {table.rows} rows
+                      </span>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {currentFolder.folders.length === 0 && currentFolder.tables.length === 0 && !isCreatingFolder && (
+              <div className="text-center py-12">
+                <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground opacity-50 mb-3" />
+                <p className="text-muted-foreground mb-2">This folder is empty</p>
+                <p className="text-sm text-muted-foreground">
+                  Create a new folder or add tables from the Finder
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

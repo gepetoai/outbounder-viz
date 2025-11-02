@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { ChevronLeft, ChevronRight, ExternalLink, MapPin, GraduationCap, Briefcase, X } from 'lucide-react'
 
 export interface Candidate {
@@ -41,6 +42,7 @@ export function ApprovedRejectedCarousel({
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false)
   const [activeFilter, setActiveFilter] = useState<'approved' | 'rejected'>('approved')
+  const [testInput, setTestInput] = useState('')
 
   // Get candidates based on active filter
   const currentCandidates = activeFilter === 'approved' ? approvedCandidatesData : rejectedCandidatesData
@@ -112,6 +114,29 @@ export function ApprovedRejectedCarousel({
           </div>
         </div>
 
+        {/* Saad's Input */}
+        <div className="max-w-md mx-auto">
+          <Card>
+            <CardContent className="p-4">
+              <label htmlFor="saad-input" className="block text-sm font-medium mb-2">
+                Saad's Input (For Testing Purposes)
+              </label>
+              <Input
+                id="saad-input"
+                type="text"
+                placeholder="Enter text here..."
+                value={testInput}
+                onChange={(e) => setTestInput(e.target.value)}
+              />
+              {testInput && (
+                <p className="mt-2 text-sm text-gray-600">
+                  You typed: <span className="font-semibold">{testInput}</span>
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="text-center py-12">
           <div className="text-gray-500">
             <X className="h-12 w-12 mx-auto mb-4" />
@@ -161,6 +186,29 @@ export function ApprovedRejectedCarousel({
           </div>
         </div>
       </div>
+
+        {/* Saad's Input */}
+        <div className="max-w-md mx-auto">
+          <Card>
+            <CardContent className="p-4">
+              <label htmlFor="saad-input" className="block text-sm font-medium mb-2">
+                Saad's Input (For Testing Purposes)
+              </label>
+              <Input
+                id="saad-input"
+                type="text"
+                placeholder="Enter text here..."
+                value={testInput}
+                onChange={(e) => setTestInput(e.target.value)}
+              />
+              {testInput && (
+                <p className="mt-2 text-sm text-gray-600">
+                  You typed: <span className="font-semibold">{testInput}</span>
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
       {/* Carousel */}
       <div className="max-w-md mx-auto">
