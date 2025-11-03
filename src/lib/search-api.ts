@@ -22,6 +22,7 @@ export interface SearchRequest {
   profile_keywords_exclusions: string
   company_exclusions: string
   search_title: string
+  fk_job_description_id?: number | null
 }
 
 export interface SearchResponse {
@@ -111,7 +112,13 @@ export interface EnrichedCandidatesApiResponse {
   excluded_count: number
 }
 
-export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle: string = 'Search'): SearchRequest {
+export interface CandidatesByJobDescriptionResponse {
+  candidates: EnrichedCandidateResponse[]
+  target_candidates_count: number
+  current_candidates_count: number
+}
+
+export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle: string = 'Search', jobDescriptionId?: number | null): SearchRequest {
   return {
     number_of_jobs: searchParams.numExperiences,
     graduation_year_from: searchParams.graduationYearFrom,
@@ -133,7 +140,8 @@ export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle
     job_title_exclusions: searchParams.titleExclusions,
     profile_keywords_exclusions: searchParams.keywordExclusions,
     company_exclusions: searchParams.companyExclusions,
-    search_title: searchTitle
+    search_title: searchTitle,
+    fk_job_description_id: jobDescriptionId
   }
 }
 
@@ -277,6 +285,21 @@ export async function enrichCandidates(searchId: number, limit: number): Promise
 
   if (!response.ok) {
     throw new Error(`Failed to enrich candidates: ${response.status} ${response.statusText}`)
+  }
+
+  return response.json()
+}
+
+export async function getCandidatesByJobDescription(jobDescriptionId: number): Promise<CandidatesByJobDescriptionResponse> {
+  const response = await fetch(`${API_BASE_URL}/candidate-generation/job-description/${jobDescriptionId}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch candidates: ${response.status} ${response.statusText}`)
   }
 
   return response.json()

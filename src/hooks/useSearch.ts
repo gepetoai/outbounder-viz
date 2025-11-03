@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createSearch, updateSearchName, updateSearch, runSearch, getSavedSearches, enrichCandidates, SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse } from '@/lib/search-api'
+import { createSearch, updateSearchName, updateSearch, runSearch, getSavedSearches, enrichCandidates, getCandidatesByJobDescription, SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse, CandidatesByJobDescriptionResponse } from '@/lib/search-api'
 
 export function useCreateSearch() {
   const queryClient = useQueryClient()
@@ -78,5 +78,19 @@ export function useEnrichCandidates() {
     onError: (error) => {
       console.error('Failed to enrich candidates:', error)
     }
+  })
+}
+
+export function useCandidatesByJobDescription(jobDescriptionId: number | null | undefined) {
+  return useQuery<CandidatesByJobDescriptionResponse, Error>({
+    queryKey: ['candidates', 'job-description', jobDescriptionId],
+    queryFn: () => {
+      if (!jobDescriptionId) {
+        throw new Error('Job description ID is required')
+      }
+      return getCandidatesByJobDescription(jobDescriptionId)
+    },
+    enabled: !!jobDescriptionId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   })
 }
