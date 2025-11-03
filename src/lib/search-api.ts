@@ -328,3 +328,21 @@ export async function getRejectedCandidates(jobDescriptionId: number): Promise<R
     method: 'GET'
   })
 }
+
+export interface MoveCandidatesRequest {
+  source_search_id: number
+  target_job_description_id: number
+  candidate_ids?: number[]
+}
+
+export interface MoveCandidatesResponse {
+  new_search_id: number
+  moved_candidates_count: number
+}
+
+export async function moveCandidates(data: MoveCandidatesRequest): Promise<MoveCandidatesResponse> {
+  return fetchJson<MoveCandidatesResponse>(`${API_BASE_URL}/job-description-searches/move-candidates`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+}

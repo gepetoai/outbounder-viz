@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { MapPin, GraduationCap, ThumbsUp, ThumbsDown, Download } from 'lucide-react'
+import { MapPin, GraduationCap, ThumbsUp, ThumbsDown, Download, ArrowRightLeft } from 'lucide-react'
 import type { Candidate } from '@/lib/utils'
 
 interface CandidateTableViewProps {
@@ -14,6 +14,7 @@ interface CandidateTableViewProps {
   onApprove: (candidateId: string) => Promise<void>
   onReject: (candidateId: string) => Promise<void>
   onDownloadCSV: () => void
+  onMove?: (candidateIds: string[]) => void
   viewMode: 'review' | 'approved' | 'rejected'
   isApproving?: boolean
   isRejecting?: boolean
@@ -25,6 +26,7 @@ export function CandidateTableView({
   onApprove,
   onReject,
   onDownloadCSV,
+  onMove,
   viewMode,
   isApproving = false,
   isRejecting = false
@@ -69,6 +71,13 @@ export function CandidateTableView({
 
     await Promise.all(rejectPromises)
     setSelectedCandidateIds(new Set())
+  }
+
+  const handleMoveClick = () => {
+    if (onMove) {
+      onMove(Array.from(selectedCandidateIds))
+      setSelectedCandidateIds(new Set())
+    }
   }
 
   const handleStatusChange = async (candidateId: string, newStatus: 'approved' | 'rejected') => {
@@ -118,6 +127,18 @@ export function CandidateTableView({
                   <span>Approve</span>
                 </button>
               </div>
+              {onMove && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleMoveClick}
+                  disabled={selectedCandidateIds.size === 0}
+                  className="h-7 px-3 py-0 text-xs bg-white border-gray-300 text-gray-800 hover:bg-gray-100 disabled:opacity-50"
+                >
+                  <ArrowRightLeft className="h-4 w-4 mr-1" />
+                  Move
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"

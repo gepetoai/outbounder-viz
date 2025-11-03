@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createSearch, updateSearchName, updateSearch, updateQuery, runSearch, getSavedSearchesByJobDescription, enrichCandidates, getCandidatesByJobDescription, getCandidatesForReview, SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse, CandidatesByJobDescriptionResponse, EnrichedCandidateResponse } from '@/lib/search-api'
+import { createSearch, updateSearchName, updateSearch, updateQuery, runSearch, getSavedSearchesByJobDescription, enrichCandidates, getCandidatesByJobDescription, getCandidatesForReview, moveCandidates, SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse, CandidatesByJobDescriptionResponse, EnrichedCandidateResponse, MoveCandidatesRequest, MoveCandidatesResponse } from '@/lib/search-api'
 
 export function useCreateSearch() {
   const queryClient = useQueryClient()
@@ -118,5 +118,21 @@ export function useCandidatesForReview(jobDescriptionId: number | null | undefin
     },
     enabled: !!jobDescriptionId,
     staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+}
+
+export function useMoveCandidates() {
+  const queryClient = useQueryClient()
+
+  return useMutation<MoveCandidatesResponse, Error, MoveCandidatesRequest>({
+    mutationFn: moveCandidates,
+    onSuccess: (data) => {
+      console.log('Candidates moved successfully:', data.moved_candidates_count, 'candidates to search', data.new_search_id)
+      queryClient.invalidateQueries({ queryKey: ['candidates'] })
+      queryClient.invalidateQueries({ queryKey: ['savedSearches'] })
+    },
+    onError: (error) => {
+      console.error('Failed to move candidates:', error)
+    }
   })
 }
