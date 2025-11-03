@@ -153,3 +153,19 @@ export function useMoveCandidateToReview() {
     }
   })
 }
+
+// Combined hook for approved and rejected candidates
+export function useCandidates(jobDescriptionId: number | null | undefined) {
+  const approvedQuery = useShortlistedCandidates(jobDescriptionId)
+  const rejectedQuery = useRejectedCandidates(jobDescriptionId)
+
+  return {
+    data: {
+      approved_candidates: approvedQuery.data?.map(c => c.fk_candidate) || [],
+      rejected_candidates: rejectedQuery.data?.map(c => c.fk_candidate) || []
+    },
+    isLoading: approvedQuery.isLoading || rejectedQuery.isLoading,
+    isError: approvedQuery.isError || rejectedQuery.isError,
+    error: approvedQuery.error || rejectedQuery.error
+  }
+}

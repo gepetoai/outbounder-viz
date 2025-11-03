@@ -11,7 +11,6 @@ import {
   X,
   Search,
   User,
-  ChevronDown,
   Briefcase
 } from 'lucide-react'
 
@@ -20,22 +19,17 @@ import { JobPostingManager } from '@/components/recruiter/JobPostingManager'
 import { SearchTab, type SearchParams } from '@/components/recruiter/SearchTab'
 import { CandidateTab } from '@/components/recruiter/CandidateTab'
 import { SequencerTab } from '@/components/recruiter/SequencerTab'
-import { AnalyticsTab } from '@/components/recruiter/AnalyticsTab'
-import { ApprovedRejectedCarousel } from '@/components/recruiter/ApprovedRejectedCarousel'
 import { SettingsTab } from '@/components/recruiter/SettingsTab'
 import { AuthWrapper } from '@/components/auth/auth-wrapper'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useSavedSearches } from '@/hooks/useSearch'
 import { mapSavedSearchToParams } from '@/lib/search-api'
-import type { Candidate } from '@/lib/utils'
 
 export default function RecruiterApp () {
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [outreachExpanded, setOutreachExpanded] = useState(false)
   
   // Recruiter specific state
   const [recruiterTab, setRecruiterTab] = useState('job-setup')
-  const [recruiterSubTab, setRecruiterSubTab] = useState('candidates')
   const [currentJobDescriptionId, setCurrentJobDescriptionId] = useState<number | null>(null)
   const [selectedSavedSearchId, setSelectedSavedSearchId] = useState<string>('')
   const [currentSearchId, setCurrentSearchId] = useState<number | null>(null)
@@ -141,12 +135,9 @@ export default function RecruiterApp () {
     maxJobDuration: 5
   })
   
-  // Candidate state
+  // Candidate state  
   const [candidateYield, setCandidateYield] = useState(0)
-  const [totalPopulation, setTotalPopulation] = useState(0)
-  const [stagingCandidates, setStagingCandidates] = useState<Candidate[]>([])
-  const [approvedCandidatesData, setApprovedCandidatesData] = useState<Candidate[]>([])
-  const [rejectedCandidatesData, setRejectedCandidatesData] = useState<Candidate[]>([])
+  const [stagingCandidates, setStagingCandidates] = useState<any[]>([])
 
   // Recruiter tabs
   const recruiterTabs = [
@@ -157,9 +148,7 @@ export default function RecruiterApp () {
       id: 'outreach', 
       label: 'Outreach', 
       icon: MessageSquare, 
-      subItems: [
-        { id: 'candidates', label: 'List', icon: Users }
-      ]
+      subItems: []
     },
     { id: 'settings', label: 'Settings', icon: Settings, subItems: [] }
   ]
@@ -184,8 +173,6 @@ export default function RecruiterApp () {
             setSearchParams={setSearchParams}
             candidateYield={candidateYield}
             setCandidateYield={setCandidateYield}
-            totalPopulation={totalPopulation}
-            setTotalPopulation={setTotalPopulation}
             stagingCandidates={stagingCandidates}
             setStagingCandidates={setStagingCandidates}
             onGoToCandidates={() => setRecruiterTab('candidates')}
@@ -205,23 +192,11 @@ export default function RecruiterApp () {
           />
         )
       case 'outreach':
-        switch (recruiterSubTab) {
-          case 'candidates':
-            return (
-              <ApprovedRejectedCarousel
-                approvedCandidatesData={approvedCandidatesData.map(candidate => ({ ...candidate, status: 'approved' as const }))}
-                rejectedCandidatesData={rejectedCandidatesData.map(candidate => ({ ...candidate, status: 'rejected' as const }))}
-                setApprovedCandidatesData={(candidates) => setApprovedCandidatesData(candidates.map(candidate => ({ ...candidate, status: undefined })))}
-                setRejectedCandidatesData={(candidates) => setRejectedCandidatesData(candidates.map(candidate => ({ ...candidate, status: undefined })))}
-              />
-            )
-          case 'analytics':
-            return <AnalyticsTab />
-          case 'sequencer':
-            return <SequencerTab />
-          default:
-            return null
-        }
+        return (
+          <SequencerTab 
+            jobDescriptionId={currentJobDescriptionId}
+          />
+        )
       case 'settings':
         return <SettingsTab />
       default:
@@ -253,67 +228,20 @@ export default function RecruiterApp () {
           <nav className={`flex-1 ${sidebarOpen ? 'p-2 space-y-2' : 'p-2 space-y-2'}`}>
             {recruiterTabs.map((tab) => {
               const Icon = tab.icon
-              const isOutreachTab = tab.id === 'outreach'
-              const hasSubItems = tab.subItems && tab.subItems.length > 0
               
               return (
-                <div key={tab.id} className="space-y-1">
-                  <Button
-                    variant={recruiterTab === tab.id ? 'default' : 'ghost'}
-                    size={sidebarOpen ? 'default' : 'icon'}
-                    className={`w-full h-9 flex items-center ${sidebarOpen ? 'justify-start px-3' : 'justify-center px-2'}`}
-                    onClick={() => {
-                      setRecruiterTab(tab.id)
-                      if (isOutreachTab) {
-                        setRecruiterSubTab('candidates')
-                        setOutreachExpanded(true)
-                      } else {
-                        setOutreachExpanded(false)
-                      }
-                    }}
-                  >
-                    <Icon className="h-4 w-4 flex-shrink-0" />
-                    {sidebarOpen && (
-                      <>
-                        <span className="ml-2 flex items-center">{tab.label}</span>
-                        {hasSubItems && (
-                          <ChevronDown 
-                            className={`h-4 w-4 ml-auto flex-shrink-0 transition-transform duration-200 ${
-                              (isOutreachTab && outreachExpanded) ? 'rotate-180' : ''
-                            }`} 
-                          />
-                        )}
-                      </>
-                    )}
-                  </Button>
-                  
-                  {/* Sub-items for outreach with animation */}
-                  {recruiterTab === 'outreach' && isOutreachTab && tab.subItems && sidebarOpen && (
-                    <div 
-                      className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                        outreachExpanded ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0'
-                      }`}
-                    >
-                      <div className="ml-6 space-y-1">
-                        {tab.subItems.map((subItem) => {
-                          const SubIcon = subItem.icon
-                          return (
-                            <Button
-                              key={subItem.id}
-                              variant={recruiterSubTab === subItem.id ? 'secondary' : 'ghost'}
-                              size="default"
-                              className="w-full justify-start px-3 flex items-center h-9"
-                              onClick={() => setRecruiterSubTab(subItem.id)}
-                            >
-                              <SubIcon className="h-4 w-4 flex-shrink-0" />
-                              <span className="ml-2 flex items-center">{subItem.label}</span>
-                            </Button>
-                          )
-                        })}
-                      </div>
-                    </div>
+                <Button
+                  key={tab.id}
+                  variant={recruiterTab === tab.id ? 'default' : 'ghost'}
+                  size={sidebarOpen ? 'default' : 'icon'}
+                  className={`w-full h-9 flex items-center ${sidebarOpen ? 'justify-start px-3' : 'justify-center px-2'}`}
+                  onClick={() => setRecruiterTab(tab.id)}
+                >
+                  <Icon className="h-4 w-4 flex-shrink-0" />
+                  {sidebarOpen && (
+                    <span className="ml-2 flex items-center">{tab.label}</span>
                   )}
-                </div>
+                </Button>
               )
             })}
           </nav>

@@ -42,4 +42,7 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
-.cursor/rules/base-rules (1).mdc
+
+# cursor ai rules (personal preferences)
+.cursorrules
+.cursor/rules/
