@@ -345,3 +345,52 @@ export async function moveCandidates(data: MoveCandidatesRequest): Promise<MoveC
     body: JSON.stringify(data)
   })
 }
+
+export interface BulkCandidateRequest {
+  fk_job_description_id: number
+  fk_candidate_ids: number[]
+}
+
+export async function approveCandidateFromRejected(data: BulkCandidateRequest): Promise<void> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-shortlisted-candidate/from-rejected`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to approve candidate from rejected: ${response.status} ${response.statusText}`)
+  }
+}
+
+export async function rejectCandidateFromShortlisted(data: BulkCandidateRequest): Promise<void> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-rejected-candidate/from-shortlisted`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to reject candidate from shortlisted: ${response.status} ${response.statusText}`)
+  }
+}
+
+export async function bulkDeleteShortlistedCandidates(data: BulkCandidateRequest): Promise<void> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-shortlisted-candidate/bulk`, {
+    method: 'DELETE',
+    body: JSON.stringify(data)
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to send shortlisted candidates to review: ${response.status} ${response.statusText}`)
+  }
+}
+
+export async function bulkDeleteRejectedCandidates(data: BulkCandidateRequest): Promise<void> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-rejected-candidate/bulk`, {
+    method: 'DELETE',
+    body: JSON.stringify(data)
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to send rejected candidates to review: ${response.status} ${response.statusText}`)
+  }
+}
