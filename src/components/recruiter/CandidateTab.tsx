@@ -134,17 +134,8 @@ export function CandidateTab({
   const handleMoveCandidates = async (targetJobDescriptionId: number) => {
     if (!selectedJobId || candidatesToMove.length === 0) return
 
-    // We need the current search ID - for now we'll get it from the enriched candidates
-    const currentSearchId = enrichedCandidates?.[0]?.fk_job_description_search_id
-
-    if (!currentSearchId) {
-      showToast('Unable to find search ID', 'error')
-      return
-    }
-
     try {
       const result = await moveCandidatesMutation.mutateAsync({
-        source_search_id: currentSearchId,
         target_job_description_id: targetJobDescriptionId,
         candidate_ids: candidatesToMove.map(id => parseInt(id))
       })

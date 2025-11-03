@@ -127,9 +127,13 @@ export function useMoveCandidates() {
   return useMutation<MoveCandidatesResponse, Error, MoveCandidatesRequest>({
     mutationFn: moveCandidates,
     onSuccess: (data) => {
-      console.log('Candidates moved successfully:', data.moved_candidates_count, 'candidates to search', data.new_search_id)
+      console.log('Candidates moved successfully:', data.moved_candidates_count, 'candidates to job', data.target_job_description_id)
+      // Invalidate all candidate-related queries
       queryClient.invalidateQueries({ queryKey: ['candidates'] })
       queryClient.invalidateQueries({ queryKey: ['savedSearches'] })
+      // Invalidate shortlisted and rejected candidates so they disappear from the tabs
+      queryClient.invalidateQueries({ queryKey: ['shortlistedCandidates'] })
+      queryClient.invalidateQueries({ queryKey: ['rejectedCandidates'] })
     },
     onError: (error) => {
       console.error('Failed to move candidates:', error)
