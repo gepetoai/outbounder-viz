@@ -61,6 +61,56 @@ export interface SavedSearch {
   candidates: unknown[]
 }
 
+export interface EnrichedCandidateResponse {
+  first_name: string
+  last_name: string
+  linkedin_shorthand_slug: string
+  linkedin_canonical_slug: string | null
+  company_name: string
+  city: string
+  state: string
+  job_title: string
+  raw_data: {
+    picture_url?: string
+    websites_linkedin?: string
+    description?: string
+    headline?: string
+    generated_headline?: string
+    skills?: string[]
+    education?: Array<{
+      title: string
+      major: string | null
+      institution_url?: string
+      description?: string | null
+      activities_and_societies?: string
+      date_from: number
+      date_to: number
+    }>
+    experience?: Array<{
+      title: string
+      company_name: string
+      duration: string
+      duration_months: number
+      date_from: string
+      date_to: string | null
+      description: string
+      location: string | null
+      department: string | null
+      management_level: string | null
+    }>
+    [key: string]: unknown
+  }
+  fk_job_description_search_id: number
+  id: number
+  created_at: string
+  updated_at: string
+}
+
+export interface EnrichedCandidatesApiResponse {
+  candidates: EnrichedCandidateResponse[]
+  excluded_count: number
+}
+
 export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle: string = 'Search'): SearchRequest {
   return {
     number_of_jobs: searchParams.numExperiences,
@@ -215,4 +265,19 @@ export function mapSavedSearchToParams(savedSearch: SavedSearch): SearchParams {
     companyExclusions: savedSearch.company_exclusions,
     maxJobDuration: 5
   }
+}
+
+export async function enrichCandidates(searchId: number, limit: number): Promise<EnrichedCandidatesApiResponse> {
+  const response = await fetch(`${API_BASE_URL}/candidate-generation/job-description-searches/${searchId}/limit/${limit}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to enrich candidates: ${response.status} ${response.statusText}`)
+  }
+
+  return response.json()
 }
