@@ -248,3 +248,66 @@ export async function getCandidatesByJobDescription(jobDescriptionId: number): P
     method: 'GET'
   })
 }
+
+export async function getCandidatesForReview(jobDescriptionId: number): Promise<EnrichedCandidateResponse[]> {
+  return fetchJson<EnrichedCandidateResponse[]>(`${API_BASE_URL}/candidate-generation/job-description/${jobDescriptionId}/review`, {
+    method: 'GET'
+  })
+}
+
+export interface ApproveRejectCandidateRequest {
+  fk_job_description_id: number
+  fk_candidate_id: number
+}
+
+export async function approveCandidate(data: ApproveRejectCandidateRequest): Promise<void> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-shortlisted-candidate/`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to approve candidate: ${response.status} ${response.statusText}`)
+  }
+}
+
+export async function rejectCandidate(data: ApproveRejectCandidateRequest): Promise<void> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-rejected-candidate/`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to reject candidate: ${response.status} ${response.statusText}`)
+  }
+}
+
+export interface ShortlistedCandidate {
+  id: number
+  fk_job_description_id: number
+  fk_candidate_id: number
+  created_at: string
+  updated_at: string
+  fk_candidate: EnrichedCandidateResponse
+}
+
+export interface RejectedCandidate {
+  id: number
+  fk_job_description_id: number
+  fk_candidate_id: number
+  created_at: string
+  updated_at: string
+  fk_candidate: EnrichedCandidateResponse
+}
+
+export async function getShortlistedCandidates(jobDescriptionId: number): Promise<ShortlistedCandidate[]> {
+  return fetchJson<ShortlistedCandidate[]>(`${API_BASE_URL}/job-description-shortlisted-candidate/${jobDescriptionId}`, {
+    method: 'GET'
+  })
+}
+
+export async function getRejectedCandidates(jobDescriptionId: number): Promise<RejectedCandidate[]> {
+  return fetchJson<RejectedCandidate[]>(`${API_BASE_URL}/job-description-rejected-candidate/${jobDescriptionId}`, {
+    method: 'GET'
+  })
+}
