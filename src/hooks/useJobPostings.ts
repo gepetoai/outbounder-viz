@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchJson, fetchWithAuth } from '@/lib/api-client'
+import { fetchJson } from '@/lib/api-client'
 
 // Types
 export interface JobPosting {
@@ -23,7 +23,7 @@ export interface CreateJobPostingRequest {
 }
 
 // API functions
-const API_BASE_URL = 'http://localhost:8096/api/v1'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
 async function createJobPosting(data: CreateJobPostingRequest): Promise<JobPosting> {
   return fetchJson<JobPosting>(`${API_BASE_URL}/job-description/`, {

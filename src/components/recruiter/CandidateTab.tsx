@@ -40,12 +40,17 @@ export function CandidateTab({
   const [selectedJobId, setSelectedJobId] = useState<string>(jobDescriptionId?.toString() || '')
   const [viewMode, setViewMode] = useState<'review' | 'approved' | 'rejected'>('review')
 
+  // Helper function to check if selectedJobId is a valid job ID
+  const isValidJobId = (jobId: string) => {
+    return jobId && jobId !== 'loading-jobs' && jobId !== 'no-jobs-available' && !isNaN(parseInt(jobId))
+  }
+
   // Fetch job postings for dropdown
   const { data: jobPostings, isLoading: isLoadingJobs } = useJobPostings()
 
   // Fetch candidates from API if we have a job description ID
   const { data: enrichedCandidates, isLoading: isFetchingCandidates, error: candidatesError } = useCandidatesForReview(
-    selectedJobId ? parseInt(selectedJobId) : null
+    isValidJobId(selectedJobId) ? parseInt(selectedJobId) : null
   )
 
   // API mutation hooks
@@ -243,7 +248,7 @@ export function CandidateTab({
               </SelectTrigger>
               <SelectContent className="w-full">
                 {isLoadingJobs ? (
-                  <SelectItem value="" disabled>
+                  <SelectItem value="loading-jobs" disabled>
                     Loading job postings...
                   </SelectItem>
                 ) : jobPostings && jobPostings.length > 0 ? (
@@ -258,13 +263,13 @@ export function CandidateTab({
                     </SelectItem>
                   ))
                 ) : (
-                  <SelectItem value="" disabled>
+                  <SelectItem value="no-jobs-available" disabled>
                     No job postings available
                   </SelectItem>
                 )}
               </SelectContent>
             </Select>
-            {selectedJobId && (
+            {selectedJobId && selectedJobId !== 'loading-jobs' && selectedJobId !== 'no-jobs-available' && (
               <p className="text-sm text-gray-600 mt-2">
                 Selected: {jobPostings?.find(job => job.id.toString() === selectedJobId)?.title}
               </p>
@@ -552,13 +557,7 @@ export function CandidateTab({
               {/* Profile Content */}
               <div className="flex-1 overflow-y-auto p-4 space-y-6">
                 <div className="text-center">
-                  <Image
-                    src={selectedCandidate.photo}
-                    alt={selectedCandidate.name}
-                    width={96}
-                    height={96}
-                    className="w-24 h-24 rounded-full object-cover mx-auto mb-4 grayscale"
-                  />
+                  <img src={selectedCandidate.photo} alt={selectedCandidate.name} className="w-24 h-24 rounded-full object-cover mx-auto mb-4 grayscale" />
                   <h3 className="text-xl font-bold">{selectedCandidate.name}</h3>
                   <p className="text-gray-600">{selectedCandidate.title}</p>
                   <p className="text-sm text-gray-500">{selectedCandidate.company}</p>

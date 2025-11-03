@@ -9,7 +9,7 @@ import { Plus, Building2, Search, Loader2 } from 'lucide-react'
 import { useJobPostings, useCreateJobPosting } from '@/hooks/useJobPostings'
 
 interface JobPostingManagerProps {
-  onSearchClick: (jobId: string) => void
+  onSearchClick: (jobId: number) => void
 }
 
 export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
@@ -67,7 +67,6 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
               placeholder="Paste job posting URL here..."
               value={newJobUrl}
               onChange={(e) => setNewJobUrl(e.target.value)}
-              className="font-mono text-sm"
             />
           </div>
           <div className="space-y-2">
@@ -79,9 +78,6 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
               value={newTargetCandidates}
               onChange={(e) => setNewTargetCandidates(parseInt(e.target.value) || 500)}
             />
-            <p className="text-sm text-gray-600">
-              Number of candidates you need to reach out to for this role
-            </p>
           </div>
           <Button 
             disabled={!newJobTitle || !newJobUrl || createJobMutation.isPending} 
@@ -136,7 +132,7 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-medium">{job.title}</h3>
-                      <p className="text-sm text-gray-600">Target: {job.target_candidates_count} candidates</p>
+                      <p className="text-sm text-gray-600">{job.target_candidates_count} candidates</p>
                       <p className="text-xs text-gray-500">{job.url}</p>
                       {job.created_at && (
                         <p className="text-xs text-gray-400">
@@ -151,7 +147,7 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
                         onClick={() => onSearchClick(job.id)}
                       >
                         <Search className="h-4 w-4 mr-1" />
-                        Search Candidates
+                        Search
                       </Button>
                     </div>
                   </div>

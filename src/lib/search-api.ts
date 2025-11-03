@@ -138,18 +138,18 @@ export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle
     candidate_experience_location: searchParams.includeWorkLocation,
     number_of_min_connections: searchParams.connections,
     industry_exclusions: searchParams.industryExclusions.join(','),
-    job_title_exclusions: searchParams.titleExclusions,
-    profile_keywords_exclusions: searchParams.keywordExclusions,
+    job_title_exclusions: searchParams.titleExclusions?.length > 0 ? searchParams.titleExclusions.join(',') : '',
+    profile_keywords_exclusions: searchParams.keywordExclusions?.length > 0 ? searchParams.keywordExclusions.join(',') : '',
     company_exclusions: searchParams.companyExclusions,
     search_title: searchTitle,
     fk_job_description_id: jobDescriptionId
   }
 }
 
-const API_BASE_URL = 'http://localhost:8096/api/v1'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
 export async function createSearch(data: SearchRequest): Promise<SearchResponse> {
-  return fetchJson<SearchResponse>(`${API_BASE_URL}/job-description-searches/form-builder/create/`, {
+  return fetchJson<SearchResponse>(`${API_BASE_URL}/job-description-searches/form-builder/create`, {
     method: 'POST',
     body: JSON.stringify(data)
   })
@@ -179,8 +179,8 @@ export async function runSearch(searchId: number): Promise<SearchResponse> {
   })
 }
 
-export async function getSavedSearches(): Promise<SavedSearch[]> {
-  return fetchJson<SavedSearch[]>(`${API_BASE_URL}/job-description-searches/`, {
+export async function getSavedSearchesByJobDescription(jobDescriptionId: number): Promise<SavedSearch[]> {
+  return fetchJson<SavedSearch[]>(`${API_BASE_URL}/job-description-searches/${jobDescriptionId}/searches`, {
     method: 'GET'
   })
 }
@@ -229,9 +229,9 @@ export function mapSavedSearchToParams(savedSearch: SavedSearch): SearchParams {
     locationState: savedSearch.candidate_location_state,
     searchRadius: savedSearch.candidate_location_radius,
     includeWorkLocation: savedSearch.candidate_experience_location,
-    industryExclusions: savedSearch.industry_exclusions ? savedSearch.industry_exclusions.split(',').map(i => i.trim()) : [],
-    titleExclusions: savedSearch.job_title_exclusions,
-    keywordExclusions: savedSearch.profile_keywords_exclusions,
+    industryExclusions: savedSearch.industry_exclusions ? savedSearch.industry_exclusions.split(',') : [],
+    titleExclusions: savedSearch.job_title_exclusions ? savedSearch.job_title_exclusions.split(',') : [],
+    keywordExclusions: savedSearch.profile_keywords_exclusions ? savedSearch.profile_keywords_exclusions.split(',') : [],
     companyExclusions: savedSearch.company_exclusions,
     maxJobDuration: 5
   }
