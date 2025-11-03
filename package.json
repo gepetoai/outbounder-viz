@@ -1,13 +1,17 @@
 {
-  "name": "248",
+  "name": "248-monorepo",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H localhost",
-    "dev:clean": "rm -rf .next && next dev -H localhost -p 3000",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "dev:recruiter": "cd apps/recruiter && npm run dev",
+    "dev:inbounder": "cd apps/inbounder && npm run dev",
+    "dev:outbounder": "cd apps/outbounder && npm run dev",
+    "dev:researcher": "cd apps/researcher && npm run dev",
+    "build:recruiter": "cd apps/recruiter && npm run build",
+    "build:inbounder": "cd apps/inbounder && npm run build",
+    "build:outbounder": "cd apps/outbounder && npm run build",
+    "build:researcher": "cd apps/researcher && npm run build",
+    "install:all": "cd apps/recruiter && npm install && cd ../inbounder && npm install && cd ../outbounder && npm install && cd ../researcher && npm install"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.34.0",

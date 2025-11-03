@@ -1,45 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 248 Platform - Monorepo
+
+This is a monorepo containing four independent applications for sales and recruiting automation.
+
+## Applications
+
+### 🎯 Recruiter
+Talent acquisition tools for finding and managing candidates.
+- **Run:** `npm run dev:recruiter`
+- **Port:** localhost:3000
+
+### 📨 Inbounder
+Lead capture and qualification for inbound sales.
+- **Run:** `npm run dev:inbounder`
+- **Port:** localhost:3000
+
+### 🚀 Outbounder
+Outbound sales automation and campaign management.
+- **Run:** `npm run dev:outbounder`
+- **Port:** localhost:3000
+
+### 🔍 Researcher
+Lead research and enrichment tools.
+- **Run:** `npm run dev:researcher`
+- **Port:** localhost:3000
+
+## Structure
+
+```
+outbounder-viz/
+├── apps/                      # Independent Next.js applications
+│   ├── recruiter/            # Full-featured recruiter app
+│   ├── inbounder/            # Inbounder app (placeholder)
+│   ├── outbounder/           # Outbounder app (placeholder)
+│   └── researcher/           # Researcher app (placeholder)
+├── packages/                  # Shared code
+│   ├── ui/                   # Shared UI components (Shadcn)
+│   ├── auth/                 # Unified auth wrapper (Clerk)
+│   └── lib/                  # Shared utilities, API client, hooks
+└── package.json              # Root scripts
+```
 
 ## Getting Started
 
-First, run the development server:
+1. **Install dependencies for all apps:**
+   ```bash
+   npm run install:all
+   ```
+
+2. **Run an application:**
+   ```bash
+   npm run dev:recruiter    # or inbounder, outbounder, researcher
+   ```
+
+3. **Important:** Only run ONE app at a time since they all use port 3000.
+
+## Development Workflow
+
+### Switching Between Apps
+
+Since all apps run on `localhost:3000`, you need to stop the current server before starting a new one:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Kill any process on port 3000
+lsof -ti:3000 | xargs kill -9
+
+# Then start the app you want
+npm run dev:recruiter
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Working on Shared Code
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **UI Components:** Edit files in `packages/ui/`
+- **Auth Logic:** Edit files in `packages/auth/`
+- **Utilities/Hooks:** Edit files in `packages/lib/`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+All apps automatically import from these packages using the `@248/` namespace:
+```typescript
+import { Button } from '@248/ui/button'
+import { AuthWrapper } from '@248/auth'
+import { useJobPostings } from '@248/lib'
+```
 
-## Learn More
+## Building for Production
 
-To learn more about Next.js, take a look at the following resources:
+Build individual apps:
+```bash
+npm run build:recruiter
+npm run build:inbounder
+npm run build:outbounder
+npm run build:researcher
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Technical Details
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Framework:** Next.js 15.5.4
+- **React:** 19.1.0
+- **Styling:** Tailwind CSS 4 + Stylus modules
+- **UI Components:** Shadcn UI + Radix UI
+- **State Management:** Zustand + React Query
+- **Auth:** Clerk (shared across all apps)
 
-## Deploy on Vercel
+## Notes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-
-
-## What you need to do at checkpoints, how to submit a PR via graphite
-in the command line:
-gt create --all --message "insert short message here"
-gt submit -p
-.
-
+- Each app is completely independent and can be deployed separately
+- Shared packages reduce code duplication
+- All apps share the same design system and authentication
+- Each app has its own `node_modules` and can have app-specific dependencies

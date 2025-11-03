@@ -1,0 +1,17 @@
+{
+  "name": "@248/lib",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./utils": "./utils.ts",
+    "./api-client": "./api-client.ts",
+    "./mock-data": "./mock-data.ts",
+    "./search-api": "./search-api.ts",
+    "./query-client": "./query-client.tsx",
+    "./hooks/*": "./hooks/*"
+  }
+}
+

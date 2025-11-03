@@ -1,0 +1,14 @@
+{
+  "name": "@248/ui",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./*": "./*"
+  },
+  "dependencies": {
+    "@248/lib": "file:../lib"
+  }
+}
