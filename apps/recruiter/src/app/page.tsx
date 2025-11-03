@@ -11,6 +11,7 @@ import {
   X,
   Search,
   User,
+  ChevronDown,
   Briefcase
 } from 'lucide-react'
 
