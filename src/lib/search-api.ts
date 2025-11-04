@@ -125,28 +125,28 @@ export interface CandidatesByJobDescriptionResponse {
 
 export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle: string = 'Search', jobDescriptionId?: number | null): SearchRequest {
   return {
-    number_of_jobs: searchParams.numExperiences,
-    graduation_year_from: searchParams.graduationYearFrom,
-    graduation_year_to: searchParams.graduationYearTo,
-    maximum_years_of_experience: searchParams.maxExperience,
+    number_of_jobs: searchParams.numExperiences ?? 0,
+    graduation_year_from: searchParams.graduationYearFrom ?? 0,
+    graduation_year_to: searchParams.graduationYearTo ?? 0,
+    maximum_years_of_experience: searchParams.maxExperience ?? 0,
     use_experience_fallback: searchParams.useExperienceFallback || false,
     department: searchParams.department === 'none' ? '' : searchParams.department,
-    minimum_years_in_department: searchParams.deptYears,
+    minimum_years_in_department: searchParams.deptYears ?? 0,
     management_level: searchParams.managementLevelExclusions,
     job_titles: searchParams.jobTitles.join(','),
-    job_titles_lookup_order: searchParams.recency,
-    minimum_months_in_current_role: searchParams.timeInRole,
+    job_titles_lookup_order: searchParams.recency ?? 0,
+    minimum_months_in_current_role: searchParams.timeInRole ?? 0,
     candidate_location_city: searchParams.locationCity,
     candidate_location_state: searchParams.locationState,
-    candidate_location_radius: searchParams.searchRadius,
+    candidate_location_radius: searchParams.searchRadius ?? 0,
     candidate_experience_location: searchParams.includeWorkLocation,
-    number_of_min_connections: searchParams.connections,
+    number_of_min_connections: searchParams.connections ?? 0,
     industry_exclusions: searchParams.industryExclusions.join(','),
     job_title_exclusions: searchParams.titleExclusions?.length > 0 ? searchParams.titleExclusions.join(',') : '',
     profile_keywords_exclusions: searchParams.keywordExclusions?.length > 0 ? searchParams.keywordExclusions.join(',') : '',
     company_exclusions: searchParams.companyExclusions,
     search_title: searchTitle,
-    maximum_years_of_experience_per_role: searchParams.maxJobDuration,
+    maximum_years_of_experience_per_role: searchParams.maxJobDuration ?? 0,
     fk_job_description_id: jobDescriptionId
   }
 }
