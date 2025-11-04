@@ -16,6 +16,7 @@ import { Briefcase, MapPin, GraduationCap, X, Search, Target, RefreshCw, Send, S
 import { useStates, useCities, useIndustries, useDepartments } from '@/hooks/useDropdowns'
 import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useUpdateQuery, useEnrichCandidates } from '@/hooks/useSearch'
 import { useApproveCandidate, useRejectCandidate } from '@/hooks/useCandidates'
+import { useQueryClient } from '@tanstack/react-query'
 import { mapSearchParamsToRequest, SearchResponse } from '@/lib/search-api'
 import { mapEnrichedCandidateToCandidate, type Candidate } from '@/lib/utils'
 import { parseCommaSeparatedList, isCommaSeparatedList } from '@/lib/parse-utils'
@@ -162,6 +163,9 @@ export function SearchTab({
   // Candidate approval/rejection
   const approveCandidateMutation = useApproveCandidate()
   const rejectCandidateMutation = useRejectCandidate()
+
+  // Query client for cache invalidation
+  const queryClient = useQueryClient()
 
   // Toast notifications
   const { showToast } = useToast()
@@ -707,7 +711,8 @@ export function SearchTab({
     const jobIdToUse = jobDescriptionId
     if (jobIdToUse) {
       console.log('[SendToReview] Job description ID:', jobIdToUse, '- candidates will be fetched in CandidateTab')
-      // Candidates will be fetched in CandidateTab
+      // Invalidate the review candidates query to ensure fresh data is fetched
+      queryClient.invalidateQueries({ queryKey: ['candidates', 'review', jobIdToUse] })
     } else {
       // Generate the full number of candidates for review (same as candidateYield)
       // Note: Review candidates are now handled by the parent component
