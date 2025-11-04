@@ -1180,21 +1180,6 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
         </CardContent>
       </Card>
 
-      {/* Instructions */}
-      {nodes.length === 0 && (
-        <Card className="border-dashed">
-          <CardContent className="py-12">
-            <div className="text-center text-gray-500">
-              <Plus className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-              <p className="text-sm mb-2">No actions in your sequence yet</p>
-              <p className="text-xs text-gray-400">
-                Click "Add Action" to start building your outreach sequence
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Configuration Panel */}
       {showConfigPanel && (
         <>
