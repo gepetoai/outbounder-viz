@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { MapPin, GraduationCap, ThumbsUp, ThumbsDown, RotateCcw, Download } from 'lucide-react'
+import { MapPin, GraduationCap, ThumbsUp, ThumbsDown, Download } from 'lucide-react'
 import type { Candidate } from '@/lib/utils'
 
 interface CandidateTableViewProps {
@@ -13,12 +13,10 @@ interface CandidateTableViewProps {
   onCandidateClick: (candidate: Candidate) => void
   onApprove: (candidateId: string) => Promise<void>
   onReject: (candidateId: string) => Promise<void>
-  onMoveToReview?: (candidateId: string) => Promise<void>
   onDownloadCSV: () => void
   viewMode: 'review' | 'approved' | 'rejected'
   isApproving?: boolean
   isRejecting?: boolean
-  isMoving?: boolean
 }
 
 export function CandidateTableView({
@@ -26,12 +24,10 @@ export function CandidateTableView({
   onCandidateClick,
   onApprove,
   onReject,
-  onMoveToReview,
   onDownloadCSV,
   viewMode,
   isApproving = false,
-  isRejecting = false,
-  isMoving = false
+  isRejecting = false
 }: CandidateTableViewProps) {
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set())
 
@@ -75,26 +71,11 @@ export function CandidateTableView({
     setSelectedCandidateIds(new Set())
   }
 
-  const handleBulkMoveToReview = async () => {
-    if (!onMoveToReview) return
-
-    const movePromises = Array.from(selectedCandidateIds).map(candidateId =>
-      onMoveToReview(candidateId).catch(error => {
-        console.error(`Failed to move candidate ${candidateId} to review:`, error)
-      })
-    )
-
-    await Promise.all(movePromises)
-    setSelectedCandidateIds(new Set())
-  }
-
-  const handleStatusChange = async (candidateId: string, newStatus: 'review' | 'approved' | 'rejected') => {
+  const handleStatusChange = async (candidateId: string, newStatus: 'approved' | 'rejected') => {
     if (newStatus === 'approved') {
       await onApprove(candidateId)
     } else if (newStatus === 'rejected') {
       await onReject(candidateId)
-    } else if (onMoveToReview) {
-      await onMoveToReview(candidateId)
     }
   }
 
@@ -110,7 +91,7 @@ export function CandidateTableView({
               )}
             </div>
             <div className="flex items-center gap-1 pr-3">
-              {/* Three-position bulk status slider */}
+              {/* Two-position bulk status slider */}
               <div className="inline-flex items-center bg-gray-100 rounded-lg p-0.5">
                 <button
                   onClick={handleBulkReject}
@@ -123,18 +104,6 @@ export function CandidateTableView({
                 >
                   <ThumbsDown className="h-3 w-3" />
                   <span>Reject</span>
-                </button>
-                <button
-                  onClick={handleBulkMoveToReview}
-                  disabled={isMoving || selectedCandidateIds.size === 0 || !onMoveToReview}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${
-                    viewMode === 'review'
-                      ? 'bg-white shadow-sm text-gray-900'
-                      : 'text-gray-600 hover:text-gray-900 disabled:opacity-50'
-                  }`}
-                >
-                  <RotateCcw className="h-3 w-3" />
-                  <span>Review</span>
                 </button>
                 <button
                   onClick={handleBulkApprove}
@@ -167,25 +136,26 @@ export function CandidateTableView({
       {/* Table */}
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[40px] pl-4">
-                  <Checkbox
-                    checked={selectedCandidateIds.size === candidates.length && candidates.length > 0}
-                    onCheckedChange={handleSelectAll}
-                  />
-                </TableHead>
-                <TableHead className="w-[60px] pl-2"></TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Education</TableHead>
-                <TableHead className="w-[200px] text-right"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <div className="w-full">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[40px] pl-4">
+                    <Checkbox
+                      checked={selectedCandidateIds.size === candidates.length && candidates.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                  <TableHead className="w-[60px] pl-2"></TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="hidden lg:table-cell">Title</TableHead>
+                  <TableHead className="hidden xl:table-cell">Company</TableHead>
+                  <TableHead className="hidden xl:table-cell">Location</TableHead>
+                  <TableHead className="hidden 2xl:table-cell">Education</TableHead>
+                  <TableHead className="w-[180px] text-right"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
               {candidates.map((candidate) => (
                 <TableRow
                   key={candidate.id}
@@ -207,30 +177,37 @@ export function CandidateTableView({
                       />
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">
-                    {candidate.name}
-                  </TableCell>
-                  <TableCell>{candidate.title}</TableCell>
-                  <TableCell>{candidate.company}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <MapPin className="h-3 w-3 flex-shrink-0" />
-                      <span>{candidate.location}</span>
+                  <TableCell className="font-medium max-w-[200px]">
+                    <div className="flex flex-col min-w-0">
+                      <span className="truncate block" title={candidate.name}>{candidate.name}</span>
+                      <span className="text-xs text-gray-500 lg:hidden truncate block" title={candidate.title}>{candidate.title}</span>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                  <TableCell className="hidden lg:table-cell max-w-[250px]">
+                    <div className="truncate" title={candidate.title}>{candidate.title}</div>
+                  </TableCell>
+                  <TableCell className="hidden xl:table-cell max-w-[200px]">
+                    <div className="truncate" title={candidate.company}>{candidate.company}</div>
+                  </TableCell>
+                  <TableCell className="hidden xl:table-cell max-w-[200px]">
+                    <div className="flex items-center gap-1 text-sm text-gray-600 min-w-0">
+                      <MapPin className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate block min-w-0" title={candidate.location}>{candidate.location}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden 2xl:table-cell max-w-[250px]">
+                    <div className="flex items-center gap-1 text-sm text-gray-600 min-w-0">
                       <GraduationCap className="h-3 w-3 flex-shrink-0" />
-                      <span className="truncate max-w-[200px]">{candidate.education}</span>
+                      <span className="truncate block min-w-0" title={candidate.education}>{candidate.education}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-1 justify-end">
-                      {/* Three-position status slider */}
+                      {/* Two-position status slider */}
                       <div className="inline-flex items-center bg-gray-100 rounded-lg p-0.5">
                         <button
                           onClick={() => handleStatusChange(candidate.id, 'rejected')}
-                          disabled={isRejecting || isApproving || isMoving}
+                          disabled={isRejecting || isApproving}
                           className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                             viewMode === 'rejected'
                               ? 'bg-white shadow-sm text-gray-900'
@@ -239,22 +216,9 @@ export function CandidateTableView({
                         >
                           <ThumbsDown className="h-3 w-3" />
                         </button>
-                        {onMoveToReview && (
-                          <button
-                            onClick={() => handleStatusChange(candidate.id, 'review')}
-                            disabled={isRejecting || isApproving || isMoving}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                              viewMode === 'review'
-                                ? 'bg-white shadow-sm text-gray-900'
-                                : 'text-gray-600 hover:text-gray-900 disabled:opacity-50'
-                            }`}
-                          >
-                            <RotateCcw className="h-3 w-3" />
-                          </button>
-                        )}
                         <button
                           onClick={() => handleStatusChange(candidate.id, 'approved')}
-                          disabled={isRejecting || isApproving || isMoving}
+                          disabled={isRejecting || isApproving}
                           className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                             viewMode === 'approved'
                               ? 'bg-gray-900 shadow-sm text-white'
@@ -268,8 +232,9 @@ export function CandidateTableView({
                   </TableCell>
                 </TableRow>
               ))}
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

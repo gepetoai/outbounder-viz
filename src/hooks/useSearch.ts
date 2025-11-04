@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createSearch, updateSearchName, updateSearch, runSearch, getSavedSearchesByJobDescription, enrichCandidates, getCandidatesByJobDescription, getCandidatesForReview, SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse, CandidatesByJobDescriptionResponse, EnrichedCandidateResponse } from '@/lib/search-api'
+import { createSearch, updateSearchName, updateSearch, updateQuery, runSearch, getSavedSearchesByJobDescription, enrichCandidates, getCandidatesByJobDescription, getCandidatesForReview, SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse, CandidatesByJobDescriptionResponse, EnrichedCandidateResponse } from '@/lib/search-api'
 
 export function useCreateSearch() {
   const queryClient = useQueryClient()
@@ -42,6 +42,18 @@ export function useUpdateSearch() {
     },
     onError: (error) => {
       console.error('Failed to update search:', error)
+    }
+  })
+}
+
+export function useUpdateQuery() {
+  return useMutation<void, Error, { searchId: number; data: SearchRequest }>({
+    mutationFn: ({ searchId, data }) => updateQuery(searchId, data),
+    onSuccess: () => {
+      console.log('Query updated successfully')
+    },
+    onError: (error) => {
+      console.error('Failed to update query:', error)
     }
   })
 }

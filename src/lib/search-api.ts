@@ -23,11 +23,14 @@ export interface SearchRequest {
   profile_keywords_exclusions: string
   company_exclusions: string
   search_title: string
+  maximum_years_of_experience_per_role: number
   fk_job_description_id?: number | null
+  search_id?: number
 }
 
 export interface SearchResponse {
   total_results: number
+  total_results_from_search?: number
   search_id: number
   query_json: Record<string, unknown>
 }
@@ -56,6 +59,7 @@ export interface SavedSearch {
   job_title_exclusions: string
   profile_keywords_exclusions: string
   company_exclusions: string
+  maximum_years_of_experience_per_role: number
   total_addressable_market: number
   fk_job_description_id: number | null
   created_at: string
@@ -125,7 +129,7 @@ export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle
     graduation_year_from: searchParams.graduationYearFrom,
     graduation_year_to: searchParams.graduationYearTo,
     maximum_years_of_experience: searchParams.maxExperience,
-    use_experience_fallback: true,
+    use_experience_fallback: searchParams.useExperienceFallback || false,
     department: searchParams.department === 'none' ? '' : searchParams.department,
     minimum_years_in_department: searchParams.deptYears,
     management_level: searchParams.managementLevelExclusions,
@@ -142,6 +146,7 @@ export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle
     profile_keywords_exclusions: searchParams.keywordExclusions?.length > 0 ? searchParams.keywordExclusions.join(',') : '',
     company_exclusions: searchParams.companyExclusions,
     search_title: searchTitle,
+    maximum_years_of_experience_per_role: searchParams.maxJobDuration,
     fk_job_description_id: jobDescriptionId
   }
 }
@@ -171,6 +176,17 @@ export async function updateSearch(searchId: number, data: SearchRequest): Promi
     method: 'PUT',
     body: JSON.stringify(data)
   })
+}
+
+export async function updateQuery(searchId: number, data: SearchRequest): Promise<void> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/job-description-searches/${searchId}/update-query`, {
+    method: 'PUT',
+    body: JSON.stringify({ ...data, id: searchId })
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to update query: ${response.status} ${response.statusText}`)
+  }
 }
 
 export async function runSearch(searchId: number): Promise<SearchResponse> {
@@ -233,7 +249,8 @@ export function mapSavedSearchToParams(savedSearch: SavedSearch): SearchParams {
     titleExclusions: savedSearch.job_title_exclusions ? savedSearch.job_title_exclusions.split(',') : [],
     keywordExclusions: savedSearch.profile_keywords_exclusions ? savedSearch.profile_keywords_exclusions.split(',') : [],
     companyExclusions: savedSearch.company_exclusions,
-    maxJobDuration: 5
+    maxJobDuration: savedSearch.maximum_years_of_experience_per_role,
+    useExperienceFallback: savedSearch.use_experience_fallback || false
   }
 }
 
