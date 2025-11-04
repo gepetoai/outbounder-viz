@@ -90,6 +90,11 @@ export function calculateDuration(
  * @param enriched - EnrichedCandidateResponse from the API
  * @returns Candidate object with formatted data
  */
+// Helper function to detect 404 error placeholder candidates
+export function is404ErrorCandidate(candidate: Candidate): boolean {
+  return candidate.name.includes('Not Found (404 error)')
+}
+
 export function mapEnrichedCandidateToCandidate(enriched: EnrichedCandidateResponse): Candidate {
   const fullName = `${enriched.first_name} ${enriched.last_name}`
   const location = enriched.city && enriched.state 
