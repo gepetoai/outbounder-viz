@@ -109,7 +109,7 @@ export function LinkedInAccountsTab() {
                           ) : (
                             <div className="w-full h-full bg-gray-200 flex items-center justify-center">
                               <span className="text-gray-500 text-xs font-medium">
-                                {account.first_name[0]}{account.last_name[0]}
+                                {getFullName(account)}
                               </span>
                             </div>
                           )}
