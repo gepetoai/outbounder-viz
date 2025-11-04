@@ -53,9 +53,10 @@ export function CandidateCard({
 
   // Detailed variant - used in CandidateTab
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow min-h-[360px]">
-      <CardContent className="p-4">
-        <div className="space-y-3">
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow h-[360px] flex flex-col">
+      <CardContent className="py-1 px-4 flex-1 flex flex-col overflow-hidden">
+        {/* Scrollable content area */}
+        <div className="space-y-2 flex-1 overflow-y-auto">
           {/* Candidate Photo and Basic Info */}
           <div className="flex items-center gap-3">
             <img
@@ -130,6 +131,13 @@ export function CandidateCard({
               </Button>
             </div>
           )}
+        </div>
+
+        {/* Search Title - Fixed at bottom, always visible. Uses non-breaking space to preserve height when empty. */}
+        <div className="pt-2 mt-2 border-t border-gray-100 flex-shrink-0">
+          <p className="text-xs text-gray-500 truncate">
+            {candidate.searchTitle || '\u00A0'}
+          </p>
         </div>
       </CardContent>
     </Card>
