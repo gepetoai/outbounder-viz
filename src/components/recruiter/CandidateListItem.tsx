@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ThumbsUp, ThumbsDown } from 'lucide-react'
 import type { Candidate } from '@/lib/utils'
+import { is404ErrorCandidate } from '@/lib/utils'
 
 interface CandidateListItemProps {
   candidate: Candidate
@@ -31,6 +32,8 @@ export function CandidateListItem({
   const isThisCandidateProcessing = processingCandidateId === candidate.id
   const isApproving = isThisCandidateProcessing && processingAction === 'approve'
   const isRejecting = isThisCandidateProcessing && processingAction === 'reject'
+  const is404Error = is404ErrorCandidate(candidate)
+
   return (
     <div className="flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
       <img
@@ -50,7 +53,7 @@ export function CandidateListItem({
           <p className="text-xs text-gray-500 mt-1">{candidate.searchTitle}</p>
         )}
       </div>
-      {showActions && (
+      {showActions && !is404Error && (
         <div className="flex items-center gap-2">
           <Button
             size="sm"
