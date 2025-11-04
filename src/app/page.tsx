@@ -366,6 +366,10 @@ export default function HomePage() {
             setSearchTitle={setSearchTitle}
             isSearchModified={isSearchModified}
             setIsSearchModified={setIsSearchModified}
+            approvedCandidateIds={approvedCandidates}
+            setApprovedCandidateIds={setApprovedCandidates}
+            rejectedCandidateIds={rejectedCandidates}
+            setRejectedCandidateIds={setRejectedCandidates}
           />
         )
       case 'candidates':
