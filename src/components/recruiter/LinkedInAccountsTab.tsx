@@ -79,7 +79,7 @@ export function LinkedInAccountsTab() {
               <TableBody>
                 {accounts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12">
+                    <TableCell colSpan={5} className="text-center py-12">
                       <div className="text-muted-foreground">
                         <p className="text-lg font-medium mb-2">No LinkedIn accounts connected</p>
                         <p className="text-sm mb-4">Connect your LinkedIn account to start outreach</p>
