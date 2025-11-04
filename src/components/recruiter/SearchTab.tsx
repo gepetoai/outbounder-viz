@@ -40,27 +40,27 @@ export interface SearchParams {
   experienceLength: string
   titleMatch: boolean
   profilePhoto: boolean
-  connections: number
-  
+  connections?: number
+
   // New fields from UnifiedSearchForm
-  numExperiences: number
-  graduationYearFrom: number
-  graduationYearTo: number
-  maxExperience: number
+  numExperiences?: number
+  graduationYearFrom?: number
+  graduationYearTo?: number
+  maxExperience?: number
   department: string
-  deptYears: number
+  deptYears?: number
   managementLevelExclusions: string
-  recency: number
-  timeInRole: number
+  recency?: number
+  timeInRole?: number
   locationCity: string
   locationState: string
-  searchRadius: number
+  searchRadius?: number
   includeWorkLocation: boolean
   industryExclusions: string[]
   titleExclusions: string[]
   keywordExclusions: string[]
   companyExclusions: string
-  maxJobDuration: number
+  maxJobDuration?: number
   useExperienceFallback: boolean
 }
 
@@ -825,13 +825,8 @@ export function SearchTab({
                     <Label className="text-xs text-gray-600">From year</Label>
                     <Input
                       type="number"
-                      value={searchParams.graduationYearFrom || ''}
-                      onChange={(e) => setSearchParams({ ...searchParams, graduationYearFrom: e.target.value === '' ? 2002 : parseInt(e.target.value) })}
-                      onBlur={(e) => {
-                        if (e.target.value === '') {
-                          setSearchParams({ ...searchParams, graduationYearFrom: 2002 })
-                        }
-                      }}
+                      value={searchParams.graduationYearFrom ?? ''}
+                      onChange={(e) => setSearchParams({ ...searchParams, graduationYearFrom: e.target.value === '' ? undefined : parseInt(e.target.value) })}
                       min="1980"
                       max="2025"
                       placeholder="2002"
@@ -841,13 +836,8 @@ export function SearchTab({
                     <Label className="text-xs text-gray-600">To year</Label>
                     <Input
                       type="number"
-                      value={searchParams.graduationYearTo || ''}
-                      onChange={(e) => setSearchParams({ ...searchParams, graduationYearTo: e.target.value === '' ? 2022 : parseInt(e.target.value) })}
-                      onBlur={(e) => {
-                        if (e.target.value === '') {
-                          setSearchParams({ ...searchParams, graduationYearTo: 2022 })
-                        }
-                      }}
+                      value={searchParams.graduationYearTo ?? ''}
+                      onChange={(e) => setSearchParams({ ...searchParams, graduationYearTo: e.target.value === '' ? undefined : parseInt(e.target.value) })}
                       min="1980"
                       max="2025"
                       placeholder="2022"
@@ -908,13 +898,8 @@ export function SearchTab({
                     <Label className="text-xs text-gray-600">Radius (miles)</Label>
                     <Input
                       type="number"
-                      value={searchParams.searchRadius || ''}
-                      onChange={(e) => setSearchParams({ ...searchParams, searchRadius: e.target.value === '' ? 0 : parseInt(e.target.value) })}
-                      onBlur={(e) => {
-                        if (e.target.value === '') {
-                          setSearchParams({ ...searchParams, searchRadius: 0 })
-                        }
-                      }}
+                      value={searchParams.searchRadius ?? ''}
+                      onChange={(e) => setSearchParams({ ...searchParams, searchRadius: e.target.value === '' ? undefined : parseInt(e.target.value) })}
                       min="0"
                       max="500"
                       placeholder="25"
@@ -960,13 +945,8 @@ export function SearchTab({
                   <Label className="text-sm font-medium">Minimum number of past positions</Label>
                   <Input
                     type="number"
-                    value={searchParams.numExperiences || ''}
-                    onChange={(e) => setSearchParams({ ...searchParams, numExperiences: e.target.value === '' ? 0 : parseInt(e.target.value) })}
-                    onBlur={(e) => {
-                      if (e.target.value === '') {
-                        setSearchParams({ ...searchParams, numExperiences: 0 })
-                      }
-                    }}
+                    value={searchParams.numExperiences ?? ''}
+                    onChange={(e) => setSearchParams({ ...searchParams, numExperiences: e.target.value === '' ? undefined : parseInt(e.target.value) })}
                     min="0"
                     max="20"
                     className="w-20"
@@ -977,13 +957,8 @@ export function SearchTab({
                   <Label className="text-sm font-medium">Maximum months of experience</Label>
                   <Input
                     type="number"
-                    value={searchParams.maxExperience || ''}
-                    onChange={(e) => setSearchParams({ ...searchParams, maxExperience: e.target.value === '' ? 240 : parseInt(e.target.value) })}
-                    onBlur={(e) => {
-                      if (e.target.value === '') {
-                        setSearchParams({ ...searchParams, maxExperience: 240 })
-                      }
-                    }}
+                    value={searchParams.maxExperience ?? ''}
+                    onChange={(e) => setSearchParams({ ...searchParams, maxExperience: e.target.value === '' ? undefined : parseInt(e.target.value) })}
                     min="0"
                     className="w-20"
                     placeholder="240"
@@ -993,13 +968,8 @@ export function SearchTab({
                   <Label className="text-sm font-medium">Maximum months at one job</Label>
                   <Input
                     type="number"
-                    value={searchParams.maxJobDuration || ''}
-                    onChange={(e) => setSearchParams({ ...searchParams, maxJobDuration: e.target.value === '' ? 120 : parseInt(e.target.value) })}
-                    onBlur={(e) => {
-                      if (e.target.value === '') {
-                        setSearchParams({ ...searchParams, maxJobDuration: 120 })
-                      }
-                    }}
+                    value={searchParams.maxJobDuration ?? ''}
+                    onChange={(e) => setSearchParams({ ...searchParams, maxJobDuration: e.target.value === '' ? undefined : parseInt(e.target.value) })}
                     min="0"
                     className="w-20"
                     placeholder="120"
@@ -1013,13 +983,8 @@ export function SearchTab({
                   <Label className="text-sm font-medium">Minimum number of professional connections</Label>
                   <Input
                     type="number"
-                    value={searchParams.connections || ''}
-                    onChange={(e) => setSearchParams({ ...searchParams, connections: e.target.value === '' ? 0 : parseInt(e.target.value) })}
-                    onBlur={(e) => {
-                      if (e.target.value === '') {
-                        setSearchParams({ ...searchParams, connections: 0 })
-                      }
-                    }}
+                    value={searchParams.connections ?? ''}
+                    onChange={(e) => setSearchParams({ ...searchParams, connections: e.target.value === '' ? undefined : parseInt(e.target.value) })}
                     min="0"
                     max="500"
                     className="w-20"
@@ -1030,13 +995,8 @@ export function SearchTab({
                   <Label className="text-sm font-medium">Minimum months of relevant experience</Label>
                   <Input
                     type="number"
-                    value={searchParams.deptYears || ''}
-                    onChange={(e) => setSearchParams({ ...searchParams, deptYears: e.target.value === '' ? 24 : parseInt(e.target.value) })}
-                    onBlur={(e) => {
-                      if (e.target.value === '') {
-                        setSearchParams({ ...searchParams, deptYears: 24 })
-                      }
-                    }}
+                    value={searchParams.deptYears ?? ''}
+                    onChange={(e) => setSearchParams({ ...searchParams, deptYears: e.target.value === '' ? undefined : parseInt(e.target.value) })}
                     min="0"
                     className="w-20"
                     placeholder="24"
@@ -1046,13 +1006,8 @@ export function SearchTab({
                   <Label className="text-sm font-medium">Minimum months in current role</Label>
                   <Input
                     type="number"
-                    value={searchParams.timeInRole || ''}
-                    onChange={(e) => setSearchParams({ ...searchParams, timeInRole: e.target.value === '' ? 6 : parseInt(e.target.value) })}
-                    onBlur={(e) => {
-                      if (e.target.value === '') {
-                        setSearchParams({ ...searchParams, timeInRole: 6 })
-                      }
-                    }}
+                    value={searchParams.timeInRole ?? ''}
+                    onChange={(e) => setSearchParams({ ...searchParams, timeInRole: e.target.value === '' ? undefined : parseInt(e.target.value) })}
                     min="0"
                     placeholder="6"
                     className="w-20"
@@ -1218,13 +1173,8 @@ export function SearchTab({
                   <Label className="text-sm font-medium">Number of experiences to look for</Label>
                   <Input
                     type="number"
-                    value={searchParams.recency || ''}
-                    onChange={(e) => setSearchParams({ ...searchParams, recency: e.target.value === '' ? 3 : parseInt(e.target.value) })}
-                    onBlur={(e) => {
-                      if (e.target.value === '') {
-                        setSearchParams({ ...searchParams, recency: 3 })
-                      }
-                    }}
+                    value={searchParams.recency ?? ''}
+                    onChange={(e) => setSearchParams({ ...searchParams, recency: e.target.value === '' ? undefined : parseInt(e.target.value) })}
                     min="0"
                     className="w-20"
                     placeholder="3"
