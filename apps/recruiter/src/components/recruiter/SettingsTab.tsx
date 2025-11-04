@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { 
   User, 
   Building2, 
@@ -14,7 +15,8 @@ import {
   Upload,
   Save,
   Eye,
-  EyeOff
+  EyeOff,
+  Shield
 } from 'lucide-react'
 
 export function SettingsTab() {
@@ -37,6 +39,11 @@ export function SettingsTab() {
     current: false,
     new: false,
     confirm: false
+  })
+  
+  const [exclusionSettings, setExclusionSettings] = useState({
+    excludePastAtsApplications: false,
+    excludeLinkedInConnections: false
   })
 
   const handleProfileChange = (field: string, value: string) => {
@@ -68,6 +75,15 @@ export function SettingsTab() {
   const handlePhotoUpload = () => {
     // Handle photo upload logic
     console.log('Uploading photo')
+  }
+
+  const handleExclusionChange = (field: string, checked: boolean) => {
+    setExclusionSettings(prev => ({ ...prev, [field]: checked }))
+  }
+
+  const handleSaveExclusions = () => {
+    // Handle exclusion settings save logic
+    console.log('Saving exclusion settings:', exclusionSettings)
   }
 
   return (
@@ -199,6 +215,71 @@ export function SettingsTab() {
               />
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Exclusions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Exclusions
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <p className="text-sm text-gray-500">
+            Configure which candidates to exclude from outreach campaigns
+          </p>
+
+          {/* Exclude Past ATS Applications */}
+          <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+            <Checkbox 
+              id="excludeAts"
+              checked={exclusionSettings.excludePastAtsApplications}
+              onCheckedChange={(checked) => handleExclusionChange('excludePastAtsApplications', checked as boolean)}
+              className="mt-1"
+            />
+            <div className="flex-1 space-y-1">
+              <Label 
+                htmlFor="excludeAts" 
+                className="text-base font-medium cursor-pointer"
+              >
+                Exclude past ATS applications
+              </Label>
+              <p className="text-sm text-gray-500">
+                Automatically exclude candidates who have previously applied through your ATS
+              </p>
+            </div>
+          </div>
+
+          {/* Exclude LinkedIn Connections */}
+          <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+            <Checkbox 
+              id="excludeLinkedIn"
+              checked={exclusionSettings.excludeLinkedInConnections}
+              onCheckedChange={(checked) => handleExclusionChange('excludeLinkedInConnections', checked as boolean)}
+              className="mt-1"
+            />
+            <div className="flex-1 space-y-1">
+              <Label 
+                htmlFor="excludeLinkedIn" 
+                className="text-base font-medium cursor-pointer"
+              >
+                Exclude existing LinkedIn connections
+              </Label>
+              <p className="text-sm text-gray-500">
+                Automatically exclude people who are already connected to your LinkedIn account
+              </p>
+            </div>
+          </div>
+
+          <Button 
+            onClick={handleSaveExclusions}
+            className="bg-white hover:bg-gray-50 text-gray-800 border border-gray-300"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Save Exclusions
+          </Button>
         </CardContent>
       </Card>
 
