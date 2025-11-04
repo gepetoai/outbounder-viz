@@ -1235,10 +1235,10 @@ export function SearchTab({
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
                     <Switch
-                      checked={searchParams.managementLevelExclusions === 'C-Level, Director, Manager, VP, Owner, Founder'}
+                      checked={searchParams.managementLevelExclusions === 'C-Level, Director, Manager, VP, Owner, Founder, President/Vice President'}
                       onCheckedChange={(checked) => {
                         const exclusions = checked
-                          ? 'C-Level, Director, Manager, VP, Owner, Founder'
+                          ? 'C-Level, Director, Manager, VP, Owner, Founder, President/Vice President'
                           : ''
                         setSearchParams({ ...searchParams, managementLevelExclusions: exclusions })
                       }}
