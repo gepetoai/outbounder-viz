@@ -826,15 +826,15 @@ export function SearchTab({
                     <Input
                       type="number"
                       value={searchParams.graduationYearFrom || ''}
-                      onChange={(e) => setSearchParams({ ...searchParams, graduationYearFrom: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                      onChange={(e) => setSearchParams({ ...searchParams, graduationYearFrom: e.target.value === '' ? 2002 : parseInt(e.target.value) })}
                       onBlur={(e) => {
                         if (e.target.value === '') {
-                          setSearchParams({ ...searchParams, graduationYearFrom: 0 })
+                          setSearchParams({ ...searchParams, graduationYearFrom: 2002 })
                         }
                       }}
                       min="1980"
                       max="2025"
-                      placeholder="2018"
+                      placeholder="2002"
                     />
                   </div>
                   <div className="space-y-1">
@@ -842,10 +842,10 @@ export function SearchTab({
                     <Input
                       type="number"
                       value={searchParams.graduationYearTo || ''}
-                      onChange={(e) => setSearchParams({ ...searchParams, graduationYearTo: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                      onChange={(e) => setSearchParams({ ...searchParams, graduationYearTo: e.target.value === '' ? 2022 : parseInt(e.target.value) })}
                       onBlur={(e) => {
                         if (e.target.value === '') {
-                          setSearchParams({ ...searchParams, graduationYearTo: 0 })
+                          setSearchParams({ ...searchParams, graduationYearTo: 2022 })
                         }
                       }}
                       min="1980"
@@ -978,14 +978,15 @@ export function SearchTab({
                   <Input
                     type="number"
                     value={searchParams.maxExperience || ''}
-                    onChange={(e) => setSearchParams({ ...searchParams, maxExperience: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                    onChange={(e) => setSearchParams({ ...searchParams, maxExperience: e.target.value === '' ? 240 : parseInt(e.target.value) })}
                     onBlur={(e) => {
                       if (e.target.value === '') {
-                        setSearchParams({ ...searchParams, maxExperience: 0 })
+                        setSearchParams({ ...searchParams, maxExperience: 240 })
                       }
                     }}
                     min="0"
                     className="w-20"
+                    placeholder="240"
                   />
                 </div>
                 <div className="space-y-2">
@@ -993,14 +994,15 @@ export function SearchTab({
                   <Input
                     type="number"
                     value={searchParams.maxJobDuration || ''}
-                    onChange={(e) => setSearchParams({ ...searchParams, maxJobDuration: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                    onChange={(e) => setSearchParams({ ...searchParams, maxJobDuration: e.target.value === '' ? 120 : parseInt(e.target.value) })}
                     onBlur={(e) => {
                       if (e.target.value === '') {
-                        setSearchParams({ ...searchParams, maxJobDuration: 0 })
+                        setSearchParams({ ...searchParams, maxJobDuration: 120 })
                       }
                     }}
                     min="0"
                     className="w-20"
+                    placeholder="120"
                   />
                 </div>
               </div>
@@ -1021,6 +1023,7 @@ export function SearchTab({
                     min="0"
                     max="500"
                     className="w-20"
+                    placeholder="0"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1028,14 +1031,15 @@ export function SearchTab({
                   <Input
                     type="number"
                     value={searchParams.deptYears || ''}
-                    onChange={(e) => setSearchParams({ ...searchParams, deptYears: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                    onChange={(e) => setSearchParams({ ...searchParams, deptYears: e.target.value === '' ? 24 : parseInt(e.target.value) })}
                     onBlur={(e) => {
                       if (e.target.value === '') {
-                        setSearchParams({ ...searchParams, deptYears: 0 })
+                        setSearchParams({ ...searchParams, deptYears: 24 })
                       }
                     }}
                     min="0"
                     className="w-20"
+                    placeholder="24"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1043,10 +1047,10 @@ export function SearchTab({
                   <Input
                     type="number"
                     value={searchParams.timeInRole || ''}
-                    onChange={(e) => setSearchParams({ ...searchParams, timeInRole: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                    onChange={(e) => setSearchParams({ ...searchParams, timeInRole: e.target.value === '' ? 6 : parseInt(e.target.value) })}
                     onBlur={(e) => {
                       if (e.target.value === '') {
-                        setSearchParams({ ...searchParams, timeInRole: 0 })
+                        setSearchParams({ ...searchParams, timeInRole: 6 })
                       }
                     }}
                     min="0"

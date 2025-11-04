@@ -4,14 +4,25 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { X, Check, Briefcase, Download, ThumbsUp, ThumbsDown, User, Table as TableIcon } from 'lucide-react'
-import { useCandidatesForReview } from '@/hooks/useSearch'
-import { useApproveCandidate, useRejectCandidate, useShortlistedCandidates, useRejectedCandidates } from '@/hooks/useCandidates'
+import { X, Check, Briefcase, Download, ThumbsUp, ThumbsDown, User, Table as TableIcon, RotateCcw } from 'lucide-react'
+import { useCandidatesForReview, useMoveCandidates } from '@/hooks/useSearch'
+import {
+  useApproveCandidate,
+  useRejectCandidate,
+  useShortlistedCandidates,
+  useRejectedCandidates,
+  useApproveCandidateFromRejected,
+  useRejectCandidateFromShortlisted,
+  useSendToReviewFromShortlisted,
+  useSendToReviewFromRejected
+} from '@/hooks/useCandidates'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { mapEnrichedCandidateToCandidate, type Candidate } from '@/lib/utils'
 import { CandidateCard } from './CandidateCard'
 import { CandidateDetailPanel } from './CandidateDetailPanel'
 import { CandidateTableView } from './CandidateTableView'
+import { MoveCandidatesModal } from './MoveCandidatesModal'
+import { useToast } from '@/components/ui/toast'
 
 interface CandidateTabProps {
   jobDescriptionId?: number | null
@@ -26,6 +37,10 @@ export function CandidateTab({
   const [viewMode, setViewMode] = useState<'review' | 'approved' | 'rejected'>('review')
   const [viewType, setViewType] = useState<'single' | 'table'>('single')
   const [currentCandidateIndex, setCurrentCandidateIndex] = useState(0)
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false)
+  const [candidatesToMove, setCandidatesToMove] = useState<string[]>([])
+
+  const { showToast } = useToast()
 
   // Reset candidate index when job or view mode changes
   useEffect(() => {
@@ -48,6 +63,11 @@ export function CandidateTab({
   // API mutation hooks
   const approveCandidateMutation = useApproveCandidate()
   const rejectCandidateMutation = useRejectCandidate()
+  const moveCandidatesMutation = useMoveCandidates()
+  const approveCandidateFromRejectedMutation = useApproveCandidateFromRejected()
+  const rejectCandidateFromShortlistedMutation = useRejectCandidateFromShortlisted()
+  const sendToReviewFromShortlistedMutation = useSendToReviewFromShortlisted()
+  const sendToReviewFromRejectedMutation = useSendToReviewFromRejected()
 
   // Fetch approved and rejected candidates for counts
   const { data: shortlistedCandidates } = useShortlistedCandidates(
@@ -81,14 +101,24 @@ export function CandidateTab({
 
   const handleApprove = async (candidateId: string) => {
     if (!selectedJobId) return
-    
+
     try {
-      await approveCandidateMutation.mutateAsync({
-        fk_job_description_id: parseInt(selectedJobId),
-        fk_candidate_id: parseInt(candidateId)
-      })
-      // Move to next candidate after successful approval
-      moveToNextCandidate()
+      // Use different mutation based on current view mode
+      if (viewMode === 'rejected') {
+        await approveCandidateFromRejectedMutation.mutateAsync({
+          fk_job_description_id: parseInt(selectedJobId),
+          fk_candidate_ids: [parseInt(candidateId)]
+        })
+      } else {
+        await approveCandidateMutation.mutateAsync({
+          fk_job_description_id: parseInt(selectedJobId),
+          fk_candidate_id: parseInt(candidateId)
+        })
+      }
+      // Move to next candidate after successful approval (only in review mode)
+      if (viewMode === 'review') {
+        moveToNextCandidate()
+      }
     } catch (error) {
       console.error('Failed to approve candidate:', error)
     }
@@ -96,16 +126,46 @@ export function CandidateTab({
 
   const handleReject = async (candidateId: string) => {
     if (!selectedJobId) return
-    
+
     try {
-      await rejectCandidateMutation.mutateAsync({
-        fk_job_description_id: parseInt(selectedJobId),
-        fk_candidate_id: parseInt(candidateId)
-      })
-      // Move to next candidate after successful rejection
-      moveToNextCandidate()
+      // Use different mutation based on current view mode
+      if (viewMode === 'approved') {
+        await rejectCandidateFromShortlistedMutation.mutateAsync({
+          fk_job_description_id: parseInt(selectedJobId),
+          fk_candidate_ids: [parseInt(candidateId)]
+        })
+      } else {
+        await rejectCandidateMutation.mutateAsync({
+          fk_job_description_id: parseInt(selectedJobId),
+          fk_candidate_id: parseInt(candidateId)
+        })
+      }
+      // Move to next candidate after successful rejection (only in review mode)
+      if (viewMode === 'review') {
+        moveToNextCandidate()
+      }
     } catch (error) {
       console.error('Failed to reject candidate:', error)
+    }
+  }
+
+  const handleSendToReview = async (candidateId: string) => {
+    if (!selectedJobId) return
+
+    try {
+      if (viewMode === 'approved') {
+        await sendToReviewFromShortlistedMutation.mutateAsync({
+          fk_job_description_id: parseInt(selectedJobId),
+          fk_candidate_ids: [parseInt(candidateId)]
+        })
+      } else if (viewMode === 'rejected') {
+        await sendToReviewFromRejectedMutation.mutateAsync({
+          fk_job_description_id: parseInt(selectedJobId),
+          fk_candidate_ids: [parseInt(candidateId)]
+        })
+      }
+    } catch (error) {
+      console.error('Failed to send candidate to review:', error)
     }
   }
 
@@ -116,6 +176,28 @@ export function CandidateTab({
       setCurrentCandidateIndex(0)
     } else {
       setCurrentCandidateIndex(currentCandidateIndex + 1)
+    }
+  }
+
+  const handleMoveClick = (candidateIds: string[]) => {
+    setCandidatesToMove(candidateIds)
+    setIsMoveModalOpen(true)
+  }
+
+  const handleMoveCandidates = async (targetJobDescriptionId: number) => {
+    if (!selectedJobId || candidatesToMove.length === 0) return
+
+    try {
+      const result = await moveCandidatesMutation.mutateAsync({
+        target_job_description_id: targetJobDescriptionId,
+        candidate_ids: candidatesToMove.map(id => parseInt(id))
+      })
+
+      showToast(`Successfully moved ${result.moved_candidates_count} candidate${result.moved_candidates_count !== 1 ? 's' : ''}`, 'success')
+      setCandidatesToMove([])
+    } catch (error) {
+      console.error('Failed to move candidates:', error)
+      showToast('Failed to move candidates', 'error')
     }
   }
 
@@ -403,10 +485,12 @@ export function CandidateTab({
             }}
             onApprove={handleApprove}
             onReject={handleReject}
+            onSendToReview={handleSendToReview}
             onDownloadCSV={downloadApprovedCandidatesCSV}
+            onMove={handleMoveClick}
             viewMode={viewMode}
-            isApproving={approveCandidateMutation.isPending}
-            isRejecting={rejectCandidateMutation.isPending}
+            isApproving={approveCandidateMutation.isPending || approveCandidateFromRejectedMutation.isPending}
+            isRejecting={rejectCandidateMutation.isPending || rejectCandidateFromShortlistedMutation.isPending}
           />
         ) : viewMode === 'review' ? (
           /* Single Card Review Mode */
@@ -475,16 +559,67 @@ export function CandidateTab({
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {getCurrentCandidates().map((candidate) => (
-                <CandidateCard
-                  key={candidate.id}
-                  candidate={candidate}
-                  variant="detailed"
-                  showActions={false}
-                  onClick={(candidate) => {
-                    setSelectedCandidate(candidate)
-                    setIsProfilePanelOpen(true)
-                  }}
-                />
+                <div key={candidate.id} className="space-y-2">
+                  <CandidateCard
+                    candidate={candidate}
+                    variant="detailed"
+                    showActions={false}
+                    onClick={(candidate) => {
+                      setSelectedCandidate(candidate)
+                      setIsProfilePanelOpen(true)
+                    }}
+                  />
+                  {/* Action buttons for approved/rejected candidates */}
+                  <div className="flex justify-center gap-2">
+                    {viewMode === 'approved' ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleReject(candidate.id)}
+                          disabled={rejectCandidateFromShortlistedMutation.isPending}
+                          className="h-7 text-xs flex-1"
+                        >
+                          <ThumbsDown className="h-3 w-3 mr-1" />
+                          Reject
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleSendToReview(candidate.id)}
+                          disabled={sendToReviewFromShortlistedMutation.isPending}
+                          className="h-7 text-xs flex-1"
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          Review
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleApprove(candidate.id)}
+                          disabled={approveCandidateFromRejectedMutation.isPending}
+                          className="h-7 text-xs flex-1"
+                        >
+                          <ThumbsUp className="h-3 w-3 mr-1" />
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleSendToReview(candidate.id)}
+                          disabled={sendToReviewFromRejectedMutation.isPending}
+                          className="h-7 text-xs flex-1"
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          Review
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
@@ -533,6 +668,20 @@ export function CandidateTab({
           setSelectedCandidate(null)
         }}
         variant="slide"
+      />
+
+      {/* Move Candidates Modal */}
+      <MoveCandidatesModal
+        open={isMoveModalOpen}
+        onOpenChange={(open) => {
+          setIsMoveModalOpen(open)
+          if (!open) {
+            setCandidatesToMove([])
+          }
+        }}
+        onJobSelected={handleMoveCandidates}
+        candidateCount={candidatesToMove.length}
+        currentJobDescriptionId={selectedJobId ? parseInt(selectedJobId) : undefined}
       />
     </div>
   )

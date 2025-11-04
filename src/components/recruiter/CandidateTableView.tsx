@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { MapPin, GraduationCap, ThumbsUp, ThumbsDown, Download } from 'lucide-react'
+import { MapPin, GraduationCap, ThumbsUp, ThumbsDown, Download, ArrowRightLeft, RotateCcw } from 'lucide-react'
 import type { Candidate } from '@/lib/utils'
 
 interface CandidateTableViewProps {
@@ -13,7 +13,9 @@ interface CandidateTableViewProps {
   onCandidateClick: (candidate: Candidate) => void
   onApprove: (candidateId: string) => Promise<void>
   onReject: (candidateId: string) => Promise<void>
+  onSendToReview?: (candidateId: string) => Promise<void>
   onDownloadCSV: () => void
+  onMove?: (candidateIds: string[]) => void
   viewMode: 'review' | 'approved' | 'rejected'
   isApproving?: boolean
   isRejecting?: boolean
@@ -24,7 +26,9 @@ export function CandidateTableView({
   onCandidateClick,
   onApprove,
   onReject,
+  onSendToReview,
   onDownloadCSV,
+  onMove,
   viewMode,
   isApproving = false,
   isRejecting = false
@@ -71,11 +75,33 @@ export function CandidateTableView({
     setSelectedCandidateIds(new Set())
   }
 
-  const handleStatusChange = async (candidateId: string, newStatus: 'approved' | 'rejected') => {
+  const handleBulkSendToReview = async () => {
+    if (!onSendToReview) return
+
+    const sendToReviewPromises = Array.from(selectedCandidateIds).map(candidateId =>
+      onSendToReview(candidateId).catch(error => {
+        console.error(`Failed to send candidate ${candidateId} to review:`, error)
+      })
+    )
+
+    await Promise.all(sendToReviewPromises)
+    setSelectedCandidateIds(new Set())
+  }
+
+  const handleMoveClick = () => {
+    if (onMove) {
+      onMove(Array.from(selectedCandidateIds))
+      setSelectedCandidateIds(new Set())
+    }
+  }
+
+  const handleStatusChange = async (candidateId: string, newStatus: 'approved' | 'rejected' | 'review') => {
     if (newStatus === 'approved') {
       await onApprove(candidateId)
     } else if (newStatus === 'rejected') {
       await onReject(candidateId)
+    } else if (newStatus === 'review' && onSendToReview) {
+      await onSendToReview(candidateId)
     }
   }
 
@@ -91,7 +117,7 @@ export function CandidateTableView({
               )}
             </div>
             <div className="flex items-center gap-1 pr-3">
-              {/* Two-position bulk status slider */}
+              {/* Bulk status slider - 3-way for approved/rejected, 2-way for review */}
               <div className="inline-flex items-center bg-gray-100 rounded-lg p-0.5">
                 <button
                   onClick={handleBulkReject}
@@ -105,6 +131,16 @@ export function CandidateTableView({
                   <ThumbsDown className="h-3 w-3" />
                   <span>Reject</span>
                 </button>
+                {(viewMode === 'approved' || viewMode === 'rejected') && onSendToReview && (
+                  <button
+                    onClick={handleBulkSendToReview}
+                    disabled={selectedCandidateIds.size === 0}
+                    className="px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1 text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    <span>Review</span>
+                  </button>
+                )}
                 <button
                   onClick={handleBulkApprove}
                   disabled={isApproving || selectedCandidateIds.size === 0}
@@ -118,6 +154,18 @@ export function CandidateTableView({
                   <span>Approve</span>
                 </button>
               </div>
+              {onMove && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleMoveClick}
+                  disabled={selectedCandidateIds.size === 0}
+                  className="h-7 px-3 py-0 text-xs bg-white border-gray-300 text-gray-800 hover:bg-gray-100 disabled:opacity-50"
+                >
+                  <ArrowRightLeft className="h-4 w-4 mr-1" />
+                  Move
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"
@@ -203,7 +251,7 @@ export function CandidateTableView({
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-1 justify-end">
-                      {/* Two-position status slider */}
+                      {/* Status slider - 3-way for approved/rejected, 2-way for review */}
                       <div className="inline-flex items-center bg-gray-100 rounded-lg p-0.5">
                         <button
                           onClick={() => handleStatusChange(candidate.id, 'rejected')}
@@ -216,6 +264,15 @@ export function CandidateTableView({
                         >
                           <ThumbsDown className="h-3 w-3" />
                         </button>
+                        {(viewMode === 'approved' || viewMode === 'rejected') && onSendToReview && (
+                          <button
+                            onClick={() => handleStatusChange(candidate.id, 'review')}
+                            disabled={isRejecting || isApproving}
+                            className="px-3 py-1.5 text-xs font-medium rounded-md transition-all text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleStatusChange(candidate.id, 'approved')}
                           disabled={isRejecting || isApproving}
