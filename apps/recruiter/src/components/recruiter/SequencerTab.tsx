@@ -247,13 +247,13 @@ const WaitNode = memo(({ data }: NodeProps) => {
           pattern="[0-9]*"
           value={waitValue}
           onChange={handleValueChange}
-          className="w-16 px-3 py-1.5 text-xs leading-tight text-center border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-gray-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="h-7 w-16 px-3 py-0 text-xs leading-7 text-center border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-gray-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
         <Select
           value={waitUnit}
           onValueChange={handleUnitChange}
         >
-          <SelectTrigger className="flex items-center px-3 py-1.5 text-xs leading-tight border border-gray-300 rounded bg-white w-20">
+          <SelectTrigger className="h-7 w-20 px-3 py-0 text-xs leading-7 border border-gray-300 rounded bg-white">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -353,11 +353,21 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
   const [campaignStatus, setCampaignStatus] = useState<'active' | 'paused'>('paused')
   const [showActionMenu, setShowActionMenu] = useState(false)
   const [sampleCandidates, setSampleCandidates] = useState<SimplifiedCandidate[]>([])
+  const [candidateStartIndex, setCandidateStartIndex] = useState(0)
   const [pendingBranch, setPendingBranch] = useState<{ branch: string; parentId: string } | null>(null)
+
+  // Reset candidate index when job changes
+  useEffect(() => {
+    setCandidateStartIndex(0)
+  }, [selectedJobId])
 
   useEffect(() => {
     if (candidatesData?.approved_candidates) {
-      const candidates: SimplifiedCandidate[] = candidatesData.approved_candidates.slice(0, 5).map((c: any, index: number) => ({
+      const allCandidates = candidatesData.approved_candidates
+      const startIdx = candidateStartIndex % allCandidates.length
+      const endIdx = Math.min(startIdx + 5, allCandidates.length)
+      
+      const candidates: SimplifiedCandidate[] = allCandidates.slice(startIdx, endIdx).map((c: any, index: number) => ({
         id: c.id?.toString() || `sample-${index}`,
         name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unknown',
         title: c.job_title || c.raw_data?.headline || 'N/A',
@@ -367,7 +377,15 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
     } else {
       setSampleCandidates([])
     }
-  }, [selectedJobId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidateStartIndex, selectedJobId])
+
+  const handleRefreshCandidates = useCallback(() => {
+    const totalCandidates = candidatesData?.approved_candidates?.length || 0
+    if (totalCandidates > 5) {
+      setCandidateStartIndex((prev) => (prev + 5) % totalCandidates)
+    }
+  }, [candidatesData?.approved_candidates?.length])
 
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
@@ -1263,7 +1281,18 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       {selectedJobId && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">{approvedCount} Approved Candidates</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">{approvedCount} Approved Candidates</CardTitle>
+              <Button
+                onClick={handleRefreshCandidates}
+                disabled={approvedCount <= 5}
+                variant="outline"
+                size="sm"
+                className="bg-white hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <RefreshCcw className="h-4 w-4" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {sampleCandidates.length > 0 ? (
