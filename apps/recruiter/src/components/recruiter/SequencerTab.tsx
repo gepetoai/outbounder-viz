@@ -37,7 +37,8 @@ import {
   Zap,
   Settings,
   Undo,
-  Redo
+  Redo,
+  RefreshCcw
 } from 'lucide-react'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useCandidates } from '@/hooks/useCandidates'
@@ -62,6 +63,7 @@ const actionTypes = [
   { id: 'if-connection-accepted', label: 'If Connection Accepted', icon: CheckCircle },
   { id: 'if-message-responded', label: 'If Message Responded', icon: Reply },
   { id: 'activate-responder', label: 'Activate Responder', icon: Zap },
+  { id: 'rescind-connection-request', label: 'Rescind Connection Request', icon: RefreshCcw },
   { id: 'end-sequence', label: 'End Sequence', icon: X }
 ]
 
@@ -73,15 +75,19 @@ const START_Y = 50
 const BRANCH_OFFSET = 150
 
 // Node height constants (in pixels) - measured from actual rendered heights
+// ActionNode: border-2 (4px) + p-4 (32px) + content (~28px) = 64px
+// WaitNode: border (2px) + py-2 (16px) + h-7 select (28px) + spacing (~10px) = 56px
+// ConditionalNode: same as ActionNode = 64px
 const NODE_HEIGHTS = {
   actionWithButton: 108,    // Action node with "Add Next Action" button (including padding/border)
   actionWithoutButton: 64,  // Action node without button (centered content, including padding/border)
   conditionalWithButtons: 108, // Conditional node with Yes/No buttons
   conditionalWithoutButtons: 64, // Conditional node without buttons
-  wait: 52                  // Wait node height (including padding/border)
+  wait: 56                  // Wait node height (including padding/border) - UPDATED for accurate spacing
 }
 
-const VERTICAL_GAP = 40 // Consistent gap between nodes - this is the visual space between box edges
+// Gap-first approach: define the desired visual gap between boxes
+const DESIRED_GAP = 40 // The consistent visual space between the bottom of one box and top of the next
 
 // Helper to get X position for a branch (relative to parent)
 function getBranchXPosition(branch: string | undefined, parentX: number): number {
@@ -108,6 +114,8 @@ function getIcon(type: string, className = 'h-5 w-5') {
       return <MessageSquare {...props} />
     case 'connection-request':
       return <UserPlus {...props} />
+    case 'rescind-connection-request':
+      return <RefreshCcw {...props} />
     case 'like-post':
       return <Heart {...props} />
     case 'if-connection-accepted':
@@ -150,7 +158,7 @@ function getNodeHeight(node: Node): number {
 const nodeHandlers = {
   onDelete: null as ((id: string) => void) | null,
   onAddNext: null as ((branch?: string, parentId?: string) => void) | null,
-  onWaitChange: null as ((id: string, days: number) => void) | null,
+  onWaitChange: null as ((id: string, value: number, unit: string) => void) | null,
   onConfigure: null as ((nodeId: string) => void) | null
 }
 
@@ -158,6 +166,10 @@ const ActionNode = memo(({ data }: NodeProps) => {
   const isEndSequence = data.actionType === 'end-sequence'
   const hasChildren = data.hasChildren
   const showAddButton = !isEndSequence && !hasChildren
+  
+  // Hide configure button for self-explanatory actions
+  const selfExplanatoryActions = ['end-sequence', 'rescind-connection-request', 'activate-responder']
+  const showConfigureButton = !selfExplanatoryActions.includes(data.actionType)
   
   return (
     <div 
@@ -169,12 +181,14 @@ const ActionNode = memo(({ data }: NodeProps) => {
           <span className="font-semibold text-sm">{data.label}</span>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => nodeHandlers.onConfigure?.(data.nodeId)}
-            className="text-gray-400 hover:text-gray-900 transition-colors"
-          >
-            <Settings className="h-4 w-4" />
-          </button>
+          {showConfigureButton && (
+            <button
+              onClick={() => nodeHandlers.onConfigure?.(data.nodeId)}
+              className="text-gray-400 hover:text-gray-900 transition-colors"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          )}
           <button
             onClick={() => nodeHandlers.onDelete?.(data.nodeId)}
             className="text-gray-400 hover:text-red-600 transition-colors"
@@ -200,28 +214,52 @@ const ActionNode = memo(({ data }: NodeProps) => {
 ActionNode.displayName = 'ActionNode'
 
 const WaitNode = memo(({ data }: NodeProps) => {
+  const waitValue = data.waitValue || 2
+  const waitUnit = data.waitUnit || 'days'
+  
+  const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value
+    // Allow empty input for user to type
+    if (inputValue === '') return
+    
+    // Parse and validate
+    const value = parseInt(inputValue)
+    if (isNaN(value)) return
+    
+    const clampedValue = Math.min(Math.max(value, 1), 60)
+    nodeHandlers.onWaitChange?.(data.nodeId, clampedValue, waitUnit)
+  }
+  
+  const handleUnitChange = (unit: string) => {
+    nodeHandlers.onWaitChange?.(data.nodeId, waitValue, unit)
+  }
+  
   return (
     <div 
       className="bg-gray-100 border border-gray-400 rounded-lg px-3 py-2 w-56 shadow-sm"
     >
       <div className="flex items-center justify-center gap-2">
         <Hourglass className="h-4 w-4 text-gray-600 flex-shrink-0" />
+        <span className="text-xs text-gray-700 font-medium">Wait</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={waitValue}
+          onChange={handleValueChange}
+          className="w-16 px-3 py-1.5 text-xs leading-tight text-center border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-gray-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
         <Select
-          value={data.waitDays?.toString() || '1'}
-          onValueChange={(value) => nodeHandlers.onWaitChange?.(data.nodeId, parseInt(value))}
+          value={waitUnit}
+          onValueChange={handleUnitChange}
         >
-          <SelectTrigger className="h-7 text-xs border-gray-300 bg-white">
+          <SelectTrigger className="flex items-center px-3 py-1.5 text-xs leading-tight border border-gray-300 rounded bg-white w-20">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="1">Wait 1 hour</SelectItem>
-            <SelectItem value="2">Wait 2 hours</SelectItem>
-            <SelectItem value="3">Wait 3 hours</SelectItem>
-            <SelectItem value="6">Wait 6 hours</SelectItem>
-            <SelectItem value="12">Wait 12 hours</SelectItem>
-            <SelectItem value="24">Wait 1 day</SelectItem>
-            <SelectItem value="48">Wait 2 days</SelectItem>
-            <SelectItem value="72">Wait 3 days</SelectItem>
+            <SelectItem value="minutes">min</SelectItem>
+            <SelectItem value="hours">hrs</SelectItem>
+            <SelectItem value="days">days</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -234,6 +272,10 @@ const ConditionalNode = memo(({ data }: NodeProps) => {
   const hasYesChild = data.hasYesChild
   const hasNoChild = data.hasNoChild
   const showButtons = !hasYesChild || !hasNoChild
+  
+  // Hide configure button for self-explanatory conditional actions
+  const selfExplanatoryActions = ['if-connection-accepted', 'if-message-responded']
+  const showConfigureButton = !selfExplanatoryActions.includes(data.actionType)
   
   return (
     <div 
@@ -249,12 +291,14 @@ const ConditionalNode = memo(({ data }: NodeProps) => {
           <span className="font-semibold text-sm">{data.label}</span>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => nodeHandlers.onConfigure?.(data.nodeId)}
-            className="text-gray-400 hover:text-gray-900 transition-colors"
-          >
-            <Settings className="h-4 w-4" />
-          </button>
+          {showConfigureButton && (
+            <button
+              onClick={() => nodeHandlers.onConfigure?.(data.nodeId)}
+              className="text-gray-400 hover:text-gray-900 transition-colors"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          )}
           <button
             onClick={() => nodeHandlers.onDelete?.(data.nodeId)}
             className="text-gray-400 hover:text-red-600 transition-colors"
@@ -332,7 +376,171 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
   const [showConfigPanel, setShowConfigPanel] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [nodeToDelete, setNodeToDelete] = useState<string | null>(null)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
   
+  // Helper function to mark nodes with children based on edges
+  const markNodesWithChildren = useCallback((nodes: Node[], edges: Edge[]): Node[] => {
+    return nodes.map(node => ({
+      ...node,
+      data: {
+        ...node.data,
+        hasChildren: edges.some(edge => edge.source === node.id)
+      }
+    }))
+  }, [])
+
+  // Load sequence based on selected job
+  useEffect(() => {
+    if (!selectedJobId) return
+
+    // Different sequences for different job types
+    if (selectedJobId === 1) {
+      // Engineer sequence: View profile, Like post, Connect, Message if accepted / InMail if not
+      // Gap-first approach: calculate positions with consistent gaps between nodes
+      let yPos = START_Y
+      
+      const pos0 = yPos
+      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
+      
+      const pos1 = yPos
+      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
+      
+      const pos2 = yPos
+      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
+      
+      const pos3 = yPos
+      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
+      
+      const pos4 = yPos
+      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
+      
+      const pos5 = yPos
+      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
+      
+      const pos6 = yPos
+      yPos += NODE_HEIGHTS.conditionalWithoutButtons + DESIRED_GAP
+      
+      const pos7 = yPos
+      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
+      
+      const pos8 = yPos
+      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
+      
+      const pos9 = yPos
+      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
+      
+      const pos10 = yPos
+      
+      const engineerNodes: Node[] = [
+        { id: 'action-0', type: 'actionNode', position: { x: START_X, y: pos0 }, data: { nodeId: 'action-0', label: 'View Profile', actionType: 'view-profile' }, draggable: true },
+        { id: 'wait-1', type: 'waitNode', position: { x: START_X, y: pos1 }, data: { nodeId: 'wait-1', waitValue: 2, waitUnit: 'days' }, draggable: true },
+        { id: 'action-1', type: 'actionNode', position: { x: START_X, y: pos2 }, data: { nodeId: 'action-1', label: 'Like Post', actionType: 'like-post' }, draggable: true },
+        { id: 'wait-2', type: 'waitNode', position: { x: START_X, y: pos3 }, data: { nodeId: 'wait-2', waitValue: 2, waitUnit: 'days' }, draggable: true },
+        { id: 'action-2', type: 'actionNode', position: { x: START_X, y: pos4 }, data: { nodeId: 'action-2', label: 'Connection Request', actionType: 'connection-request' }, draggable: true },
+        { id: 'wait-3', type: 'waitNode', position: { x: START_X, y: pos5 }, data: { nodeId: 'wait-3', waitValue: 2, waitUnit: 'days' }, draggable: true },
+        { id: 'action-3', type: 'conditionalNode', position: { x: START_X, y: pos6 }, data: { nodeId: 'action-3', label: 'If Connection Accepted', actionType: 'if-connection-accepted', hasYesChild: true, hasNoChild: true }, draggable: true },
+        { id: 'wait-4', type: 'waitNode', position: { x: START_X - BRANCH_OFFSET, y: pos7 }, data: { nodeId: 'wait-4', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: true },
+        { id: 'action-4', type: 'actionNode', position: { x: START_X - BRANCH_OFFSET, y: pos8 }, data: { nodeId: 'action-4', label: 'Send Message', actionType: 'send-message', branch: 'yes' }, draggable: true },
+        { id: 'wait-5', type: 'waitNode', position: { x: START_X + BRANCH_OFFSET, y: pos7 }, data: { nodeId: 'wait-5', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: true },
+        { id: 'action-5', type: 'actionNode', position: { x: START_X + BRANCH_OFFSET, y: pos8 }, data: { nodeId: 'action-5', label: 'Send InMail', actionType: 'send-inmail', branch: 'no' }, draggable: true },
+        { id: 'wait-6', type: 'waitNode', position: { x: START_X - BRANCH_OFFSET, y: pos9 }, data: { nodeId: 'wait-6', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: true },
+        { id: 'action-6', type: 'actionNode', position: { x: START_X - BRANCH_OFFSET, y: pos10 }, data: { nodeId: 'action-6', label: 'End Sequence', actionType: 'end-sequence', branch: 'yes' }, draggable: true },
+        { id: 'wait-7', type: 'waitNode', position: { x: START_X + BRANCH_OFFSET, y: pos9 }, data: { nodeId: 'wait-7', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: true },
+        { id: 'action-7', type: 'actionNode', position: { x: START_X + BRANCH_OFFSET, y: pos10 }, data: { nodeId: 'action-7', label: 'End Sequence', actionType: 'end-sequence', branch: 'no' }, draggable: true }
+      ]
+      const engineerEdges: Edge[] = [
+        { id: 'edge-0-wait-1', source: 'action-0', target: 'wait-1', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-wait-1-1', source: 'wait-1', target: 'action-1', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-1-wait-2', source: 'action-1', target: 'wait-2', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-wait-2-2', source: 'wait-2', target: 'action-2', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-2-wait-3', source: 'action-2', target: 'wait-3', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-wait-3-3', source: 'wait-3', target: 'action-3', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-3-wait-4-yes', source: 'action-3', sourceHandle: 'yes', target: 'wait-4', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 }, label: 'Yes', labelStyle: { fill: '#000', fontWeight: 600 }, labelBgStyle: { fill: '#fff' } },
+        { id: 'edge-wait-4-4', source: 'wait-4', target: 'action-4', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-3-wait-5-no', source: 'action-3', sourceHandle: 'no', target: 'wait-5', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 }, label: 'No', labelStyle: { fill: '#000', fontWeight: 600 }, labelBgStyle: { fill: '#fff' } },
+        { id: 'edge-wait-5-5', source: 'wait-5', target: 'action-5', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-4-wait-6', source: 'action-4', target: 'wait-6', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-wait-6-6', source: 'wait-6', target: 'action-6', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-5-wait-7', source: 'action-5', target: 'wait-7', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-wait-7-7', source: 'wait-7', target: 'action-7', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } }
+      ]
+      
+      // Mark nodes with children to hide "Add Next Action" buttons
+      const nodesWithChildren = markNodesWithChildren(engineerNodes, engineerEdges)
+      
+      setNodes(nodesWithChildren)
+      setEdges(engineerEdges)
+      setActionCount(8)
+      
+      // Fit view to show all nodes after a short delay to ensure rendering is complete
+      setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.2, duration: 300 })
+      }, 50)
+    } else if (selectedJobId === 2) {
+      // Territory Manager sequence: Connect first, InMail if not accepted, Message if accepted
+      // Gap-first approach: calculate positions with consistent gaps between nodes
+      let yPos = START_Y
+      
+      const pos0 = yPos
+      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
+      
+      const pos1 = yPos
+      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
+      
+      const pos2 = yPos
+      yPos += NODE_HEIGHTS.conditionalWithoutButtons + DESIRED_GAP
+      
+      const pos3 = yPos
+      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
+      
+      const pos4 = yPos
+      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
+      
+      const pos5 = yPos
+      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
+      
+      const pos6 = yPos
+      
+      const managerNodes: Node[] = [
+        { id: 'action-0', type: 'actionNode', position: { x: START_X, y: pos0 }, data: { nodeId: 'action-0', label: 'Connection Request', actionType: 'connection-request' }, draggable: true },
+        { id: 'wait-1', type: 'waitNode', position: { x: START_X, y: pos1 }, data: { nodeId: 'wait-1', waitValue: 2, waitUnit: 'days' }, draggable: true },
+        { id: 'action-1', type: 'conditionalNode', position: { x: START_X, y: pos2 }, data: { nodeId: 'action-1', label: 'If Connection Accepted', actionType: 'if-connection-accepted', hasYesChild: true, hasNoChild: true }, draggable: true },
+        { id: 'wait-2', type: 'waitNode', position: { x: START_X - BRANCH_OFFSET, y: pos3 }, data: { nodeId: 'wait-2', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: true },
+        { id: 'action-2', type: 'actionNode', position: { x: START_X - BRANCH_OFFSET, y: pos4 }, data: { nodeId: 'action-2', label: 'Send Message', actionType: 'send-message', branch: 'yes' }, draggable: true },
+        { id: 'wait-3', type: 'waitNode', position: { x: START_X + BRANCH_OFFSET, y: pos3 }, data: { nodeId: 'wait-3', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: true },
+        { id: 'action-3', type: 'actionNode', position: { x: START_X + BRANCH_OFFSET, y: pos4 }, data: { nodeId: 'action-3', label: 'Send InMail', actionType: 'send-inmail', branch: 'no' }, draggable: true },
+        { id: 'wait-4', type: 'waitNode', position: { x: START_X - BRANCH_OFFSET, y: pos5 }, data: { nodeId: 'wait-4', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: true },
+        { id: 'action-4', type: 'actionNode', position: { x: START_X - BRANCH_OFFSET, y: pos6 }, data: { nodeId: 'action-4', label: 'End Sequence', actionType: 'end-sequence', branch: 'yes' }, draggable: true },
+        { id: 'wait-5', type: 'waitNode', position: { x: START_X + BRANCH_OFFSET, y: pos5 }, data: { nodeId: 'wait-5', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: true },
+        { id: 'action-5', type: 'actionNode', position: { x: START_X + BRANCH_OFFSET, y: pos6 }, data: { nodeId: 'action-5', label: 'End Sequence', actionType: 'end-sequence', branch: 'no' }, draggable: true }
+      ]
+      const managerEdges: Edge[] = [
+        { id: 'edge-0-wait-1', source: 'action-0', target: 'wait-1', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-wait-1-1', source: 'wait-1', target: 'action-1', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-1-wait-2-yes', source: 'action-1', sourceHandle: 'yes', target: 'wait-2', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 }, label: 'Yes', labelStyle: { fill: '#000', fontWeight: 600 }, labelBgStyle: { fill: '#fff' } },
+        { id: 'edge-wait-2-2', source: 'wait-2', target: 'action-2', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-1-wait-3-no', source: 'action-1', sourceHandle: 'no', target: 'wait-3', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 }, label: 'No', labelStyle: { fill: '#000', fontWeight: 600 }, labelBgStyle: { fill: '#fff' } },
+        { id: 'edge-wait-3-3', source: 'wait-3', target: 'action-3', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-2-wait-4', source: 'action-2', target: 'wait-4', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-wait-4-4', source: 'wait-4', target: 'action-4', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-3-wait-5', source: 'action-3', target: 'wait-5', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-wait-5-5', source: 'wait-5', target: 'action-5', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } }
+      ]
+      
+      // Mark nodes with children to hide "Add Next Action" buttons
+      const nodesWithChildren = markNodesWithChildren(managerNodes, managerEdges)
+      
+      setNodes(nodesWithChildren)
+      setEdges(managerEdges)
+      setActionCount(6)
+      
+      // Fit view to show all nodes after a short delay to ensure rendering is complete
+      setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.2, duration: 300 })
+      }, 50)
+    }
+  }, [selectedJobId, setNodes, setEdges, markNodesWithChildren, reactFlowInstance])
+
   // History management for undo/redo
   const [history, setHistory] = useState<Array<{ nodes: Node[], edges: Edge[], actionCount: number }>>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
@@ -558,6 +766,30 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       return hasActionType('if-message-responded')
     }
     
+    // Rescind Connection Request: Only available after connection-request but before if-connection-accepted
+    if (actionId === 'rescind-connection-request') {
+      const hasConnectionRequest = hasActionType('connection-request')
+      const hasConnectionAccepted = hasActionType('if-connection-accepted')
+      
+      // Must have sent a connection request
+      if (!hasConnectionRequest) return false
+      
+      // Cannot rescind after the conditional check (if-connection-accepted)
+      if (hasConnectionAccepted) {
+        // If we're in a branch context, check if we're adding before or after the conditional
+        if (pendingBranch?.parentId) {
+          const conditionalNode = nodes.find(n => n.data.actionType === 'if-connection-accepted')
+          // Can't add rescind in branches after the conditional
+          if (conditionalNode) return false
+        } else {
+          // Not in a branch, but conditional exists - can't add rescind
+          return false
+        }
+      }
+      
+      return true
+    }
+
     return true
   }, [hasActionType, hasActionTypeInPath, nodes, pendingBranch])
 
@@ -664,7 +896,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       setShowActionMenu(true)
     }
     
-    nodeHandlers.onWaitChange = (nodeId: string, days: number) => {
+    nodeHandlers.onWaitChange = (nodeId: string, value: number, unit: string) => {
       setNodes((nds) =>
         nds.map((node) => {
           if (node.id === nodeId) {
@@ -672,7 +904,8 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
               ...node,
               data: {
                 ...node.data,
-                waitDays: days
+                waitValue: value,
+                waitUnit: unit
               }
             }
           }
@@ -759,16 +992,16 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       const waitNodeHeight = NODE_HEIGHTS.wait
       
       // Calculate total vertical distance from parent bottom to child top
-      const totalVerticalSpace = VERTICAL_GAP * 2 + waitNodeHeight
+      const totalVerticalSpace = DESIRED_GAP * 2 + waitNodeHeight
       
       // Position wait node so it's perfectly centered in the vertical space
       // Parent bottom is at: parentNode.position.y + parentHeight
-      // Wait node should start at: parent bottom + VERTICAL_GAP
-      const waitY = parentNode.position.y + parentHeight + VERTICAL_GAP
+      // Wait node should start at: parent bottom + DESIRED_GAP
+      const waitY = parentNode.position.y + parentHeight + DESIRED_GAP
       const [waitX, snappedWaitY] = snapToGrid(branchX, waitY)
 
-      // Position action node: wait node bottom + VERTICAL_GAP
-      const actionY = waitY + waitNodeHeight + VERTICAL_GAP
+      // Position action node: wait node bottom + DESIRED_GAP
+      const actionY = waitY + waitNodeHeight + DESIRED_GAP
       const [actionX, snappedActionY] = snapToGrid(branchX, actionY)
 
       const waitNode: Node = {
@@ -777,7 +1010,8 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
         position: { x: waitX, y: snappedWaitY },
         data: {
           nodeId: waitNodeId,
-          waitDays: 1
+          waitValue: 2,
+          waitUnit: 'days'
         },
         draggable: false
       }
@@ -887,12 +1121,12 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
     
     // Calculate positions to ensure equal gaps
     // Parent bottom is at: parentNode.position.y + parentHeight
-    // Wait node should start at: parent bottom + VERTICAL_GAP
-    const waitY = parentNode.position.y + parentHeight + VERTICAL_GAP
+    // Wait node should start at: parent bottom + DESIRED_GAP
+    const waitY = parentNode.position.y + parentHeight + DESIRED_GAP
     const [waitX, snappedWaitY] = snapToGrid(parentX, waitY)
 
-    // Position action node: wait node bottom + VERTICAL_GAP
-    const actionY = waitY + waitNodeHeight + VERTICAL_GAP
+    // Position action node: wait node bottom + DESIRED_GAP
+    const actionY = waitY + waitNodeHeight + DESIRED_GAP
     const [actionX, snappedActionY] = snapToGrid(parentX, actionY)
 
     const waitNode: Node = {
@@ -901,7 +1135,8 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       position: { x: waitX, y: snappedWaitY },
       data: {
         nodeId: waitNodeId,
-        waitDays: 1
+        waitValue: 2,
+        waitUnit: 'days'
       },
       draggable: false
     }
@@ -966,9 +1201,14 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
   }, [nodes, actionCount, setNodes, setEdges, pendingBranch, reactFlowInstance])
 
   const handleClearSequence = useCallback(() => {
+    setShowClearConfirm(true)
+  }, [])
+
+  const executeClearSequence = useCallback(() => {
     setNodes([])
     setEdges([])
     setActionCount(0)
+    setShowClearConfirm(false)
   }, [setNodes, setEdges])
 
   return (
@@ -1023,19 +1263,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       {selectedJobId && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">{approvedCount} Approved Candidates</CardTitle>
-              <div className="flex items-center gap-4">
-                <span className="text-base font-semibold text-gray-900">
-                  {campaignStatus === 'active' ? 'Active' : 'Paused'}
-                </span>
-                <Switch
-                  checked={campaignStatus === 'active'}
-                  onCheckedChange={(checked) => setCampaignStatus(checked ? 'active' : 'paused')}
-                  className="scale-125"
-                />
-              </div>
-            </div>
+            <CardTitle className="text-lg">{approvedCount} Approved Candidates</CardTitle>
           </CardHeader>
           <CardContent>
             {sampleCandidates.length > 0 ? (
@@ -1097,18 +1325,30 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
               </Button>
               <Button
                 onClick={() => setShowActionMenu(!showActionMenu)}
-                className="bg-black hover:bg-gray-800 text-white"
+                disabled={nodes.some(node => node.data.actionType === 'end-sequence')}
+                className="bg-black hover:bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Action
               </Button>
               <Button
                 onClick={handleClearSequence}
+                disabled={nodes.length === 0}
                 variant="outline"
-                className="bg-white hover:bg-gray-50"
+                className="bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Clear Sequence
               </Button>
+              <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-300">
+                <span className="text-sm font-semibold text-gray-900">
+                  {campaignStatus === 'active' ? 'Active' : 'Paused'}
+                </span>
+                <Switch
+                  checked={campaignStatus === 'active'}
+                  onCheckedChange={(checked) => setCampaignStatus(checked ? 'active' : 'paused')}
+                  className="scale-110"
+                />
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -1266,6 +1506,33 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
               className="bg-black hover:bg-gray-800 text-white"
             >
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clear Sequence Confirmation Dialog */}
+      <Dialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <DialogContent className="bg-white border-2 border-gray-900">
+          <DialogHeader>
+            <DialogTitle>Clear Sequence</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to clear the entire sequence? This will remove all actions and cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowClearConfirm(false)}
+              className="bg-white hover:bg-gray-50"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={executeClearSequence}
+              className="bg-black hover:bg-gray-800 text-white"
+            >
+              Clear Sequence
             </Button>
           </DialogFooter>
         </DialogContent>
