@@ -79,6 +79,10 @@ interface SearchTabProps {
   setJobDescriptionId?: (id: number | null) => void
   currentSearchId: number | null
   setCurrentSearchId: (id: number | null) => void
+  savedSearchIdForUpdate: number | null
+  setSavedSearchIdForUpdate: (id: number | null) => void
+  selectedSavedSearchId: string
+  setSelectedSavedSearchId: (id: string) => void
   searchTitle: string
   setSearchTitle: (title: string) => void
   isSearchModified: boolean
@@ -103,6 +107,10 @@ export function SearchTab({
   setJobDescriptionId,
   currentSearchId,
   setCurrentSearchId,
+  savedSearchIdForUpdate,
+  setSavedSearchIdForUpdate,
+  selectedSavedSearchId,
+  setSelectedSavedSearchId,
   searchTitle,
   setSearchTitle,
   isSearchModified,
@@ -174,12 +182,29 @@ export function SearchTab({
   const isInitialLoad = useRef(true)
   const isLoadingSavedSearch = useRef(false)
   const skipNextModificationCheck = useRef(0) // Count of checks to skip
+  const prevSavedSearchId = useRef<number | null>(null)
+  const hasRunSearchCandidates = useRef(false) // Track if "Search Candidates" was clicked
+  const isSearching = useRef(false) // Prevent concurrent search executions
+  const isSavingNew = useRef(false) // Prevent concurrent save new operations
 
 
   // Track when search params change after loading a saved search
   useEffect(() => {
     if (isInitialLoad.current) {
       isInitialLoad.current = false
+      prevSavedSearchId.current = savedSearchIdForUpdate
+      return
+    }
+
+    // If savedSearchIdForUpdate changed, it means we just loaded a different saved search
+    // Don't mark as modified in this case
+    if (savedSearchIdForUpdate !== prevSavedSearchId.current) {
+      console.log('[ModificationCheck] Different saved search loaded, not marking as modified', {
+        prev: prevSavedSearchId.current,
+        current: savedSearchIdForUpdate
+      })
+      prevSavedSearchId.current = savedSearchIdForUpdate
+      hasRunSearchCandidates.current = false // Reset flag when loading saved search
       return
     }
 
@@ -196,13 +221,13 @@ export function SearchTab({
     }
 
     // Only mark as modified if we have a saved search loaded AND params changed
-    if (currentSearchId) {
+    if (savedSearchIdForUpdate && !isSearchModified) {
       console.log('[ModificationCheck] Marking search as modified', {
-        currentSearchId
+        savedSearchIdForUpdate
       })
       setIsSearchModified(true)
     }
-  }, [searchParams, currentSearchId])
+  }, [searchParams, savedSearchIdForUpdate, isSearchModified, setIsSearchModified])
 
   // Set city when cities data loads and we have a pending city
   useEffect(() => {
@@ -492,69 +517,73 @@ export function SearchTab({
   }
 
   const handleSearch = async () => {
-    console.log('[HandleSearch] Called with state:', {
-      currentSearchId,
-      searchParams,
-      jobDescriptionId
-    })
-
-    // Check if we need a job posting - show modal if not selected
-    if (!jobDescriptionId) {
-      console.log('[HandleSearch] No job posting selected, showing modal')
-      setIsJobPostingModalOpen(true)
+    // Guard: Prevent concurrent executions (prevents duplicate search creation)
+    if (isSearching.current) {
+      console.log('[HandleSearch] Already searching, skipping duplicate call')
       return
     }
 
+    isSearching.current = true
+
     try {
-      let response: SearchResponse
-      const jobIdToUse = jobDescriptionId
-      const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle || 'Candidate Search', jobIdToUse)
+      console.log('[HandleSearch] Called with state:', {
+        currentSearchId,
+        savedSearchIdForUpdate,
+        searchParams,
+        jobDescriptionId
+      })
 
-      if (currentSearchId) {
-        // We have an existing search - update it (which also runs the search)
-        console.log('[HandleSearch] Updating existing search:', currentSearchId)
-        console.log('[HandleSearch] Update payload:', searchRequest)
+      // Check if we need a job posting - show modal if not selected
+      if (!jobDescriptionId) {
+        console.log('[HandleSearch] No job posting selected, showing modal')
+        setIsJobPostingModalOpen(true)
+        return
+      }
 
-        response = await updateSearchMutation.mutateAsync({
-          searchId: currentSearchId,
-          data: searchRequest
-        })
-        console.log('[HandleSearch] Update response:', response)
-        setIsSearchModified(false)
-      } else {
-        // No existing search, create a new one
-        console.log('[HandleSearch] Creating new search')
+      try {
+        const jobIdToUse = jobDescriptionId
+        // Don't pass searchTitle when running a search - it will be set later when saving
+        const searchRequest = mapSearchParamsToRequest(searchParams, 'Candidate Search', jobIdToUse)
+
+        // Always create a new search when clicking "Search Candidates"
+        console.log('[HandleSearch] Creating new search without title')
         console.log('[HandleSearch] Create payload:', searchRequest)
-        response = await createSearch.mutateAsync(searchRequest)
+        const response = await createSearch.mutateAsync(searchRequest)
         console.log('[HandleSearch] Create response:', response)
 
         // Store the search ID for later use
+        // Keep savedSearchIdForUpdate if it exists (so we can still update the original saved search)
         setCurrentSearchId(response.search_id)
+        hasRunSearchCandidates.current = true
         setIsSearchModified(false)
+
+        // Update candidate yield with real results
+        setCandidateYield(response.total_results)
+        setTotalPopulation(response.total_results_from_search || 0)
+
+        // Clear staging candidates - users must click "Enrich Candidates" to see actual profiles
+        setStagingCandidates([])
+
+        console.log('[HandleSearch] Search completed successfully')
+        showToast('Search completed successfully!', 'success')
+      } catch (error) {
+        console.error('[HandleSearch] Search failed:', error)
+        showToast('Search failed: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error')
+        // Clear candidates on error
+        setCandidateYield(0)
+        setTotalPopulation(0)
+        setStagingCandidates([])
       }
-
-      // Update candidate yield with real results
-      setCandidateYield(response.total_results)
-      setTotalPopulation(response.total_results_from_search || 0)
-
-      // Clear staging candidates - users must click "Enrich Candidates" to see actual profiles
-      setStagingCandidates([])
-
-      console.log('[HandleSearch] Search completed successfully')
-      showToast('Search completed successfully!', 'success')
-    } catch (error) {
-      console.error('[HandleSearch] Search failed:', error)
-      showToast('Search failed: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error')
-      // Clear candidates on error
-      setCandidateYield(0)
-      setTotalPopulation(0)
-      setStagingCandidates([])
+    } finally {
+      // Always reset the guard, even if an error occurred
+      isSearching.current = false
     }
   }
 
   const handleUpdateSearch = async () => {
-    if (!currentSearchId) {
-      console.error('No search ID available for update')
+    if (!savedSearchIdForUpdate) {
+      console.error('No saved search ID available for update')
+      showToast('Please select a saved search from the dropdown first', 'error')
       return
     }
 
@@ -562,10 +591,10 @@ export function SearchTab({
       const jobIdToUse = jobDescriptionId
       const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle, jobIdToUse)
       await updateSearchMutation.mutateAsync({
-        searchId: currentSearchId,
+        searchId: savedSearchIdForUpdate,
         data: {
           ...searchRequest,
-          search_id: currentSearchId
+          search_id: savedSearchIdForUpdate
         }
       })
       setIsSearchModified(false)
@@ -617,34 +646,112 @@ export function SearchTab({
   }
 
   const handleSaveNewSearch = async () => {
-    if (!searchTitle.trim()) {
-      console.error('Search title is required')
+    // FIX #1: Guard against concurrent save attempts
+    if (isSavingNew.current) {
+      console.log('[SaveNewSearch] Already saving, skipping duplicate call')
       return
     }
 
-    if (!jobDescriptionId) {
-      console.error('Job description ID is required')
-      return
-    }
+    isSavingNew.current = true
 
     try {
-      // Map search params to API request format
-      const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle.trim(), jobDescriptionId)
+      if (!searchTitle.trim()) {
+        console.error('Search title is required')
+        showToast('Search title is required', 'error')
+        return
+      }
 
-      // Create new search
-      const response = await createSearch.mutateAsync(searchRequest)
+      if (!jobDescriptionId) {
+        console.error('Job description ID is required')
+        showToast('Please select a job posting first', 'error')
+        return
+      }
 
-      // Update current search ID and title
-      setCurrentSearchId(response.search_id)
+      // FIX #5: Validate that user has set at least some search criteria
+      const hasSearchCriteria =
+        searchParams.jobTitles.length > 0 ||
+        searchParams.locationCity ||
+        searchParams.department !== 'none' ||
+        searchParams.skills.length > 0 ||
+        searchParams.industryExclusions.length > 0 ||
+        searchParams.titleExclusions.length > 0 ||
+        searchParams.keywordExclusions.length > 0
+
+      if (!hasSearchCriteria) {
+        console.error('[SaveNewSearch] No search criteria set')
+        showToast('Please set at least one search criterion before saving', 'error')
+        return
+      }
+
+      let searchIdToUse: number
+
+      // Check if we clicked "Search Candidates" - if yes, just update the name
+      if (hasRunSearchCandidates.current) {
+        // FIX #2: Validate currentSearchId is not null
+        if (!currentSearchId) {
+          console.error('[SaveNewSearch] currentSearchId is null despite hasRunSearchCandidates being true')
+          showToast('Internal error: search ID missing', 'error')
+          hasRunSearchCandidates.current = false // Reset flag
+          return
+        }
+
+        // FIX #3: Wrap updateSearchName in try-catch for better error handling
+        try {
+          console.log('[SaveNewSearch] Updating name of search created by "Search Candidates":', currentSearchId)
+          await updateSearchName.mutateAsync({
+            searchId: currentSearchId,
+            searchTitle: searchTitle.trim()
+          })
+          searchIdToUse = currentSearchId
+        } catch (error) {
+          console.error('[SaveNewSearch] Failed to update search name:', error)
+          showToast('Failed to update search name', 'error')
+          hasRunSearchCandidates.current = false // Reset flag on error
+          return
+        }
+      } else {
+        // FIX #4: Add response validation for createSearch
+        try {
+          console.log('[SaveNewSearch] Creating new search with title included')
+          const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle.trim(), jobDescriptionId)
+          const response = await createSearch.mutateAsync(searchRequest)
+
+          // Validate response contains valid search_id
+          if (!response || typeof response.search_id !== 'number') {
+            console.error('[SaveNewSearch] Invalid response from createSearch:', response)
+            showToast('Received invalid response from server', 'error')
+            return
+          }
+
+          searchIdToUse = response.search_id
+          setCurrentSearchId(response.search_id)
+        } catch (error) {
+          console.error('[SaveNewSearch] Failed to create search:', error)
+          showToast('Failed to create new search', 'error')
+          return
+        }
+      }
+
+      // Update state
       setSearchTitle(searchTitle.trim())
+      setSavedSearchIdForUpdate(searchIdToUse)
+      setSelectedSavedSearchId(searchIdToUse.toString())
+      hasRunSearchCandidates.current = false // Reset the flag
       setIsSearchModified(false)
       setIsSaveNewDialogOpen(false)
 
-      console.log('New search saved successfully:', response)
+      // Invalidate saved searches query to refresh the dropdown
+      queryClient.invalidateQueries({ queryKey: ['savedSearches', jobDescriptionId] })
+
+      console.log('New search saved successfully with ID:', searchIdToUse)
       showToast('New search saved successfully!', 'success')
     } catch (error) {
-      console.error('Failed to saved new search:', error)
-      showToast('Failed to saved new search', 'error')
+      console.error('Failed to save new search:', error)
+      showToast('Failed to save new search', 'error')
+      hasRunSearchCandidates.current = false // Reset flag even on unexpected errors
+    } finally {
+      // Always reset the guard, even if an error occurred
+      isSavingNew.current = false
     }
   }
 
@@ -1297,16 +1404,23 @@ export function SearchTab({
                     <PopoverContent className="w-36 p-0">
                       <div className="py-1">
                         <button
-                          className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 transition-colors"
-                          onClick={() => setIsSaveNewDialogOpen(true)}
-                          disabled={updateSearchMutation.isPending}
+                          className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => {
+                            console.log('[SaveNew Button] State:', {
+                              savedSearchIdForUpdate,
+                              isSearchModified,
+                              shouldBeDisabled: savedSearchIdForUpdate !== null && !isSearchModified
+                            })
+                            setIsSaveNewDialogOpen(true)
+                          }}
+                          disabled={updateSearchMutation.isPending || (savedSearchIdForUpdate !== null && !isSearchModified)}
                         >
                           Save New
                         </button>
                         <button
                           className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           onClick={handleUpdateSearch}
-                          disabled={updateSearchMutation.isPending}
+                          disabled={updateSearchMutation.isPending || !savedSearchIdForUpdate}
                         >
                           <span className="flex items-center gap-2">
                             {updateSearchMutation.isPending && (
