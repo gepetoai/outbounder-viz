@@ -22,6 +22,8 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { 
   Eye, 
   Heart, 
@@ -38,7 +40,8 @@ import {
   Settings,
   Undo,
   Redo,
-  RefreshCcw
+  RefreshCcw,
+  Play
 } from 'lucide-react'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useCandidates } from '@/hooks/useCandidates'
@@ -66,6 +69,8 @@ const actionTypes = [
   { id: 'rescind-connection-request', label: 'Rescind Connection Request', icon: RefreshCcw },
   { id: 'end-sequence', label: 'End Sequence', icon: X }
 ]
+
+// Begin Sequence is not in the action menu - it's always present
 
 const GRID_SIZE = 50
 const START_X = 400
@@ -106,6 +111,8 @@ function getBranchXPosition(branch: string | undefined, parentX: number): number
 function getIcon(type: string, className = 'h-5 w-5') {
   const props = { className }
   switch (type) {
+    case 'begin-sequence':
+      return <Play {...props} />
     case 'view-profile':
       return <Eye {...props} />
     case 'send-inmail':
@@ -212,6 +219,42 @@ const ActionNode = memo(({ data }: NodeProps) => {
   )
 })
 ActionNode.displayName = 'ActionNode'
+
+const BeginSequenceNode = memo(({ data }: NodeProps) => {
+  const hasChildren = data.hasChildren
+  const showAddButton = !hasChildren
+  
+  return (
+    <div 
+      className={`bg-white border-2 border-gray-900 rounded-lg p-4 w-56 shadow-lg ${!showAddButton ? 'flex items-center' : ''}`}
+    >
+      <div className={`flex items-center justify-between ${showAddButton ? 'mb-3' : ''} flex-1`}>
+        <div className="flex items-center gap-2">
+          {getIcon('begin-sequence')}
+          <span className="font-semibold text-sm">Begin Sequence</span>
+        </div>
+        <button
+          onClick={() => nodeHandlers.onConfigure?.(data.nodeId)}
+          className="text-gray-400 hover:text-gray-900 transition-colors"
+        >
+          <Settings className="h-4 w-4" />
+        </button>
+      </div>
+      {showAddButton && (
+        <Button
+          onClick={() => nodeHandlers.onAddNext?.(undefined, data.nodeId)}
+          variant="outline"
+          size="sm"
+          className="w-full text-xs bg-white hover:bg-gray-50"
+        >
+          <Plus className="h-3 w-3 mr-1" />
+          Add Next Action
+        </Button>
+      )}
+    </div>
+  )
+})
+BeginSequenceNode.displayName = 'BeginSequenceNode'
 
 const WaitNode = memo(({ data }: NodeProps) => {
   const waitValue = data.waitValue || 2
@@ -339,6 +382,7 @@ const ConditionalNode = memo(({ data }: NodeProps) => {
 ConditionalNode.displayName = 'ConditionalNode'
 
 const nodeTypes = {
+  beginSequenceNode: BeginSequenceNode,
   actionNode: ActionNode,
   waitNode: WaitNode,
   conditionalNode: ConditionalNode
@@ -396,6 +440,26 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
   const [nodeToDelete, setNodeToDelete] = useState<string | null>(null)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   
+  // Sequence settings for Begin Sequence node
+  const [dailyVolume, setDailyVolume] = useState(50)
+  const [sendingHoursStart, setSendingHoursStart] = useState('09:00')
+  const [sendingHoursEnd, setSendingHoursEnd] = useState('17:00')
+  
+  // Helper function to create Begin Sequence node
+  const createBeginSequenceNode = useCallback((): Node => {
+    return {
+      id: 'begin-sequence',
+      type: 'beginSequenceNode',
+      position: { x: START_X, y: START_Y },
+      data: { 
+        nodeId: 'begin-sequence',
+        label: 'Begin Sequence',
+        actionType: 'begin-sequence'
+      },
+      draggable: true
+    }
+  }, [])
+
   // Helper function to mark nodes with children based on edges
   const markNodesWithChildren = useCallback((nodes: Node[], edges: Edge[]): Node[] => {
     return nodes.map(node => ({
@@ -413,9 +477,13 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
 
     // Different sequences for different job types
     if (selectedJobId === 1) {
-      // Engineer sequence: View profile, Like post, Connect, Message if accepted / InMail if not
+      // Engineer sequence: Begin -> View profile, Like post, Connect, Message if accepted / InMail if not
       // Gap-first approach: calculate positions with consistent gaps between nodes
       let yPos = START_Y
+      
+      // Begin Sequence (always first)
+      const posBegin = yPos
+      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
       
       const pos0 = yPos
       yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
@@ -450,6 +518,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       const pos10 = yPos
       
       const engineerNodes: Node[] = [
+        createBeginSequenceNode(),
         { id: 'action-0', type: 'actionNode', position: { x: START_X, y: pos0 }, data: { nodeId: 'action-0', label: 'View Profile', actionType: 'view-profile' }, draggable: true },
         { id: 'wait-1', type: 'waitNode', position: { x: START_X, y: pos1 }, data: { nodeId: 'wait-1', waitValue: 2, waitUnit: 'days' }, draggable: true },
         { id: 'action-1', type: 'actionNode', position: { x: START_X, y: pos2 }, data: { nodeId: 'action-1', label: 'Like Post', actionType: 'like-post' }, draggable: true },
@@ -467,15 +536,16 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
         { id: 'action-7', type: 'actionNode', position: { x: START_X + BRANCH_OFFSET, y: pos10 }, data: { nodeId: 'action-7', label: 'End Sequence', actionType: 'end-sequence', branch: 'no' }, draggable: true }
       ]
       const engineerEdges: Edge[] = [
+        { id: 'edge-begin-0', source: 'begin-sequence', target: 'action-0', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-0-wait-1', source: 'action-0', target: 'wait-1', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-wait-1-1', source: 'wait-1', target: 'action-1', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-1-wait-2', source: 'action-1', target: 'wait-2', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-wait-2-2', source: 'wait-2', target: 'action-2', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-2-wait-3', source: 'action-2', target: 'wait-3', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-wait-3-3', source: 'wait-3', target: 'action-3', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-3-wait-4-yes', source: 'action-3', sourceHandle: 'yes', target: 'wait-4', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 }, label: 'Yes', labelStyle: { fill: '#000', fontWeight: 600 }, labelBgStyle: { fill: '#fff' } },
+        { id: 'edge-3-wait-4-yes', source: 'action-3', sourceHandle: 'yes', target: 'wait-4', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'Yes', labelStyle: { fill: '#000', fontWeight: 600, fontSize: 14 }, labelBgPadding: [8, 4], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1 } },
         { id: 'edge-wait-4-4', source: 'wait-4', target: 'action-4', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-3-wait-5-no', source: 'action-3', sourceHandle: 'no', target: 'wait-5', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 }, label: 'No', labelStyle: { fill: '#000', fontWeight: 600 }, labelBgStyle: { fill: '#fff' } },
+        { id: 'edge-3-wait-5-no', source: 'action-3', sourceHandle: 'no', target: 'wait-5', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'No', labelStyle: { fill: '#000', fontWeight: 600, fontSize: 14 }, labelBgPadding: [8, 4], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1 } },
         { id: 'edge-wait-5-5', source: 'wait-5', target: 'action-5', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-4-wait-6', source: 'action-4', target: 'wait-6', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-wait-6-6', source: 'wait-6', target: 'action-6', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
@@ -495,9 +565,13 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
         reactFlowInstance.fitView({ padding: 0.2, duration: 300 })
       }, 50)
     } else if (selectedJobId === 2) {
-      // Territory Manager sequence: Connect first, InMail if not accepted, Message if accepted
+      // Territory Manager sequence: Begin -> Connect first, InMail if not accepted, Message if accepted
       // Gap-first approach: calculate positions with consistent gaps between nodes
       let yPos = START_Y
+      
+      // Begin Sequence (always first)
+      const posBegin = yPos
+      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
       
       const pos0 = yPos
       yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
@@ -520,6 +594,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       const pos6 = yPos
       
       const managerNodes: Node[] = [
+        createBeginSequenceNode(),
         { id: 'action-0', type: 'actionNode', position: { x: START_X, y: pos0 }, data: { nodeId: 'action-0', label: 'Connection Request', actionType: 'connection-request' }, draggable: true },
         { id: 'wait-1', type: 'waitNode', position: { x: START_X, y: pos1 }, data: { nodeId: 'wait-1', waitValue: 2, waitUnit: 'days' }, draggable: true },
         { id: 'action-1', type: 'conditionalNode', position: { x: START_X, y: pos2 }, data: { nodeId: 'action-1', label: 'If Connection Accepted', actionType: 'if-connection-accepted', hasYesChild: true, hasNoChild: true }, draggable: true },
@@ -533,11 +608,12 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
         { id: 'action-5', type: 'actionNode', position: { x: START_X + BRANCH_OFFSET, y: pos6 }, data: { nodeId: 'action-5', label: 'End Sequence', actionType: 'end-sequence', branch: 'no' }, draggable: true }
       ]
       const managerEdges: Edge[] = [
+        { id: 'edge-begin-0', source: 'begin-sequence', target: 'action-0', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-0-wait-1', source: 'action-0', target: 'wait-1', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-wait-1-1', source: 'wait-1', target: 'action-1', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-1-wait-2-yes', source: 'action-1', sourceHandle: 'yes', target: 'wait-2', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 }, label: 'Yes', labelStyle: { fill: '#000', fontWeight: 600 }, labelBgStyle: { fill: '#fff' } },
+        { id: 'edge-1-wait-2-yes', source: 'action-1', sourceHandle: 'yes', target: 'wait-2', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'Yes', labelStyle: { fill: '#000', fontWeight: 600, fontSize: 14 }, labelBgPadding: [8, 4], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1 } },
         { id: 'edge-wait-2-2', source: 'wait-2', target: 'action-2', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-1-wait-3-no', source: 'action-1', sourceHandle: 'no', target: 'wait-3', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 }, label: 'No', labelStyle: { fill: '#000', fontWeight: 600 }, labelBgStyle: { fill: '#fff' } },
+        { id: 'edge-1-wait-3-no', source: 'action-1', sourceHandle: 'no', target: 'wait-3', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'No', labelStyle: { fill: '#000', fontWeight: 600, fontSize: 14 }, labelBgPadding: [8, 4], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1 } },
         { id: 'edge-wait-3-3', source: 'wait-3', target: 'action-3', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-2-wait-4', source: 'action-2', target: 'wait-4', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-wait-4-4', source: 'wait-4', target: 'action-4', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
@@ -557,7 +633,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
         reactFlowInstance.fitView({ padding: 0.2, duration: 300 })
       }, 50)
     }
-  }, [selectedJobId, setNodes, setEdges, markNodesWithChildren, reactFlowInstance])
+  }, [selectedJobId, setNodes, setEdges, markNodesWithChildren, reactFlowInstance, createBeginSequenceNode])
 
   // History management for undo/redo
   const [history, setHistory] = useState<Array<{ nodes: Node[], edges: Edge[], actionCount: number }>>([])
@@ -897,6 +973,8 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
   // Setup stable handlers
   useEffect(() => {
     nodeHandlers.onDelete = (nodeId: string) => {
+      // Prevent deleting the begin-sequence node
+      if (nodeId === 'begin-sequence') return
       confirmDelete(nodeId)
     }
     
@@ -936,7 +1014,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       setConfigureNodeId(nodeId)
       setShowConfigPanel(true)
     }
-  }, [setNodes, setEdges, edges, confirmDelete])
+  }, [setNodes, setEdges, edges, confirmDelete, nodes])
 
   const snapToGrid = (x: number, y: number): [number, number] => {
     return [
@@ -1060,11 +1138,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
         labelStyle: { 
           fill: '#000', 
           fontWeight: 600, 
-          fontSize: 12,
-          background: '#fff',
-          padding: '4px 8px',
-          borderRadius: '4px',
-          border: '1px solid #000'
+          fontSize: 14
         },
         labelBgPadding: [8, 4],
         labelBgBorderRadius: 4,
@@ -1223,11 +1297,11 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
   }, [])
 
   const executeClearSequence = useCallback(() => {
-    setNodes([])
+    setNodes([createBeginSequenceNode()])
     setEdges([])
     setActionCount(0)
     setShowClearConfirm(false)
-  }, [setNodes, setEdges])
+  }, [setNodes, setEdges, createBeginSequenceNode])
 
   return (
     <div className="space-y-6">
@@ -1476,15 +1550,62 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {/* Template Section */}
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Template</h3>
-                  <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg">
-                    <p className="text-xs text-gray-400 text-center">
-                      Placeholder for message configuration
-                    </p>
-                  </div>
-                </div>
+                {configureNodeId === 'begin-sequence' ? (
+                  <>
+                    {/* Begin Sequence Settings */}
+                    <div className="space-y-2">
+                      <Label htmlFor="daily-volume">Daily Volume</Label>
+                      <Input
+                        id="daily-volume"
+                        type="number"
+                        value={dailyVolume}
+                        onChange={(e) => setDailyVolume(parseInt(e.target.value) || 0)}
+                        min="1"
+                        max="200"
+                        className="bg-white border-gray-300"
+                      />
+                      <p className="text-xs text-gray-500">Number of messages to send per day (1-200)</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Sending Hours</Label>
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1">
+                          <Label htmlFor="start-time" className="text-xs text-gray-600">Start</Label>
+                          <Input
+                            id="start-time"
+                            type="time"
+                            value={sendingHoursStart}
+                            onChange={(e) => setSendingHoursStart(e.target.value)}
+                            className="bg-white border-gray-300"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <Label htmlFor="end-time" className="text-xs text-gray-600">End</Label>
+                          <Input
+                            id="end-time"
+                            type="time"
+                            value={sendingHoursEnd}
+                            onChange={(e) => setSendingHoursEnd(e.target.value)}
+                            className="bg-white border-gray-300"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500">Messages will only be sent within this time window</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Template Section for other actions */}
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700 mb-2">Template</h3>
+                      <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg">
+                        <p className="text-xs text-gray-400 text-center">
+                          Placeholder for message configuration
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Footer */}
@@ -1566,6 +1687,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   )
 }
