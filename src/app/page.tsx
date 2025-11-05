@@ -57,6 +57,7 @@ export default function HomePage() {
   const [currentJobDescriptionId, setCurrentJobDescriptionId] = useState<number | null>(null)
   const [selectedSavedSearchId, setSelectedSavedSearchId] = useState<string>('')
   const [currentSearchId, setCurrentSearchId] = useState<number | null>(null)
+  const [savedSearchIdForUpdate, setSavedSearchIdForUpdate] = useState<number | null>(null)
   const [searchTitle, setSearchTitle] = useState('')
   const [isSearchModified, setIsSearchModified] = useState(false)
   const [isCreateJobModalOpen, setIsCreateJobModalOpen] = useState(false)
@@ -64,6 +65,7 @@ export default function HomePage() {
   // Reset search state when job description changes (role switch)
   useEffect(() => {
     setCurrentSearchId(null)
+    setSavedSearchIdForUpdate(null)
     setSelectedSavedSearchId('')
     setSearchTitle('')
     setIsSearchModified(false)
@@ -81,6 +83,7 @@ export default function HomePage() {
       setSelectedSavedSearchId('')
       setSearchTitle('')
       setCurrentSearchId(null)
+      setSavedSearchIdForUpdate(null)
       setIsSearchModified(false)
       // Reset form to initial state
       setSearchParams({
@@ -130,6 +133,7 @@ export default function HomePage() {
     // Set these FIRST before setting searchParams to avoid race conditions
     setSelectedSavedSearchId(searchId)
     setCurrentSearchId(savedSearch.id)
+    setSavedSearchIdForUpdate(savedSearch.id)
     setSearchTitle(savedSearch.search_title)
     setIsSearchModified(false)
 
@@ -362,6 +366,10 @@ export default function HomePage() {
             setJobDescriptionId={setCurrentJobDescriptionId}
             currentSearchId={currentSearchId}
             setCurrentSearchId={setCurrentSearchId}
+            savedSearchIdForUpdate={savedSearchIdForUpdate}
+            setSavedSearchIdForUpdate={setSavedSearchIdForUpdate}
+            selectedSavedSearchId={selectedSavedSearchId}
+            setSelectedSavedSearchId={setSelectedSavedSearchId}
             searchTitle={searchTitle}
             setSearchTitle={setSearchTitle}
             isSearchModified={isSearchModified}
