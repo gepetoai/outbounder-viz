@@ -8,6 +8,7 @@ export interface SearchRequest {
   maximum_years_of_experience: number
   use_experience_fallback: boolean
   department: string
+  current_job_in_department: boolean
   minimum_years_in_department: number
   management_level: string
   job_titles: string
@@ -44,6 +45,7 @@ export interface SavedSearch {
   maximum_years_of_experience: number
   use_experience_fallback: boolean
   department: string
+  current_job_in_department: boolean
   minimum_years_in_department: number
   management_level: string
   job_titles: string
@@ -132,6 +134,7 @@ export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle
     maximum_years_of_experience: searchParams.maxExperience ?? 0,
     use_experience_fallback: searchParams.useExperienceFallback || false,
     department: searchParams.department === 'none' ? '' : searchParams.department,
+    current_job_in_department: searchParams.currentJobInDepartment ?? false,
     minimum_years_in_department: searchParams.deptYears ?? 0,
     management_level: searchParams.managementLevelExclusions,
     job_titles: searchParams.jobTitles.join(','),
@@ -246,6 +249,7 @@ export function mapSavedSearchToParams(savedSearch: SavedSearch): SearchParams {
     graduationYearTo: savedSearch.graduation_year_to,
     maxExperience: savedSearch.maximum_years_of_experience,
     department: savedSearch.department || 'none',
+    currentJobInDepartment: savedSearch.current_job_in_department || false,
     deptYears: savedSearch.minimum_years_in_department,
     managementLevelExclusions: savedSearch.management_level,
     recency: savedSearch.job_titles_lookup_order,
