@@ -4,8 +4,8 @@ import { createSearch, updateSearchName, updateSearch, updateQuery, runSearch, g
 export function useCreateSearch() {
   const queryClient = useQueryClient()
 
-  return useMutation<SearchResponse, Error, SearchRequest>({
-    mutationFn: createSearch,
+  return useMutation<SearchResponse, Error, { data: SearchRequest; tamOnly?: boolean }>({
+    mutationFn: ({ data, tamOnly }) => createSearch(data, tamOnly),
     onSuccess: (data) => {
       console.log('Search created successfully:', data)
       queryClient.invalidateQueries({ queryKey: ['savedSearches'] })
@@ -34,8 +34,8 @@ export function useUpdateSearchName() {
 export function useUpdateSearch() {
   const queryClient = useQueryClient()
 
-  return useMutation<SearchResponse, Error, { searchId: number; data: SearchRequest }>({
-    mutationFn: ({ searchId, data }) => updateSearch(searchId, data),
+  return useMutation<SearchResponse, Error, { searchId: number; data: SearchRequest; tamOnly?: boolean }>({
+    mutationFn: ({ searchId, data, tamOnly }) => updateSearch(searchId, data, tamOnly),
     onSuccess: () => {
       console.log('Search updated successfully')
       queryClient.invalidateQueries({ queryKey: ['savedSearches'] })

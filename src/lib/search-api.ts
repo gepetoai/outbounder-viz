@@ -154,8 +154,12 @@ export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
-export async function createSearch(data: SearchRequest): Promise<SearchResponse> {
-  return fetchJson<SearchResponse>(`${API_BASE_URL}/job-description-searches/form-builder/create`, {
+export async function createSearch(data: SearchRequest, tamOnly: boolean = false): Promise<SearchResponse> {
+  const url = tamOnly
+    ? `${API_BASE_URL}/job-description-searches/form-builder/create?tam_only=true`
+    : `${API_BASE_URL}/job-description-searches/form-builder/create`
+
+  return fetchJson<SearchResponse>(url, {
     method: 'POST',
     body: JSON.stringify(data)
   })
@@ -172,8 +176,12 @@ export async function updateSearchName(searchId: number, searchTitle: string): P
   }
 }
 
-export async function updateSearch(searchId: number, data: SearchRequest): Promise<SearchResponse> {
-  return fetchJson<SearchResponse>(`${API_BASE_URL}/job-description-searches/form-builder/update/${searchId}`, {
+export async function updateSearch(searchId: number, data: SearchRequest, tamOnly: boolean = false): Promise<SearchResponse> {
+  const url = tamOnly
+    ? `${API_BASE_URL}/job-description-searches/form-builder/update/${searchId}?tam_only=true`
+    : `${API_BASE_URL}/job-description-searches/form-builder/update/${searchId}`
+
+  return fetchJson<SearchResponse>(url, {
     method: 'PUT',
     body: JSON.stringify(data)
   })
