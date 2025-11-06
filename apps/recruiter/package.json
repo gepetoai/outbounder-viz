@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H localhost -p 3000 --turbo false",
+    "dev": "next dev -H localhost -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -46,4 +46,3 @@
     "typescript": "^5"
   }
 }
-

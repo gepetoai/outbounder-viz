@@ -12,7 +12,10 @@ import {
   Search,
   User,
   ChevronDown,
-  Briefcase
+  Briefcase,
+  Inbox,
+  Box,
+  Rocket
 } from 'lucide-react'
 
 // Import our refactored components
@@ -77,6 +80,9 @@ export default function RecruiterApp () {
         locationState: '',
         searchRadius: 25,
         includeWorkLocation: false,
+        industryInclusions: [],
+        jobTitleInclusions: [],
+        profileKeywords: [],
         industryExclusions: [],
         titleExclusions: [],
         keywordExclusions: [],
@@ -129,6 +135,9 @@ export default function RecruiterApp () {
     locationState: '',
     searchRadius: 25,
     includeWorkLocation: false,
+    industryInclusions: [],
+    jobTitleInclusions: [],
+    profileKeywords: [],
     industryExclusions: [],
     titleExclusions: [],
     keywordExclusions: [],
@@ -148,9 +157,11 @@ export default function RecruiterApp () {
     { 
       id: 'outreach', 
       label: 'Outreach', 
-      icon: MessageSquare, 
+      icon: Rocket, 
       subItems: []
     },
+    { id: 'inbox', label: 'Inbox', icon: Inbox, subItems: [] },
+    { id: 'sandbox', label: 'Sandbox', icon: Box, subItems: [] },
     { id: 'settings', label: 'Settings', icon: Settings, subItems: [] }
   ]
 
@@ -197,6 +208,26 @@ export default function RecruiterApp () {
           <SequencerTab 
             jobDescriptionId={currentJobDescriptionId}
           />
+        )
+      case 'inbox':
+        return (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Inbox className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+              <h2 className="text-2xl font-semibold mb-2 text-gray-900">Inbox</h2>
+              <p className="text-gray-600">In development</p>
+            </div>
+          </div>
+        )
+      case 'sandbox':
+        return (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Box className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+              <h2 className="text-2xl font-semibold mb-2 text-gray-900">Sandbox</h2>
+              <p className="text-gray-600">In development</p>
+            </div>
+          </div>
         )
       case 'settings':
         return <SettingsTab />
@@ -279,7 +310,7 @@ export default function RecruiterApp () {
                           setCurrentJobDescriptionId(parseInt(value))
                         }
                       }}>
-                        <SelectTrigger className={`w-full ${!currentJobDescriptionId ? 'border-red-300 focus:border-red-500' : ''}`}>
+                        <SelectTrigger className={`w-full ${!currentJobDescriptionId ? 'border-gray-900 focus:border-gray-900 ring-2 ring-gray-900' : ''}`}>
                           <SelectValue placeholder="Select job posting..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -307,7 +338,7 @@ export default function RecruiterApp () {
                       </Select>
                       <div className="h-5">
                         {!currentJobDescriptionId && (
-                          <p className="text-xs text-red-600">
+                          <p className="text-xs text-gray-900 font-semibold">
                             Please select a job posting to continue
                           </p>
                         )}

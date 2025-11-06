@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
+import 'reactflow/dist/style.css'
 import { QueryProvider } from '@/lib/query-client'
 // import { ClerkProvider } from '@clerk/nextjs'; // Temporarily disabled for mock data testing
 

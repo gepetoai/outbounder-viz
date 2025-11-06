@@ -16,7 +16,6 @@ import ReactFlow, {
   Handle,
   Position
 } from 'reactflow'
-import 'reactflow/dist/style.css'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -24,6 +23,7 @@ import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { 
   Eye, 
   Heart, 
@@ -175,13 +175,16 @@ const ActionNode = memo(({ data }: NodeProps) => {
   const showAddButton = !isEndSequence && !hasChildren
   
   // Hide configure button for self-explanatory actions
-  const selfExplanatoryActions = ['end-sequence', 'rescind-connection-request', 'activate-responder']
+  const selfExplanatoryActions = ['end-sequence', 'rescind-connection-request', 'view-profile', 'connection-request']
   const showConfigureButton = !selfExplanatoryActions.includes(data.actionType)
   
   return (
     <div 
       className={`bg-white border-2 border-gray-900 rounded-lg p-4 w-56 shadow-lg ${!showAddButton ? 'flex items-center' : ''}`}
     >
+      <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
+      
       <div className={`flex items-center justify-between ${showAddButton ? 'mb-3' : ''} flex-1`}>
         <div className="flex items-center gap-2">
           {getIcon(data.actionType)}
@@ -228,6 +231,8 @@ const BeginSequenceNode = memo(({ data }: NodeProps) => {
     <div 
       className={`bg-white border-2 border-gray-900 rounded-lg p-4 w-56 shadow-lg ${!showAddButton ? 'flex items-center' : ''}`}
     >
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
+      
       <div className={`flex items-center justify-between ${showAddButton ? 'mb-3' : ''} flex-1`}>
         <div className="flex items-center gap-2">
           {getIcon('begin-sequence')}
@@ -281,6 +286,9 @@ const WaitNode = memo(({ data }: NodeProps) => {
     <div 
       className="bg-gray-100 border border-gray-400 rounded-lg px-3 py-2 w-56 shadow-sm"
     >
+      <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
+      
       <div className="flex items-center justify-center gap-2">
         <Hourglass className="h-4 w-4 text-gray-600 flex-shrink-0" />
         <span className="text-xs text-gray-700 font-medium">Wait</span>
@@ -325,6 +333,7 @@ const ConditionalNode = memo(({ data }: NodeProps) => {
       className={`bg-white border-2 border-gray-900 rounded-lg p-4 w-56 shadow-lg ${!showButtons ? 'flex items-center' : ''}`}
     >
       {/* Handles for React Flow connections */}
+      <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Bottom} id="yes" style={{ left: '30%', opacity: 0 }} />
       <Handle type="source" position={Position.Bottom} id="no" style={{ left: '70%', opacity: 0 }} />
       
@@ -399,6 +408,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
   const [sampleCandidates, setSampleCandidates] = useState<SimplifiedCandidate[]>([])
   const [candidateStartIndex, setCandidateStartIndex] = useState(0)
   const [pendingBranch, setPendingBranch] = useState<{ branch: string; parentId: string } | null>(null)
+  const [pendingParent, setPendingParent] = useState<string | null>(null)
 
   // Reset candidate index when job changes
   useEffect(() => {
@@ -442,8 +452,26 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
   
   // Sequence settings for Begin Sequence node
   const [dailyVolume, setDailyVolume] = useState(50)
-  const [sendingHoursStart, setSendingHoursStart] = useState('09:00')
-  const [sendingHoursEnd, setSendingHoursEnd] = useState('17:00')
+  const [sendingWindows, setSendingWindows] = useState<Array<{ start: string; end: string }>>([
+    { start: '09:00', end: '17:00' }
+  ])
+  const [candidateGapMin, setCandidateGapMin] = useState(3)
+  const [candidateGapMax, setCandidateGapMax] = useState(5)
+  const [candidateGapUnit, setCandidateGapUnit] = useState<'minutes' | 'hours'>('minutes')
+  
+  // Message template settings (for send-message and send-inmail nodes)
+  const [messageInstructions, setMessageInstructions] = useState('')
+  const [generatedMessage, setGeneratedMessage] = useState('')
+  
+  // Activate Responder settings
+  const [responderInstructions, setResponderInstructions] = useState('')
+  const [responderExample, setResponderExample] = useState('')
+  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'bot'; text: string }>>([])
+  const [currentChatInput, setCurrentChatInput] = useState('')
+  
+  // Like Post settings
+  const [postRecency, setPostRecency] = useState<'latest' | 'last-10' | 'most-relevant'>('latest')
+  const [postTimeWindow, setPostTimeWindow] = useState(7)
   
   // Helper function to create Begin Sequence node
   const createBeginSequenceNode = useCallback((): Node => {
@@ -543,9 +571,9 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
         { id: 'edge-wait-2-2', source: 'wait-2', target: 'action-2', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-2-wait-3', source: 'action-2', target: 'wait-3', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-wait-3-3', source: 'wait-3', target: 'action-3', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-3-wait-4-yes', source: 'action-3', sourceHandle: 'yes', target: 'wait-4', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'Yes', labelStyle: { fill: '#000', fontWeight: 600, fontSize: 14 }, labelBgPadding: [8, 4], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1 } },
+        { id: 'edge-3-wait-4-yes', source: 'action-3', sourceHandle: 'yes', target: 'wait-4', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'Yes', labelStyle: { fill: '#000', fontWeight: '700', fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-wait-4-4', source: 'wait-4', target: 'action-4', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-3-wait-5-no', source: 'action-3', sourceHandle: 'no', target: 'wait-5', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'No', labelStyle: { fill: '#000', fontWeight: 600, fontSize: 14 }, labelBgPadding: [8, 4], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1 } },
+        { id: 'edge-3-wait-5-no', source: 'action-3', sourceHandle: 'no', target: 'wait-5', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'No', labelStyle: { fill: '#000', fontWeight: '700', fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-wait-5-5', source: 'wait-5', target: 'action-5', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-4-wait-6', source: 'action-4', target: 'wait-6', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-wait-6-6', source: 'wait-6', target: 'action-6', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
@@ -611,9 +639,9 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
         { id: 'edge-begin-0', source: 'begin-sequence', target: 'action-0', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-0-wait-1', source: 'action-0', target: 'wait-1', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-wait-1-1', source: 'wait-1', target: 'action-1', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-1-wait-2-yes', source: 'action-1', sourceHandle: 'yes', target: 'wait-2', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'Yes', labelStyle: { fill: '#000', fontWeight: 600, fontSize: 14 }, labelBgPadding: [8, 4], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1 } },
+        { id: 'edge-1-wait-2-yes', source: 'action-1', sourceHandle: 'yes', target: 'wait-2', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'Yes', labelStyle: { fill: '#000', fontWeight: '700', fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-wait-2-2', source: 'wait-2', target: 'action-2', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-1-wait-3-no', source: 'action-1', sourceHandle: 'no', target: 'wait-3', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'No', labelStyle: { fill: '#000', fontWeight: 600, fontSize: 14 }, labelBgPadding: [8, 4], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1 } },
+        { id: 'edge-1-wait-3-no', source: 'action-1', sourceHandle: 'no', target: 'wait-3', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'No', labelStyle: { fill: '#000', fontWeight: '700', fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-wait-3-3', source: 'wait-3', target: 'action-3', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-2-wait-4', source: 'action-2', target: 'wait-4', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-wait-4-4', source: 'wait-4', target: 'action-4', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
@@ -766,6 +794,48 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
     )
   }, [nodes, edges, findAncestors, hasActionType])
 
+  // Helper to determine which branch path (yes/no) we came through from a conditional node
+  const getBranchPathFromConditional = useCallback((conditionalActionType: string, startNodeId?: string): 'yes' | 'no' | null => {
+    // Find the conditional node
+    const conditionalNode = nodes.find(n => n.data.actionType === conditionalActionType)
+    if (!conditionalNode) return null
+    
+    // If we're directly branching from this conditional
+    if (pendingBranch?.parentId === conditionalNode.id) {
+      return pendingBranch.branch === 'yes' ? 'yes' : 'no'
+    }
+    
+    // If we have a parent node to trace from
+    const traceFromNodeId = startNodeId || pendingParent
+    if (!traceFromNodeId) return null
+    
+    // Trace back through edges to find which branch we came through
+    const visited = new Set<string>()
+    const queue = [traceFromNodeId]
+    
+    while (queue.length > 0) {
+      const currentId = queue.shift()!
+      if (visited.has(currentId)) continue
+      visited.add(currentId)
+      
+      // Find incoming edges to this node
+      const incomingEdges = edges.filter(edge => edge.target === currentId)
+      
+      for (const edge of incomingEdges) {
+        // Check if this edge comes from our conditional node
+        if (edge.source === conditionalNode.id) {
+          // Found it! Return which branch handle was used
+          return edge.sourceHandle === 'yes' ? 'yes' : 'no'
+        }
+        
+        // Continue tracing back
+        queue.push(edge.source)
+      }
+    }
+    
+    return null
+  }, [nodes, edges, pendingBranch, pendingParent])
+
   // Check if a conditional action is available
   const isActionAvailable = useCallback((actionId: string) => {
     // Connection Request: Only available if none exists yet (should be first action)
@@ -796,32 +866,38 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       return (hasActionType('send-message') || hasActionType('send-inmail')) && !hasActionType('if-message-responded')
     }
     
-    // Send InMail only available if NOT in "yes" branch of connection accepted
+    // Send InMail: Only available if connection is NOT accepted
+    // This means: no if-connection-accepted exists yet, OR we're in the "no" branch path
     if (actionId === 'send-inmail') {
       const connectionAcceptedNode = nodes.find(n => n.data.actionType === 'if-connection-accepted')
-      if (connectionAcceptedNode && pendingBranch?.parentId === connectionAcceptedNode.id && pendingBranch?.branch === 'yes') {
-        return false // Can't send InMail in "yes" branch (connection accepted)
+      
+      // If no conditional exists yet, InMail is allowed
+      if (!connectionAcceptedNode) return true
+      
+      // Determine which branch path we're in
+      const branchPath = getBranchPathFromConditional('if-connection-accepted', pendingBranch?.parentId || pendingParent || undefined)
+      
+      // InMail is ONLY allowed in "no" branch (connection not accepted) or before the conditional
+      if (branchPath === 'yes') {
+        return false // In "yes" branch = connection accepted = can't use InMail
       }
-      return true
+      
+      return true // In "no" branch or no path = can use InMail
     }
     
-    // Send Message only available after connection is accepted IN THE CURRENT PATH
+    // Send Message: Only available after connection IS accepted
+    // This means: we must be in the "yes" branch path of if-connection-accepted
     if (actionId === 'send-message') {
       const connectionAcceptedNode = nodes.find(n => n.data.actionType === 'if-connection-accepted')
       
-      // If we're in a branch of the connection accepted node
-      if (connectionAcceptedNode && pendingBranch?.parentId === connectionAcceptedNode.id) {
-        // Can send message only in "yes" branch (connection accepted)
-        return pendingBranch?.branch === 'yes'
-      }
+      // If no conditional exists yet, message is NOT allowed (must accept connection first)
+      if (!connectionAcceptedNode) return false
       
-      // Otherwise, check if connection accepted exists in the path
-      const parentId = pendingBranch?.parentId
-      if (parentId) {
-        return hasActionTypeInPath('if-connection-accepted', parentId)
-      }
+      // Determine which branch path we're in
+      const branchPath = getBranchPathFromConditional('if-connection-accepted', pendingBranch?.parentId || pendingParent || undefined)
       
-      return hasActionType('if-connection-accepted')
+      // Message is ONLY allowed in "yes" branch (connection accepted)
+      return branchPath === 'yes'
     }
     
     // Activate Responder: Only available in "yes" branch of If Message Responded
@@ -885,7 +961,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
     }
 
     return true
-  }, [hasActionType, hasActionTypeInPath, nodes, pendingBranch])
+  }, [hasActionType, hasActionTypeInPath, nodes, pendingBranch, pendingParent, getBranchPathFromConditional, findAncestors, edges])
 
   // Recursive function to find all descendant nodes
   const findAllDescendants = useCallback((nodeId: string, currentEdges: Edge[]): string[] => {
@@ -945,7 +1021,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       const filtered = nds.filter((node) => !nodesToDelete.has(node.id))
       
       // Update ALL nodes to check their remaining children
-      return filtered.map(node => {
+      const updatedNodes = filtered.map(node => {
         // For each node, check if it still has children in the remaining edges
         const stillHasYesChild = remainingEdges.some(edge => edge.source === node.id && edge.sourceHandle === 'yes')
         const stillHasNoChild = remainingEdges.some(edge => edge.source === node.id && edge.sourceHandle === 'no')
@@ -962,6 +1038,42 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
           }
         }
       })
+      
+      // REPOSITION: Adjust vertical spacing for conditional nodes that changed size
+      const conditionalNodes = updatedNodes.filter(node => node.type === 'conditionalNode')
+      
+      conditionalNodes.forEach(condNode => {
+        const hasYes = condNode.data.hasYesChild
+        const hasNo = condNode.data.hasNoChild
+        
+        // Check if this node's height changed due to the deletion
+        // Before deletion: if it had both branches, it was 64px (no buttons)
+        // After deletion: if it has one branch, it's 108px (one button showing)
+        const hasOneBranch = (hasYes && !hasNo) || (!hasYes && hasNo)
+        
+        if (hasOneBranch) {
+          // Node now shows a button (108px) where before it might have been compact (64px)
+          // We need to check if its children were positioned for the compact version
+          // The height difference is: 108 - 64 = 44px
+          const heightIncrease = NODE_HEIGHTS.conditionalWithButtons - NODE_HEIGHTS.conditionalWithoutButtons // 44px
+          
+          // Find all descendants of this conditional node
+          const descendants = findAllDescendants(condNode.id, remainingEdges)
+          
+          // Move descendants DOWN by the height increase to close the visual gap
+          // This keeps the proper DESIRED_GAP spacing
+          updatedNodes.forEach(node => {
+            if (descendants.includes(node.id)) {
+              node.position = {
+                ...node.position,
+                y: node.position.y - heightIncrease // Move up to close gap
+              }
+            }
+          })
+        }
+      })
+      
+      return updatedNodes
     })
     
     setEdges(remainingEdges)
@@ -979,15 +1091,22 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
     }
     
     nodeHandlers.onAddNext = (branch?: string, parentId?: string) => {
-      // CRITICAL: Always set pendingBranch first, before opening menu
+      // CRITICAL: Track both branch context and parent node
       if (branch && parentId) {
         // Adding to a specific branch (yes/no from conditional node)
         console.log('Setting pendingBranch:', { branch, parentId })
         setPendingBranch({ branch, parentId })
-      } else {
-        // Adding to main sequence (not from a branch)
-        console.log('Clearing pendingBranch (main sequence)')
+        setPendingParent(null) // Branch has its own parent tracking
+      } else if (parentId) {
+        // Adding directly under a specific node (not a branch, but we know the parent)
+        console.log('Setting pendingParent:', parentId)
         setPendingBranch(null)
+        setPendingParent(parentId)
+      } else {
+        // Adding to main sequence (no specific parent)
+        console.log('Clearing pendingBranch and pendingParent (main sequence)')
+        setPendingBranch(null)
+        setPendingParent(null)
       }
       setShowActionMenu(true)
     }
@@ -1055,6 +1174,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       setActionCount(1)
       setShowActionMenu(false)
       setPendingBranch(null)
+      setPendingParent(null)
       
       // Auto-fit view after adding node
       setTimeout(() => {
@@ -1137,12 +1257,12 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
         label: pendingBranch.branch === 'yes' ? 'Yes' : 'No',
         labelStyle: { 
           fill: '#000', 
-          fontWeight: 600, 
-          fontSize: 14
+          fontWeight: '700', 
+          fontSize: 16
         },
-        labelBgPadding: [8, 4],
+        labelBgPadding: [8, 4] as [number, number],
         labelBgBorderRadius: 4,
-        labelBgStyle: { fill: '#fff', fillOpacity: 1 }
+        labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 }
       }
 
       const edgeToAction: Edge = {
@@ -1179,8 +1299,9 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       setEdges((eds) => [...eds, edgeToWait, edgeToAction])
       setActionCount(actionCount + 1)
       setShowActionMenu(false)
-      console.log('Clearing pendingBranch after adding to branch')
+      console.log('Clearing pendingBranch and pendingParent after adding to branch')
       setPendingBranch(null)
+      setPendingParent(null)
       
       // Auto-fit view after adding nodes
       setTimeout(() => {
@@ -1189,17 +1310,27 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       return
     }
 
-    // Find the last action or conditional node (main sequence, not branching)
-    console.log('Adding to main sequence (no branch)')
-    const actionNodes = nodes.filter(n => n.type === 'actionNode' || n.type === 'conditionalNode')
-    const lastActionNode = actionNodes[actionNodes.length - 1]
-    if (!lastActionNode) {
-      console.error('No last action node found')
+    // Find the parent node - either the specific pending parent or the last action node
+    console.log('Adding to main sequence (no branch)', { pendingParent })
+    let parentNode: Node | undefined
+    
+    if (pendingParent) {
+      // Use the specific parent node that was clicked
+      parentNode = nodes.find(n => n.id === pendingParent)
+      console.log('Using specific parent:', pendingParent, parentNode)
+    } else {
+      // Find the last action or conditional node in main sequence
+      const actionNodes = nodes.filter(n => n.type === 'actionNode' || n.type === 'conditionalNode')
+      parentNode = actionNodes[actionNodes.length - 1]
+      console.log('Using last action node as parent')
+    }
+    
+    if (!parentNode) {
+      console.error('No parent node found')
       return
     }
     
-    const parentNodeId = lastActionNode.id
-    const parentNode = lastActionNode
+    const parentNodeId = parentNode.id
 
     const newActionId = `action-${actionCount}`
     const waitNodeId = `wait-${actionCount}`
@@ -1283,14 +1414,15 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
     setEdges((eds) => [...eds, edgeToWait, edgeToAction])
     setActionCount(actionCount + 1)
     setShowActionMenu(false)
-    console.log('Clearing pendingBranch after adding to main sequence')
+    console.log('Clearing pendingBranch and pendingParent after adding to main sequence')
     setPendingBranch(null)
+    setPendingParent(null)
     
     // Auto-fit view after adding nodes
     setTimeout(() => {
       reactFlowInstance.fitView({ padding: 0.2, duration: 400 })
     }, 50)
-  }, [nodes, actionCount, setNodes, setEdges, pendingBranch, reactFlowInstance])
+  }, [nodes, actionCount, setNodes, setEdges, pendingBranch, pendingParent, reactFlowInstance])
 
   const handleClearSequence = useCallback(() => {
     setShowClearConfirm(true)
@@ -1302,6 +1434,78 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
     setActionCount(0)
     setShowClearConfirm(false)
   }, [setNodes, setEdges, createBeginSequenceNode])
+
+  const handleGenerateMessage = useCallback(() => {
+    // Mock message generation based on instructions
+    if (!messageInstructions.trim()) {
+      setGeneratedMessage('Please provide instructions for the message.')
+      return
+    }
+    
+    // Simulate AI-generated message based on instructions
+    const sampleCandidate = sampleCandidates[0] || { name: 'John Doe', title: 'Software Engineer', company: 'Tech Corp' }
+    const generatedText = `Hi ${sampleCandidate.name.split(' ')[0]},
+
+I noticed your experience as a ${sampleCandidate.title} at ${sampleCandidate.company}. ${messageInstructions}
+
+Looking forward to connecting!
+
+Best regards`
+    
+    setGeneratedMessage(generatedText)
+  }, [messageInstructions, sampleCandidates])
+
+  const handleGenerateResponderExample = useCallback(() => {
+    if (!responderInstructions.trim()) {
+      setResponderExample('Please provide instructions for the responder.')
+      return
+    }
+    
+    const exampleText = `[Auto-responder behavior based on instructions]
+
+Instructions: ${responderInstructions}
+
+Example response: Based on your instructions, the responder will handle incoming messages appropriately.`
+    
+    setResponderExample(exampleText)
+  }, [responderInstructions])
+
+  const handleSendChatMessage = useCallback(() => {
+    if (!currentChatInput.trim()) return
+    
+    // Add user message
+    const newMessages = [...chatMessages, { role: 'user' as const, text: currentChatInput }]
+    
+    // Simulate bot response based on responder instructions
+    const botResponse = responderInstructions.trim() 
+      ? `[Bot response following instructions: "${responderInstructions}"] - This is a simulated response.`
+      : 'Please set responder instructions first.'
+    
+    newMessages.push({ role: 'bot' as const, text: botResponse })
+    
+    setChatMessages(newMessages)
+    setCurrentChatInput('')
+  }, [currentChatInput, chatMessages, responderInstructions])
+
+  const handleClearChat = useCallback(() => {
+    setChatMessages([])
+  }, [])
+
+  const handleAddTimeWindow = useCallback(() => {
+    setSendingWindows([...sendingWindows, { start: '09:00', end: '17:00' }])
+  }, [sendingWindows])
+
+  const handleRemoveTimeWindow = useCallback((index: number) => {
+    if (sendingWindows.length > 1) {
+      setSendingWindows(sendingWindows.filter((_, i) => i !== index))
+    }
+  }, [sendingWindows])
+
+  const handleUpdateTimeWindow = useCallback((index: number, field: 'start' | 'end', value: string) => {
+    const updated = [...sendingWindows]
+    updated[index][field] = value
+    setSendingWindows(updated)
+  }, [sendingWindows])
 
   return (
     <div className="space-y-6">
@@ -1463,9 +1667,10 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
                 <h3 className="font-semibold text-sm">Select Action</h3>
                 <button
                   onClick={() => {
-                    console.log('Closing action menu, clearing pendingBranch')
+                    console.log('Closing action menu, clearing pendingBranch and pendingParent')
                     setShowActionMenu(false)
                     setPendingBranch(null)
+                    setPendingParent(null)
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
@@ -1510,6 +1715,11 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
               preventScrolling={false}
               zoomOnScroll={true}
               panOnScroll={false}
+              defaultEdgeOptions={{
+                type: 'smoothstep',
+                animated: false,
+                style: { stroke: '#000', strokeWidth: 2 }
+              }}
             >
               <Background 
                 color="#ddd" 
@@ -1564,38 +1774,347 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
                         max="200"
                         className="bg-white border-gray-300"
                       />
-                      <p className="text-xs text-gray-500">Number of messages to send per day (1-200)</p>
+                      <p className="text-xs text-gray-500">Number of leads to contact per day (1-200)</p>
                     </div>
+                    
+                    {/* Multiple Sending Windows */}
                     <div className="space-y-2">
-                      <Label>Sending Hours</Label>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center justify-between">
+                        <Label>Sending Windows</Label>
+                        <Button
+                          onClick={handleAddTimeWindow}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add Window
+                        </Button>
+                      </div>
+                      <div className="space-y-3">
+                        {sendingWindows.map((window, index) => (
+                          <div key={index} className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
+                            <div className="flex-1 flex items-center gap-2">
+                              <div className="flex-1">
+                                <Label htmlFor={`start-${index}`} className="text-xs text-gray-600">Start</Label>
+                                <Input
+                                  id={`start-${index}`}
+                                  type="time"
+                                  value={window.start}
+                                  onChange={(e) => handleUpdateTimeWindow(index, 'start', e.target.value)}
+                                  className="bg-white border-gray-300 mt-1"
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <Label htmlFor={`end-${index}`} className="text-xs text-gray-600">End</Label>
+                                <Input
+                                  id={`end-${index}`}
+                                  type="time"
+                                  value={window.end}
+                                  onChange={(e) => handleUpdateTimeWindow(index, 'end', e.target.value)}
+                                  className="bg-white border-gray-300 mt-1"
+                                />
+                              </div>
+                            </div>
+                            {sendingWindows.length > 1 && (
+                              <button
+                                onClick={() => handleRemoveTimeWindow(index)}
+                                className="text-gray-400 hover:text-red-600 transition-colors mt-5"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500">Messages will only be sent within these time windows</p>
+                    </div>
+                    
+                    {/* Candidate Gap Settings */}
+                    <div className="space-y-2">
+                      <Label>Gap Between Candidates</Label>
+                      <div className="flex items-center gap-2">
                         <div className="flex-1">
-                          <Label htmlFor="start-time" className="text-xs text-gray-600">Start</Label>
+                          <Label htmlFor="gap-min" className="text-xs text-gray-600">Min</Label>
                           <Input
-                            id="start-time"
-                            type="time"
-                            value={sendingHoursStart}
-                            onChange={(e) => setSendingHoursStart(e.target.value)}
-                            className="bg-white border-gray-300"
+                            id="gap-min"
+                            type="number"
+                            value={candidateGapMin}
+                            onChange={(e) => setCandidateGapMin(parseInt(e.target.value) || 1)}
+                            min="1"
+                            max="60"
+                            className="bg-white border-gray-300 mt-1"
                           />
                         </div>
                         <div className="flex-1">
-                          <Label htmlFor="end-time" className="text-xs text-gray-600">End</Label>
+                          <Label htmlFor="gap-max" className="text-xs text-gray-600">Max</Label>
                           <Input
-                            id="end-time"
-                            type="time"
-                            value={sendingHoursEnd}
-                            onChange={(e) => setSendingHoursEnd(e.target.value)}
-                            className="bg-white border-gray-300"
+                            id="gap-max"
+                            type="number"
+                            value={candidateGapMax}
+                            onChange={(e) => setCandidateGapMax(parseInt(e.target.value) || 1)}
+                            min="1"
+                            max="60"
+                            className="bg-white border-gray-300 mt-1"
                           />
+                        </div>
+                        <div className="flex-1">
+                          <Label htmlFor="gap-unit" className="text-xs text-gray-600">Unit</Label>
+                          <Select
+                            value={candidateGapUnit}
+                            onValueChange={(value: 'minutes' | 'hours') => setCandidateGapUnit(value)}
+                          >
+                            <SelectTrigger id="gap-unit" className="bg-white border-gray-300 mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="minutes">Minutes</SelectItem>
+                              <SelectItem value="hours">Hours</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500">Messages will only be sent within this time window</p>
+                      <p className="text-xs text-gray-500">
+                        Randomized wait time between starting sequences for different candidates (e.g., wait {candidateGapMin}-{candidateGapMax} {candidateGapUnit})
+                      </p>
                     </div>
                   </>
-                ) : (
-                  <>
-                    {/* Template Section for other actions */}
+                ) : (() => {
+                  const currentNode = nodes.find(n => n.id === configureNodeId)
+                  const actionType = currentNode?.data.actionType
+                  
+                  // Send Message or Send InMail configuration
+                  if (actionType === 'send-message' || actionType === 'send-inmail') {
+                    const icon = actionType === 'send-message' ? <MessageSquare className="h-5 w-5" /> : <Send className="h-5 w-5" />
+                    const label = actionType === 'send-message' ? 'Send Message' : 'Send InMail'
+                    
+                    return (
+                      <>
+                        <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-200">
+                          {icon}
+                          <h3 className="text-lg font-semibold">{label} Template</h3>
+                        </div>
+                        
+                        {/* Instructions */}
+                        <div className="space-y-2">
+                          <Label htmlFor="message-instructions">Instructions</Label>
+                          <Textarea
+                            id="message-instructions"
+                            value={messageInstructions}
+                            onChange={(e) => setMessageInstructions(e.target.value)}
+                            placeholder="Describe how you want the message to be written. E.g., 'Mention their recent project, highlight our company culture, and ask about their interest in the role.'"
+                            className="min-h-[120px] bg-white border-gray-300"
+                          />
+                          <p className="text-xs text-gray-500">
+                            Provide plain English instructions for generating the message
+                          </p>
+                        </div>
+                        
+                        {/* Generate Button */}
+                        <div>
+                          <Button
+                            onClick={handleGenerateMessage}
+                            className="w-full bg-black hover:bg-gray-800 text-white"
+                          >
+                            Generate Sample Message
+                          </Button>
+                        </div>
+                        
+                        {/* Generated Output */}
+                        {generatedMessage && (
+                          <div className="space-y-2">
+                            <Label htmlFor="generated-output">Generated Output (Preview)</Label>
+                            <Textarea
+                              id="generated-output"
+                              value={generatedMessage}
+                              readOnly
+                              className="min-h-[180px] bg-gray-50 border-gray-300 cursor-text font-mono text-sm"
+                            />
+                            <p className="text-xs text-gray-500">
+                              This is a preview. You can select and copy this text to refine your instructions.
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )
+                  }
+                  
+                  // Like Post configuration
+                  if (actionType === 'like-post') {
+                    return (
+                      <>
+                        <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-200">
+                          <Heart className="h-5 w-5" />
+                          <h3 className="text-lg font-semibold">Like Post Settings</h3>
+                        </div>
+                        
+                        {/* Post Selection */}
+                        <div className="space-y-2">
+                          <Label htmlFor="post-recency">Post Selection</Label>
+                          <Select
+                            value={postRecency}
+                            onValueChange={(value: 'latest' | 'last-10' | 'most-relevant') => setPostRecency(value)}
+                          >
+                            <SelectTrigger id="post-recency" className="bg-white border-gray-300">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="latest">Latest Post</SelectItem>
+                              <SelectItem value="last-10">Random from Last 10 Posts</SelectItem>
+                              <SelectItem value="most-relevant">Most Relevant by Topic</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-gray-500">
+                            Choose which post to like from the candidate's profile
+                          </p>
+                        </div>
+                        
+                        {/* Time Window */}
+                        <div className="space-y-2">
+                          <Label htmlFor="post-time-window">Post Time Window</Label>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              id="post-time-window"
+                              type="number"
+                              value={postTimeWindow}
+                              onChange={(e) => setPostTimeWindow(parseInt(e.target.value) || 7)}
+                              min="1"
+                              max="365"
+                              className="flex-1 bg-white border-gray-300"
+                            />
+                            <span className="text-sm text-gray-600">days</span>
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            Only like posts from the last X days
+                          </p>
+                        </div>
+                        
+                        {/* Preview */}
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                          <p className="text-xs font-medium text-gray-700 mb-2">Configuration Summary:</p>
+                          <ul className="text-xs text-gray-600 space-y-1">
+                            <li>• Selection: {postRecency === 'latest' ? 'Latest post' : postRecency === 'last-10' ? 'Random from last 10' : 'Most relevant by topic'}</li>
+                            <li>• Time window: Posts from last {postTimeWindow} days</li>
+                          </ul>
+                        </div>
+                      </>
+                    )
+                  }
+                  
+                  // Activate Responder configuration
+                  if (actionType === 'activate-responder') {
+                    return (
+                      <>
+                        <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-200">
+                          <Zap className="h-5 w-5" />
+                          <h3 className="text-lg font-semibold">Activate Responder</h3>
+                        </div>
+                        
+                        {/* Responder Instructions */}
+                        <div className="space-y-2">
+                          <Label htmlFor="responder-instructions">Conversation Rules</Label>
+                          <Textarea
+                            id="responder-instructions"
+                            value={responderInstructions}
+                            onChange={(e) => setResponderInstructions(e.target.value)}
+                            placeholder="Describe how the auto-responder should handle conversations. E.g., 'Be friendly and professional, answer questions about the role, and schedule a call if they show interest.'"
+                            className="min-h-[100px] bg-white border-gray-300"
+                          />
+                          <p className="text-xs text-gray-500">
+                            Define the behavior and tone for automated responses
+                          </p>
+                        </div>
+                        
+                        {/* Generate Example Button */}
+                        <div>
+                          <Button
+                            onClick={handleGenerateResponderExample}
+                            className="w-full bg-black hover:bg-gray-800 text-white"
+                          >
+                            Generate Example Response
+                          </Button>
+                        </div>
+                        
+                        {/* Generated Example */}
+                        {responderExample && (
+                          <div className="space-y-2">
+                            <Label htmlFor="responder-example">Example Response</Label>
+                            <Textarea
+                              id="responder-example"
+                              value={responderExample}
+                              readOnly
+                              className="min-h-[100px] bg-gray-50 border-gray-300 cursor-text font-mono text-sm"
+                            />
+                          </div>
+                        )}
+                        
+                        {/* Chat Testing Interface */}
+                        <div className="border-t border-gray-200 pt-4 mt-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <Label>Test Conversation</Label>
+                            <Button
+                              onClick={handleClearChat}
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                            >
+                              Clear Chat
+                            </Button>
+                          </div>
+                          
+                          {/* Chat Messages */}
+                          <div className="border border-gray-300 rounded-lg p-3 min-h-[200px] max-h-[300px] overflow-y-auto bg-gray-50 mb-3 space-y-2">
+                            {chatMessages.length === 0 ? (
+                              <p className="text-xs text-gray-400 text-center py-8">
+                                Start a conversation to test the responder behavior
+                              </p>
+                            ) : (
+                              chatMessages.map((msg, idx) => (
+                                <div
+                                  key={idx}
+                                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                >
+                                  <div
+                                    className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
+                                      msg.role === 'user'
+                                        ? 'bg-gray-900 text-white'
+                                        : 'bg-white border border-gray-300'
+                                    }`}
+                                  >
+                                    {msg.text}
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                          
+                          {/* Chat Input */}
+                          <div className="flex gap-2">
+                            <Input
+                              value={currentChatInput}
+                              onChange={(e) => setCurrentChatInput(e.target.value)}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleSendChatMessage()
+                                }
+                              }}
+                              placeholder="Type a message from prospect..."
+                              className="flex-1 bg-white border-gray-300"
+                            />
+                            <Button
+                              onClick={handleSendChatMessage}
+                              className="bg-black hover:bg-gray-800 text-white"
+                            >
+                              Send
+                            </Button>
+                          </div>
+                        </div>
+                      </>
+                    )
+                  }
+                  
+                  // Default placeholder for other actions
+                  return (
                     <div>
                       <h3 className="text-sm font-medium text-gray-700 mb-2">Template</h3>
                       <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg">
@@ -1604,8 +2123,8 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
                         </p>
                       </div>
                     </div>
-                  </>
-                )}
+                  )
+                })()}
               </div>
 
               {/* Footer */}

@@ -48,6 +48,13 @@ export interface SearchParams {
   locationState: string
   searchRadius: number
   includeWorkLocation: boolean
+  
+  // Inclusions
+  industryInclusions: string[]
+  jobTitleInclusions: string[]
+  profileKeywords: string[]
+  
+  // Exclusions
   industryExclusions: string[]
   titleExclusions: string[]
   keywordExclusions: string[]
@@ -110,6 +117,8 @@ export function SearchTab({
   const [tempExclusionInput, setTempExclusionInput] = useState('')
   const [tempTitleExclusionInput, setTempTitleExclusionInput] = useState('')
   const [tempKeywordExclusionInput, setTempKeywordExclusionInput] = useState('')
+  const [tempJobTitleInclusionInput, setTempJobTitleInclusionInput] = useState('')
+  const [tempProfileKeywordInput, setTempProfileKeywordInput] = useState('')
   const [inputError, setInputError] = useState('')
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
@@ -246,6 +255,36 @@ export function SearchTab({
   const removeKeywordExclusion = (index: number) => {
     const newExclusions = searchParams.keywordExclusions.filter((_, i) => i !== index)
     setSearchParams({ ...searchParams, keywordExclusions: newExclusions })
+  }
+
+  const addJobTitleInclusion = () => {
+    if (tempJobTitleInclusionInput.trim()) {
+      setSearchParams({
+        ...searchParams,
+        jobTitleInclusions: [...searchParams.jobTitleInclusions, tempJobTitleInclusionInput.trim()]
+      })
+      setTempJobTitleInclusionInput('')
+    }
+  }
+
+  const removeJobTitleInclusion = (index: number) => {
+    const newInclusions = searchParams.jobTitleInclusions.filter((_, i) => i !== index)
+    setSearchParams({ ...searchParams, jobTitleInclusions: newInclusions })
+  }
+
+  const addProfileKeyword = () => {
+    if (tempProfileKeywordInput.trim()) {
+      setSearchParams({
+        ...searchParams,
+        profileKeywords: [...searchParams.profileKeywords, tempProfileKeywordInput.trim()]
+      })
+      setTempProfileKeywordInput('')
+    }
+  }
+
+  const removeProfileKeyword = (index: number) => {
+    const newKeywords = searchParams.profileKeywords.filter((_, i) => i !== index)
+    setSearchParams({ ...searchParams, profileKeywords: newKeywords })
   }
 
   const addSkill = () => {
@@ -893,55 +932,154 @@ export function SearchTab({
             </div>
           </div>
 
-          {/* Job Titles Section */}
+          {/* Inclusions Section */}
           <div className="border-b pb-6">
             <div className="flex items-center gap-2 mb-4">
-              <Briefcase className="h-5 w-5" />
-              <h3 className="text-lg font-semibold">Job Titles</h3>
+              <Target className="h-5 w-5" />
+              <h3 className="text-lg font-semibold">Inclusions</h3>
             </div>
-            <div className="space-y-3">
+            
+            <div className="space-y-4">
+              {/* Industry Inclusions */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Industry Inclusions</Label>
+                <Select
+                  value=""
+                  onValueChange={(value) => {
+                    if (value && !searchParams.industryInclusions.includes(value)) {
+                      setSearchParams({ 
+                        ...searchParams, 
+                        industryInclusions: [...searchParams.industryInclusions, value] 
+                      })
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-10 w-full">
+                    <SelectValue placeholder="Select industry to include..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {industriesData?.industries?.map((industry) => (
+                      <SelectItem key={industry} value={industry}>
+                        {industry}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {searchParams.industryInclusions.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {searchParams.industryInclusions.map((industry, index) => (
+                      <Badge key={index} variant="secondary" className="flex items-center gap-1 pr-1">
+                        {industry}
+                        <button
+                          type="button"
+                          aria-label={`Remove ${industry}`}
+                          className="inline-flex items-center justify-center rounded p-0.5 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-300"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setSearchParams({
+                              ...searchParams,
+                              industryInclusions: searchParams.industryInclusions.filter((_, i) => i !== index)
+                            })
+                          }}
+                        >
+                          <X className="h-4 w-4 text-gray-700 hover:text-red-600" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Job Title and Profile Keyword Inclusions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1">
+                  <Label className="text-xs text-gray-600">Job Title Inclusions</Label>
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Add job title..."
-                      value={tempJobTitleInput}
-                      onChange={(e) => setTempJobTitleInput(e.target.value)}
+                      placeholder="e.g., Software Engineer, Product Manager..."
+                      value={tempJobTitleInclusionInput}
+                      onChange={(e) => setTempJobTitleInclusionInput(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          addJobTitle()
+                          addJobTitleInclusion()
                         }
                       }}
                     />
-                    <Button onClick={addJobTitle} variant="outline" className="mt-auto">
+                    <Button onClick={addJobTitleInclusion} variant="outline" className="mt-auto">
                       Add
                     </Button>
                   </div>
+                  {searchParams.jobTitleInclusions.length > 0 && (
+                    <div className="space-y-2 pt-2">
+                      <div className="flex flex-wrap gap-2">
+                        {searchParams.jobTitleInclusions.map((title, index) => (
+                          <Badge key={index} variant="secondary" className="flex items-center gap-1 pr-1">
+                            {title}
+                            <button
+                              type="button"
+                              aria-label={`Remove ${title}`}
+                              className="inline-flex items-center justify-center rounded p-0.5 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-300"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                removeJobTitleInclusion(index)
+                              }}
+                            >
+                              <X className="h-4 w-4 text-gray-700 hover:text-red-600" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {searchParams.jobTitles.map((title, index) => (
-                  <Badge key={index} variant="secondary" className="flex items-center gap-1 pr-1">
-                    <span className="text-sm">{title}</span>
-                    <button
-                      type="button"
-                      aria-label={`Remove ${title}`}
-                      className="inline-flex items-center justify-center rounded p-0.5 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-300"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        removeJobTitle(index)
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-600">Profile Keywords</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g., React, Python, AWS..."
+                      value={tempProfileKeywordInput}
+                      onChange={(e) => setTempProfileKeywordInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          addProfileKeyword()
+                        }
                       }}
-                    >
-                      <X className="h-4 w-4 text-gray-700 hover:text-red-600" />
-                    </button>
-                  </Badge>
-                ))}
+                    />
+                    <Button onClick={addProfileKeyword} variant="outline" className="mt-auto">
+                      Add
+                    </Button>
+                  </div>
+                  {searchParams.profileKeywords.length > 0 && (
+                    <div className="space-y-2 pt-2">
+                      <div className="flex flex-wrap gap-2">
+                        {searchParams.profileKeywords.map((keyword, index) => (
+                          <Badge key={index} variant="secondary" className="flex items-center gap-1 pr-1">
+                            {keyword}
+                            <button
+                              type="button"
+                              aria-label={`Remove ${keyword}`}
+                              className="inline-flex items-center justify-center rounded p-0.5 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-300"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                removeProfileKeyword(index)
+                              }}
+                            >
+                              <X className="h-4 w-4 text-gray-700 hover:text-red-600" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Refinements Section - New Fields from Step3 */}
+          {/* Exclusions Section */}
           <div className="border-b pb-6">
             <div className="flex items-center gap-2 mb-4">
               <X className="h-5 w-5" />
