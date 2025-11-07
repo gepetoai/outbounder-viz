@@ -2,12 +2,16 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Menu, X, User, MessageSquare } from 'lucide-react'
-import { AuthWrapper } from '@/components/auth/auth-wrapper''
+import { Menu, X, User, GitBranch, Settings } from 'lucide-react'
+import { AuthWrapper } from '@/components/auth/auth-wrapper'
+import SequencerTab from '@/components/outbounder/SequencerTab'
+import SettingsTab from '@/components/outbounder/SettingsTab'
+
+type Tab = 'sequencer' | 'settings'
 
 export default function OutbounderApp () {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [activeTab, setActiveTab] = useState<Tab>('sequencer')
 
   return (
     <AuthWrapper>
@@ -29,6 +33,32 @@ export default function OutbounderApp () {
             </Button>
           </div>
 
+          {/* Navigation Tabs */}
+          <nav className={`flex-1 ${sidebarOpen ? 'p-2 space-y-2' : 'p-2 space-y-2'}`}>
+            <Button
+              variant={activeTab === 'sequencer' ? 'default' : 'ghost'}
+              size={sidebarOpen ? 'default' : 'icon'}
+              className={`w-full h-9 flex items-center ${sidebarOpen ? 'justify-start px-3' : 'justify-center px-2'}`}
+              onClick={() => setActiveTab('sequencer')}
+            >
+              <GitBranch className="h-4 w-4 flex-shrink-0" />
+              {sidebarOpen && (
+                <span className="ml-2 flex items-center">Sequencer</span>
+              )}
+            </Button>
+            <Button
+              variant={activeTab === 'settings' ? 'default' : 'ghost'}
+              size={sidebarOpen ? 'default' : 'icon'}
+              className={`w-full h-9 flex items-center ${sidebarOpen ? 'justify-start px-3' : 'justify-center px-2'}`}
+              onClick={() => setActiveTab('settings')}
+            >
+              <Settings className="h-4 w-4 flex-shrink-0" />
+              {sidebarOpen && (
+                <span className="ml-2 flex items-center">Settings</span>
+              )}
+            </Button>
+          </nav>
+
           {/* User Button */}
           <div className="mt-auto p-2 border-t border-border">
             <div className="flex items-center gap-2 p-2">
@@ -43,30 +73,13 @@ export default function OutbounderApp () {
         <div className="flex-1 flex flex-col overflow-hidden">
           <main className="flex-1 overflow-auto p-6">
             <div className="mb-5">
-              <h1 className="text-xl font-bold text-foreground">Outbounder</h1>
-              <p className="text-muted-foreground mt-2">Outbound sales automation</p>
+              <h1 className="text-xl font-bold text-foreground">
+                {activeTab === 'sequencer' ? 'Sequencer' : 'Settings'}
+              </h1>
             </div>
             
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <MessageSquare className="h-8 w-8 text-blue-600" />
-                    <div>
-                      <CardTitle>Welcome to Outbounder</CardTitle>
-                      <CardDescription>
-                        Automate your outbound sales campaigns
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">
-                    This application is under development. Lead management, sequencing, and messaging features will be available soon.
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+            {activeTab === 'sequencer' && <SequencerTab />}
+            {activeTab === 'settings' && <SettingsTab />}
           </main>
         </div>
       </div>

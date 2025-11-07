@@ -1,3 +1,5 @@
+'use client'
+
 import { useAuth as useClerkAuth } from '@clerk/nextjs'
 import { useEffect } from 'react'
 import { setAuthToken } from '../api-client'

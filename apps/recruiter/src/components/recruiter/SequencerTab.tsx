@@ -48,14 +48,9 @@ import { useCandidates } from '@/hooks/useCandidates'
 
 interface SequencerTabProps {
   jobDescriptionId?: number | null
+  onNavigateToSandbox?: () => void
 }
 
-interface SimplifiedCandidate {
-  id: string
-  name: string
-  title: string
-  company: string
-}
 
 const actionTypes = [
   { id: 'connection-request', label: 'Connection Request', icon: UserPlus },
@@ -78,6 +73,8 @@ const START_Y = 50
 
 // Branch offset for conditional nodes (relative to parent)
 const BRANCH_OFFSET = 150
+// Vertical offset for branch nodes to create smoother curves (pushes branches down)
+const BRANCH_VERTICAL_OFFSET = 60
 
 // Node height constants (in pixels) - measured from actual rendered heights
 // ActionNode: border-2 (4px) + p-4 (32px) + content (~28px) = 64px
@@ -95,17 +92,75 @@ const NODE_HEIGHTS = {
 const DESIRED_GAP = 40 // The consistent visual space between the bottom of one box and top of the next
 
 // Helper to get X position for a branch (relative to parent)
-function getBranchXPosition(branch: string | undefined, parentX: number): number {
+// If parent is already in a branch (offset from START_X), use larger offset to avoid overlap
+// Also checks for collisions with existing nodes at the same Y level
+function getBranchXPosition(
+  branch: string | undefined, 
+  parentX: number, 
+  targetY: number, 
+  existingNodes: Node[] = []
+): number {
+  // Check if parent is already in a branch (not at the main sequence X position)
+  const isParentInBranch = Math.abs(parentX - START_X) > 10 // Allow small tolerance for rounding
+  
+  // Calculate initial branch X position
+  let branchX: number
   if (branch === 'yes') {
     // Yes branch goes left (negative offset)
-    return parentX - BRANCH_OFFSET
-  }
-  if (branch === 'no') {
+    if (isParentInBranch) {
+      branchX = parentX - BRANCH_OFFSET * 2
+    } else {
+      branchX = parentX - BRANCH_OFFSET
+    }
+  } else if (branch === 'no') {
     // No branch goes right (positive offset)
-    return parentX + BRANCH_OFFSET
+    if (isParentInBranch) {
+      branchX = parentX + BRANCH_OFFSET * 2
+    } else {
+      branchX = parentX + BRANCH_OFFSET
+    }
+  } else {
+    // If no branch specified, inherit parent's X position (stay in same column)
+    return parentX
   }
-  // If no branch specified, inherit parent's X position (stay in same column)
-  return parentX
+  
+  // Check for collisions with existing nodes at the same Y level (within tolerance)
+  const Y_TOLERANCE = 50 // Consider nodes within 50px vertically as "same level"
+  const X_COLLISION_THRESHOLD = NODE_WIDTH + 20 // Nodes need at least node width + padding apart
+  
+  // Keep checking and adjusting until no collision is found
+  let currentMultiplier = isParentInBranch ? 2 : 1
+  let maxAttempts = 5 // Prevent infinite loop
+  let attempts = 0
+  
+  while (attempts < maxAttempts) {
+    // Recalculate branchX with current multiplier
+    if (branch === 'yes') {
+      branchX = parentX - BRANCH_OFFSET * currentMultiplier
+    } else if (branch === 'no') {
+      branchX = parentX + BRANCH_OFFSET * currentMultiplier
+    }
+    
+    // Check for collisions
+    const conflictingNode = existingNodes.find(node => {
+      const yDiff = Math.abs(node.position.y - targetY)
+      if (yDiff > Y_TOLERANCE) return false
+      
+      const xDiff = Math.abs(node.position.x - branchX)
+      return xDiff < X_COLLISION_THRESHOLD
+    })
+    
+    // If no collision, we're good
+    if (!conflictingNode) {
+      break
+    }
+    
+    // Collision detected, increase multiplier and try again
+    currentMultiplier++
+    attempts++
+  }
+  
+  return branchX
 }
 
 function getIcon(type: string, className = 'h-5 w-5') {
@@ -160,6 +215,10 @@ function getNodeHeight(node: Node): number {
   
   return NODE_HEIGHTS.actionWithoutButton
 }
+
+// Node dimensions for collision detection
+const NODE_WIDTH = 224 // w-56 = 14rem = 224px
+const COLLISION_PADDING = 10 // Minimum gap between nodes
 
 // Singleton handlers storage to avoid recreating callbacks
 const nodeHandlers = {
@@ -397,7 +456,7 @@ const nodeTypes = {
   conditionalNode: ConditionalNode
 }
 
-function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps) {
+function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox }: SequencerTabProps) {
   const reactFlowInstance = useReactFlow()
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId || null)
   const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
@@ -405,45 +464,111 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
   const approvedCount = candidatesData?.approved_candidates?.length || 0
   const [campaignStatus, setCampaignStatus] = useState<'active' | 'paused'>('paused')
   const [showActionMenu, setShowActionMenu] = useState(false)
-  const [sampleCandidates, setSampleCandidates] = useState<SimplifiedCandidate[]>([])
-  const [candidateStartIndex, setCandidateStartIndex] = useState(0)
   const [pendingBranch, setPendingBranch] = useState<{ branch: string; parentId: string } | null>(null)
   const [pendingParent, setPendingParent] = useState<string | null>(null)
 
-  // Reset candidate index when job changes
-  useEffect(() => {
-    setCandidateStartIndex(0)
-  }, [selectedJobId])
-
-  useEffect(() => {
-    if (candidatesData?.approved_candidates) {
-      const allCandidates = candidatesData.approved_candidates
-      const startIdx = candidateStartIndex % allCandidates.length
-      const endIdx = Math.min(startIdx + 5, allCandidates.length)
-      
-      const candidates: SimplifiedCandidate[] = allCandidates.slice(startIdx, endIdx).map((c: any, index: number) => ({
-        id: c.id?.toString() || `sample-${index}`,
-        name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unknown',
-        title: c.job_title || c.raw_data?.headline || 'N/A',
-        company: c.company_name || 'N/A'
-      }))
-      setSampleCandidates(candidates)
-    } else {
-      setSampleCandidates([])
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [candidateStartIndex, selectedJobId])
-
-  const handleRefreshCandidates = useCallback(() => {
-    const totalCandidates = candidatesData?.approved_candidates?.length || 0
-    if (totalCandidates > 5) {
-      setCandidateStartIndex((prev) => (prev + 5) % totalCandidates)
-    }
-  }, [candidatesData?.approved_candidates?.length])
-
-  const [nodes, setNodes, onNodesChange] = useNodesState([])
+  const [nodes, setNodes, onNodesChangeBase] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
   const [actionCount, setActionCount] = useState(0)
+  
+  // Ref to track current nodes for collision detection
+  const nodesRef = useRef(nodes)
+  useEffect(() => {
+    nodesRef.current = nodes
+  }, [nodes])
+  
+  // Helper function to check if two nodes overlap
+  const nodesOverlap = useCallback((node1: Node, node2: Node, nodeHeights: Map<string, number>): boolean => {
+    if (node1.id === node2.id) return false
+    
+    const height1 = nodeHeights.get(node1.id) || getNodeHeight(node1)
+    const height2 = nodeHeights.get(node2.id) || getNodeHeight(node2)
+    
+    // Calculate bounding boxes with padding
+    const left1 = node1.position.x - COLLISION_PADDING
+    const right1 = node1.position.x + NODE_WIDTH + COLLISION_PADDING
+    const top1 = node1.position.y - COLLISION_PADDING
+    const bottom1 = node1.position.y + height1 + COLLISION_PADDING
+    
+    const left2 = node2.position.x - COLLISION_PADDING
+    const right2 = node2.position.x + NODE_WIDTH + COLLISION_PADDING
+    const top2 = node2.position.y - COLLISION_PADDING
+    const bottom2 = node2.position.y + height2 + COLLISION_PADDING
+    
+    // Check for overlap
+    return !(right1 < left2 || left1 > right2 || bottom1 < top2 || top1 > bottom2)
+  }, [])
+  
+  // Helper function to find nearest non-overlapping position
+  const findNearestNonOverlappingPosition = useCallback((
+    draggedNode: Node,
+    otherNodes: Node[],
+    nodeHeights: Map<string, number>,
+    snapToGridFn: (x: number, y: number) => [number, number]
+  ): { x: number; y: number } => {
+    const draggedHeight = nodeHeights.get(draggedNode.id) || getNodeHeight(draggedNode)
+    let newX = draggedNode.position.x
+    let newY = draggedNode.position.y
+    
+    // Try sliding horizontally first (left and right)
+    const slideOffsets = [
+      NODE_WIDTH + COLLISION_PADDING * 2, // Right
+      -(NODE_WIDTH + COLLISION_PADDING * 2), // Left
+      (NODE_WIDTH + COLLISION_PADDING * 2) * 2, // Further right
+      -(NODE_WIDTH + COLLISION_PADDING * 2) * 2, // Further left
+    ]
+    
+    for (const offset of slideOffsets) {
+      const testX = draggedNode.position.x + offset
+      const testNode: Node = {
+        ...draggedNode,
+        position: { x: testX, y: newY }
+      }
+      
+      // Check if this position overlaps with any other node
+      const hasOverlap = otherNodes.some(otherNode => 
+        nodesOverlap(testNode, otherNode, nodeHeights)
+      )
+      
+      if (!hasOverlap) {
+        // Snap to grid
+        const [snappedX] = snapToGridFn(testX, newY)
+        return { x: snappedX, y: newY }
+      }
+    }
+    
+    // If horizontal sliding doesn't work, try vertical sliding
+    const verticalOffsets = [
+      draggedHeight + COLLISION_PADDING * 2, // Down
+      -(draggedHeight + COLLISION_PADDING * 2), // Up
+    ]
+    
+    for (const offset of verticalOffsets) {
+      const testY = draggedNode.position.y + offset
+      const testNode: Node = {
+        ...draggedNode,
+        position: { x: newX, y: testY }
+      }
+      
+      const hasOverlap = otherNodes.some(otherNode => 
+        nodesOverlap(testNode, otherNode, nodeHeights)
+      )
+      
+      if (!hasOverlap) {
+        const [, snappedY] = snapToGridFn(newX, testY)
+        return { x: newX, y: snappedY }
+      }
+    }
+    
+    // If all else fails, return original position (will show overlap but won't crash)
+    return { x: newX, y: newY }
+  }, [nodesOverlap])
+  
+  // onNodesChange handler - nodes are not draggable, so we just use the base handler
+  const onNodesChange = useCallback((changes: any[]) => {
+    // Nodes can only be moved programmatically through layout rules, not by user dragging
+    onNodesChangeBase(changes)
+  }, [onNodesChangeBase])
   const [configureNodeId, setConfigureNodeId] = useState<string | null>(null)
   const [showConfigPanel, setShowConfigPanel] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -484,7 +609,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
         label: 'Begin Sequence',
         actionType: 'begin-sequence'
       },
-      draggable: true
+      draggable: false
     }
   }, [])
 
@@ -532,7 +657,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       yPos += NODE_HEIGHTS.wait + DESIRED_GAP
       
       const pos6 = yPos
-      yPos += NODE_HEIGHTS.conditionalWithoutButtons + DESIRED_GAP
+      yPos += NODE_HEIGHTS.conditionalWithoutButtons + DESIRED_GAP + BRANCH_VERTICAL_OFFSET
       
       const pos7 = yPos
       yPos += NODE_HEIGHTS.wait + DESIRED_GAP
@@ -547,21 +672,21 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       
       const engineerNodes: Node[] = [
         createBeginSequenceNode(),
-        { id: 'action-0', type: 'actionNode', position: { x: START_X, y: pos0 }, data: { nodeId: 'action-0', label: 'View Profile', actionType: 'view-profile' }, draggable: true },
-        { id: 'wait-1', type: 'waitNode', position: { x: START_X, y: pos1 }, data: { nodeId: 'wait-1', waitValue: 2, waitUnit: 'days' }, draggable: true },
-        { id: 'action-1', type: 'actionNode', position: { x: START_X, y: pos2 }, data: { nodeId: 'action-1', label: 'Like Post', actionType: 'like-post' }, draggable: true },
-        { id: 'wait-2', type: 'waitNode', position: { x: START_X, y: pos3 }, data: { nodeId: 'wait-2', waitValue: 2, waitUnit: 'days' }, draggable: true },
-        { id: 'action-2', type: 'actionNode', position: { x: START_X, y: pos4 }, data: { nodeId: 'action-2', label: 'Connection Request', actionType: 'connection-request' }, draggable: true },
-        { id: 'wait-3', type: 'waitNode', position: { x: START_X, y: pos5 }, data: { nodeId: 'wait-3', waitValue: 2, waitUnit: 'days' }, draggable: true },
-        { id: 'action-3', type: 'conditionalNode', position: { x: START_X, y: pos6 }, data: { nodeId: 'action-3', label: 'If Connection Accepted', actionType: 'if-connection-accepted', hasYesChild: true, hasNoChild: true }, draggable: true },
-        { id: 'wait-4', type: 'waitNode', position: { x: START_X - BRANCH_OFFSET, y: pos7 }, data: { nodeId: 'wait-4', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: true },
-        { id: 'action-4', type: 'actionNode', position: { x: START_X - BRANCH_OFFSET, y: pos8 }, data: { nodeId: 'action-4', label: 'Send Message', actionType: 'send-message', branch: 'yes' }, draggable: true },
-        { id: 'wait-5', type: 'waitNode', position: { x: START_X + BRANCH_OFFSET, y: pos7 }, data: { nodeId: 'wait-5', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: true },
-        { id: 'action-5', type: 'actionNode', position: { x: START_X + BRANCH_OFFSET, y: pos8 }, data: { nodeId: 'action-5', label: 'Send InMail', actionType: 'send-inmail', branch: 'no' }, draggable: true },
-        { id: 'wait-6', type: 'waitNode', position: { x: START_X - BRANCH_OFFSET, y: pos9 }, data: { nodeId: 'wait-6', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: true },
-        { id: 'action-6', type: 'actionNode', position: { x: START_X - BRANCH_OFFSET, y: pos10 }, data: { nodeId: 'action-6', label: 'End Sequence', actionType: 'end-sequence', branch: 'yes' }, draggable: true },
-        { id: 'wait-7', type: 'waitNode', position: { x: START_X + BRANCH_OFFSET, y: pos9 }, data: { nodeId: 'wait-7', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: true },
-        { id: 'action-7', type: 'actionNode', position: { x: START_X + BRANCH_OFFSET, y: pos10 }, data: { nodeId: 'action-7', label: 'End Sequence', actionType: 'end-sequence', branch: 'no' }, draggable: true }
+        { id: 'action-0', type: 'actionNode', position: { x: START_X, y: pos0 }, data: { nodeId: 'action-0', label: 'View Profile', actionType: 'view-profile' }, draggable: false },
+        { id: 'wait-1', type: 'waitNode', position: { x: START_X, y: pos1 }, data: { nodeId: 'wait-1', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-1', type: 'actionNode', position: { x: START_X, y: pos2 }, data: { nodeId: 'action-1', label: 'Like Post', actionType: 'like-post' }, draggable: false },
+        { id: 'wait-2', type: 'waitNode', position: { x: START_X, y: pos3 }, data: { nodeId: 'wait-2', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-2', type: 'actionNode', position: { x: START_X, y: pos4 }, data: { nodeId: 'action-2', label: 'Connection Request', actionType: 'connection-request' }, draggable: false },
+        { id: 'wait-3', type: 'waitNode', position: { x: START_X, y: pos5 }, data: { nodeId: 'wait-3', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-3', type: 'conditionalNode', position: { x: START_X, y: pos6 }, data: { nodeId: 'action-3', label: 'If Connection Accepted', actionType: 'if-connection-accepted', hasYesChild: true, hasNoChild: true }, draggable: false },
+        { id: 'wait-4', type: 'waitNode', position: { x: START_X - BRANCH_OFFSET, y: pos7 }, data: { nodeId: 'wait-4', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-4', type: 'actionNode', position: { x: START_X - BRANCH_OFFSET, y: pos8 }, data: { nodeId: 'action-4', label: 'Send Message', actionType: 'send-message', branch: 'yes' }, draggable: false },
+        { id: 'wait-5', type: 'waitNode', position: { x: START_X + BRANCH_OFFSET, y: pos7 }, data: { nodeId: 'wait-5', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-5', type: 'actionNode', position: { x: START_X + BRANCH_OFFSET, y: pos8 }, data: { nodeId: 'action-5', label: 'Send InMail', actionType: 'send-inmail', branch: 'no' }, draggable: false },
+        { id: 'wait-6', type: 'waitNode', position: { x: START_X - BRANCH_OFFSET, y: pos9 }, data: { nodeId: 'wait-6', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-6', type: 'actionNode', position: { x: START_X - BRANCH_OFFSET, y: pos10 }, data: { nodeId: 'action-6', label: 'End Sequence', actionType: 'end-sequence', branch: 'yes' }, draggable: false },
+        { id: 'wait-7', type: 'waitNode', position: { x: START_X + BRANCH_OFFSET, y: pos9 }, data: { nodeId: 'wait-7', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-7', type: 'actionNode', position: { x: START_X + BRANCH_OFFSET, y: pos10 }, data: { nodeId: 'action-7', label: 'End Sequence', actionType: 'end-sequence', branch: 'no' }, draggable: false }
       ]
       const engineerEdges: Edge[] = [
         { id: 'edge-begin-0', source: 'begin-sequence', target: 'action-0', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
@@ -608,7 +733,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       yPos += NODE_HEIGHTS.wait + DESIRED_GAP
       
       const pos2 = yPos
-      yPos += NODE_HEIGHTS.conditionalWithoutButtons + DESIRED_GAP
+      yPos += NODE_HEIGHTS.conditionalWithoutButtons + DESIRED_GAP + BRANCH_VERTICAL_OFFSET
       
       const pos3 = yPos
       yPos += NODE_HEIGHTS.wait + DESIRED_GAP
@@ -620,20 +745,63 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       yPos += NODE_HEIGHTS.wait + DESIRED_GAP
       
       const pos6 = yPos
+      yPos += NODE_HEIGHTS.conditionalWithoutButtons + DESIRED_GAP + BRANCH_VERTICAL_OFFSET
+      
+      const pos7 = yPos
+      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
+      
+      const pos8 = yPos
+      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
+      
+      const pos9 = yPos
+      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
+      
+      const pos10 = yPos
+      
+      // Calculate nested branch positions (for "If Message Responded" branches)
+      // Assign unique columns to each of the 4 final branch paths to prevent overlap
+      const leftConditionalX = START_X - BRANCH_OFFSET
+      const leftYesBranchX = START_X - BRANCH_OFFSET * 3  // Column 0: leftmost
+      const leftNoBranchX = START_X - BRANCH_OFFSET       // Column 1: left-center
+      
+      // Right branch (from Send InMail)
+      const rightConditionalX = START_X + BRANCH_OFFSET
+      const rightYesBranchX = START_X + BRANCH_OFFSET     // Column 2: right-center  
+      const rightNoBranchX = START_X + BRANCH_OFFSET * 3  // Column 3: rightmost
       
       const managerNodes: Node[] = [
         createBeginSequenceNode(),
-        { id: 'action-0', type: 'actionNode', position: { x: START_X, y: pos0 }, data: { nodeId: 'action-0', label: 'Connection Request', actionType: 'connection-request' }, draggable: true },
-        { id: 'wait-1', type: 'waitNode', position: { x: START_X, y: pos1 }, data: { nodeId: 'wait-1', waitValue: 2, waitUnit: 'days' }, draggable: true },
-        { id: 'action-1', type: 'conditionalNode', position: { x: START_X, y: pos2 }, data: { nodeId: 'action-1', label: 'If Connection Accepted', actionType: 'if-connection-accepted', hasYesChild: true, hasNoChild: true }, draggable: true },
-        { id: 'wait-2', type: 'waitNode', position: { x: START_X - BRANCH_OFFSET, y: pos3 }, data: { nodeId: 'wait-2', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: true },
-        { id: 'action-2', type: 'actionNode', position: { x: START_X - BRANCH_OFFSET, y: pos4 }, data: { nodeId: 'action-2', label: 'Send Message', actionType: 'send-message', branch: 'yes' }, draggable: true },
-        { id: 'wait-3', type: 'waitNode', position: { x: START_X + BRANCH_OFFSET, y: pos3 }, data: { nodeId: 'wait-3', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: true },
-        { id: 'action-3', type: 'actionNode', position: { x: START_X + BRANCH_OFFSET, y: pos4 }, data: { nodeId: 'action-3', label: 'Send InMail', actionType: 'send-inmail', branch: 'no' }, draggable: true },
-        { id: 'wait-4', type: 'waitNode', position: { x: START_X - BRANCH_OFFSET, y: pos5 }, data: { nodeId: 'wait-4', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: true },
-        { id: 'action-4', type: 'actionNode', position: { x: START_X - BRANCH_OFFSET, y: pos6 }, data: { nodeId: 'action-4', label: 'End Sequence', actionType: 'end-sequence', branch: 'yes' }, draggable: true },
-        { id: 'wait-5', type: 'waitNode', position: { x: START_X + BRANCH_OFFSET, y: pos5 }, data: { nodeId: 'wait-5', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: true },
-        { id: 'action-5', type: 'actionNode', position: { x: START_X + BRANCH_OFFSET, y: pos6 }, data: { nodeId: 'action-5', label: 'End Sequence', actionType: 'end-sequence', branch: 'no' }, draggable: true }
+        { id: 'action-0', type: 'actionNode', position: { x: START_X, y: pos0 }, data: { nodeId: 'action-0', label: 'Connection Request', actionType: 'connection-request' }, draggable: false },
+        { id: 'wait-1', type: 'waitNode', position: { x: START_X, y: pos1 }, data: { nodeId: 'wait-1', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-1', type: 'conditionalNode', position: { x: START_X, y: pos2 }, data: { nodeId: 'action-1', label: 'If Connection Accepted', actionType: 'if-connection-accepted', hasYesChild: true, hasNoChild: true }, draggable: false },
+        { id: 'wait-2', type: 'waitNode', position: { x: START_X - BRANCH_OFFSET, y: pos3 }, data: { nodeId: 'wait-2', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-2', type: 'actionNode', position: { x: START_X - BRANCH_OFFSET, y: pos4 }, data: { nodeId: 'action-2', label: 'Send Message', actionType: 'send-message', branch: 'yes' }, draggable: false },
+        { id: 'wait-3', type: 'waitNode', position: { x: START_X + BRANCH_OFFSET, y: pos3 }, data: { nodeId: 'wait-3', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-3', type: 'actionNode', position: { x: START_X + BRANCH_OFFSET, y: pos4 }, data: { nodeId: 'action-3', label: 'Send InMail', actionType: 'send-inmail', branch: 'no' }, draggable: false },
+        { id: 'wait-4', type: 'waitNode', position: { x: START_X - BRANCH_OFFSET, y: pos5 }, data: { nodeId: 'wait-4', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-4', type: 'conditionalNode', position: { x: leftConditionalX, y: pos6 }, data: { nodeId: 'action-4', label: 'If Message Responded', actionType: 'if-message-responded', hasYesChild: true, hasNoChild: true }, draggable: false },
+        { id: 'wait-5', type: 'waitNode', position: { x: START_X + BRANCH_OFFSET, y: pos5 }, data: { nodeId: 'wait-5', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-5', type: 'conditionalNode', position: { x: rightConditionalX, y: pos6 }, data: { nodeId: 'action-5', label: 'If Message Responded', actionType: 'if-message-responded', hasYesChild: true, hasNoChild: true }, draggable: false },
+        // Left "If Message Responded" YES branch
+        { id: 'wait-6', type: 'waitNode', position: { x: leftYesBranchX, y: pos7 }, data: { nodeId: 'wait-6', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-6', type: 'actionNode', position: { x: leftYesBranchX, y: pos8 }, data: { nodeId: 'action-6', label: 'Like Post', actionType: 'like-post', branch: 'yes' }, draggable: false },
+        { id: 'wait-7', type: 'waitNode', position: { x: leftYesBranchX, y: pos9 }, data: { nodeId: 'wait-7', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-7', type: 'actionNode', position: { x: leftYesBranchX, y: pos10 }, data: { nodeId: 'action-7', label: 'End Sequence', actionType: 'end-sequence', branch: 'yes' }, draggable: false },
+        // Left "If Message Responded" NO branch
+        { id: 'wait-8', type: 'waitNode', position: { x: leftNoBranchX, y: pos7 }, data: { nodeId: 'wait-8', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-8', type: 'actionNode', position: { x: leftNoBranchX, y: pos8 }, data: { nodeId: 'action-8', label: 'Like Post', actionType: 'like-post', branch: 'no' }, draggable: false },
+        { id: 'wait-9', type: 'waitNode', position: { x: leftNoBranchX, y: pos9 }, data: { nodeId: 'wait-9', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-9', type: 'actionNode', position: { x: leftNoBranchX, y: pos10 }, data: { nodeId: 'action-9', label: 'End Sequence', actionType: 'end-sequence', branch: 'no' }, draggable: false },
+        // Right "If Message Responded" YES branch
+        { id: 'wait-10', type: 'waitNode', position: { x: rightYesBranchX, y: pos7 }, data: { nodeId: 'wait-10', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-10', type: 'actionNode', position: { x: rightYesBranchX, y: pos8 }, data: { nodeId: 'action-10', label: 'Like Post', actionType: 'like-post', branch: 'yes' }, draggable: false },
+        { id: 'wait-11', type: 'waitNode', position: { x: rightYesBranchX, y: pos9 }, data: { nodeId: 'wait-11', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-11', type: 'actionNode', position: { x: rightYesBranchX, y: pos10 }, data: { nodeId: 'action-11', label: 'End Sequence', actionType: 'end-sequence', branch: 'yes' }, draggable: false },
+        // Right "If Message Responded" NO branch
+        { id: 'wait-12', type: 'waitNode', position: { x: rightNoBranchX, y: pos7 }, data: { nodeId: 'wait-12', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-12', type: 'actionNode', position: { x: rightNoBranchX, y: pos8 }, data: { nodeId: 'action-12', label: 'Send InMail', actionType: 'send-inmail', branch: 'no' }, draggable: false },
+        { id: 'wait-13', type: 'waitNode', position: { x: rightNoBranchX, y: pos9 }, data: { nodeId: 'wait-13', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: false },
+        { id: 'action-13', type: 'actionNode', position: { x: rightNoBranchX, y: pos10 }, data: { nodeId: 'action-13', label: 'End Sequence', actionType: 'end-sequence', branch: 'no' }, draggable: false }
       ]
       const managerEdges: Edge[] = [
         { id: 'edge-begin-0', source: 'begin-sequence', target: 'action-0', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
@@ -646,7 +814,25 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
         { id: 'edge-2-wait-4', source: 'action-2', target: 'wait-4', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-wait-4-4', source: 'wait-4', target: 'action-4', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
         { id: 'edge-3-wait-5', source: 'action-3', target: 'wait-5', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-5-5', source: 'wait-5', target: 'action-5', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } }
+        { id: 'edge-wait-5-5', source: 'wait-5', target: 'action-5', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        // Left "If Message Responded" branches
+        { id: 'edge-4-wait-6-yes', source: 'action-4', sourceHandle: 'yes', target: 'wait-6', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'Yes', labelStyle: { fill: '#000', fontWeight: '700', fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-wait-6-6', source: 'wait-6', target: 'action-6', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-6-wait-7', source: 'action-6', target: 'wait-7', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-wait-7-7', source: 'wait-7', target: 'action-7', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-4-wait-8-no', source: 'action-4', sourceHandle: 'no', target: 'wait-8', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'No', labelStyle: { fill: '#000', fontWeight: '700', fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-wait-8-8', source: 'wait-8', target: 'action-8', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-8-wait-9', source: 'action-8', target: 'wait-9', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-wait-9-9', source: 'wait-9', target: 'action-9', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        // Right "If Message Responded" branches
+        { id: 'edge-5-wait-10-yes', source: 'action-5', sourceHandle: 'yes', target: 'wait-10', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'Yes', labelStyle: { fill: '#000', fontWeight: '700', fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-wait-10-10', source: 'wait-10', target: 'action-10', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-10-wait-11', source: 'action-10', target: 'wait-11', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-wait-11-11', source: 'wait-11', target: 'action-11', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-5-wait-12-no', source: 'action-5', sourceHandle: 'no', target: 'wait-12', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'No', labelStyle: { fill: '#000', fontWeight: '700', fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-wait-12-12', source: 'wait-12', target: 'action-12', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-12-wait-13', source: 'action-12', target: 'wait-13', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
+        { id: 'edge-wait-13-13', source: 'wait-13', target: 'action-13', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } }
       ]
       
       // Mark nodes with children to hide "Add Next Action" buttons
@@ -654,7 +840,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       
       setNodes(nodesWithChildren)
       setEdges(managerEdges)
-      setActionCount(6)
+      setActionCount(14)
       
       // Fit view to show all nodes after a short delay to ensure rendering is complete
       setTimeout(() => {
@@ -796,20 +982,19 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
 
   // Helper to determine which branch path (yes/no) we came through from a conditional node
   const getBranchPathFromConditional = useCallback((conditionalActionType: string, startNodeId?: string): 'yes' | 'no' | null => {
-    // Find the conditional node
-    const conditionalNode = nodes.find(n => n.data.actionType === conditionalActionType)
-    if (!conditionalNode) return null
-    
-    // If we're directly branching from this conditional
-    if (pendingBranch?.parentId === conditionalNode.id) {
-      return pendingBranch.branch === 'yes' ? 'yes' : 'no'
+    // If we're directly branching from a conditional
+    if (pendingBranch) {
+      const conditionalNode = nodes.find(n => n.id === pendingBranch.parentId && n.data.actionType === conditionalActionType)
+      if (conditionalNode) {
+        return pendingBranch.branch === 'yes' ? 'yes' : 'no'
+      }
     }
     
     // If we have a parent node to trace from
     const traceFromNodeId = startNodeId || pendingParent
     if (!traceFromNodeId) return null
     
-    // Trace back through edges to find which branch we came through
+    // Trace back through edges to find the conditional node in the actual path
     const visited = new Set<string>()
     const queue = [traceFromNodeId]
     
@@ -822,9 +1007,10 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       const incomingEdges = edges.filter(edge => edge.target === currentId)
       
       for (const edge of incomingEdges) {
-        // Check if this edge comes from our conditional node
-        if (edge.source === conditionalNode.id) {
-          // Found it! Return which branch handle was used
+        // Check if the source node is a conditional of the type we're looking for
+        const sourceNode = nodes.find(n => n.id === edge.source)
+        if (sourceNode && sourceNode.data.actionType === conditionalActionType) {
+          // Found the conditional node in the path! Return which branch handle was used
           return edge.sourceHandle === 'yes' ? 'yes' : 'no'
         }
         
@@ -849,20 +1035,35 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
     }
     
     // If Message Responded: Check if send-message or send-inmail exists IN THE CURRENT PATH
+    // Cannot be added back-to-back (not immediately after another "If Message Responded")
     if (actionId === 'if-message-responded') {
-      // If we're adding to a branch, check the path up to the parent
-      const parentId = pendingBranch?.parentId
+      // Get the parent node ID from either pendingBranch or pendingParent
+      const parentId = pendingBranch?.parentId || pendingParent
       
       if (parentId) {
-        // Check if send-message or send-inmail exists in the ancestry of the parent node
+        // Check if the parent node itself is "if-message-responded" (prevent back-to-back)
+        const parentNode = nodes.find(n => n.id === parentId)
+        const isParentMessageResponded = parentNode?.data.actionType === 'if-message-responded'
+        if (isParentMessageResponded) return false
+        
+        // Check if the parent node itself is send-message or send-inmail
+        const isParentSendMessage = parentNode?.data.actionType === 'send-message'
+        const isParentSendInMail = parentNode?.data.actionType === 'send-inmail'
+        
+        // Check if send-message or send-inmail exists in the ancestry path
         const hasSendMessageInPath = hasActionTypeInPath('send-message', parentId)
         const hasSendInMailInPath = hasActionTypeInPath('send-inmail', parentId)
-        const alreadyHasMessageResponded = hasActionType('if-message-responded')
         
-        return (hasSendMessageInPath || hasSendInMailInPath) && !alreadyHasMessageResponded
+        // Check if "If Message Responded" already exists in THIS PATH (not entire sequence)
+        const alreadyHasMessageRespondedInPath = hasActionTypeInPath('if-message-responded', parentId)
+        
+        // Allow if parent is send-message/send-inmail OR exists in path, AND not already in this path
+        const hasMessageAction = isParentSendMessage || isParentSendInMail || hasSendMessageInPath || hasSendInMailInPath
+        
+        return hasMessageAction && !alreadyHasMessageRespondedInPath
       }
       
-      // If not in a branch, check the entire sequence
+      // If no parent context, check the entire sequence (fallback for main sequence)
       return (hasActionType('send-message') || hasActionType('send-inmail')) && !hasActionType('if-message-responded')
     }
     
@@ -900,43 +1101,49 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       return branchPath === 'yes'
     }
     
-    // Activate Responder: Only available in "yes" branch of If Message Responded
+    // Activate Responder: ONLY available in "yes" branch of "If Message Responded"
+    // Cannot be added directly after "Send Message" or "Send InMail"
+    // Allow multiple instances in different branch paths (Yes vs No branches are separate)
     if (actionId === 'activate-responder') {
-      const messageRespondedNode = nodes.find(n => n.data.actionType === 'if-message-responded')
+      // Get the parent node ID from either pendingBranch or pendingParent
+      const parentId = pendingBranch?.parentId || pendingParent
       
-      // If we're directly branching from the if-message-responded node
-      if (messageRespondedNode && pendingBranch?.parentId === messageRespondedNode.id) {
-        // Only allow in "yes" branch (message was responded to)
-        return pendingBranch?.branch === 'yes'
-      }
-      
-      // If we're further down in the tree, check if we came through the "yes" branch
-      const parentId = pendingBranch?.parentId
-      if (parentId && messageRespondedNode) {
-        // Check if if-message-responded is in the path
-        const isInPath = hasActionTypeInPath('if-message-responded', parentId)
+      if (parentId) {
+        // Check if "Activate Responder" already exists in THIS PATH (not entire sequence)
+        const alreadyHasResponderInPath = hasActionTypeInPath('activate-responder', parentId)
+        if (alreadyHasResponderInPath) return false
+        
+        // Check if the parent node itself is "if-message-responded" (for direct branching)
+        const parentNode = nodes.find(n => n.id === parentId)
+        const isParentMessageResponded = parentNode?.data.actionType === 'if-message-responded'
+        
+        // "If Message Responded" MUST exist in the current path (either parent itself or in ancestors)
+        const isInPath = isParentMessageResponded || hasActionTypeInPath('if-message-responded', parentId)
         if (!isInPath) return false
         
-        // Now verify we came through the "yes" branch
-        // Find the edge from if-message-responded that leads to our current path
-        const ancestors = findAncestors(parentId)
+        // Find the if-message-responded node in the path
+        const messageRespondedNode = nodes.find(n => n.data.actionType === 'if-message-responded')
+        if (!messageRespondedNode) return false
         
-        // Check if there's a "yes" edge from if-message-responded in our ancestry
-        const hasYesPath = edges.some(edge => 
-          edge.source === messageRespondedNode.id && 
-          edge.sourceHandle === 'yes' &&
-          ancestors.includes(edge.target)
-        )
+        // If we're directly branching from the if-message-responded node
+        if (pendingBranch?.parentId === messageRespondedNode.id) {
+          // Only allow in "yes" branch (message was responded to)
+          return pendingBranch?.branch === 'yes'
+        }
         
-        return hasYesPath
+        // If we're further down in the tree, use getBranchPathFromConditional to determine which branch we're in
+        const branchPath = getBranchPathFromConditional('if-message-responded', parentId)
+        // Only allow if we're in the "yes" branch (null or 'no' means not allowed)
+        return branchPath === 'yes'
       }
       
-      // Fallback: check if if-message-responded exists anywhere
-      // (This would only apply if not in a branch context)
-      return hasActionType('if-message-responded')
+      // If no parent context, don't allow (must be in a specific path with "If Message Responded")
+      return false
     }
     
-    // Rescind Connection Request: Only available after connection-request but before if-connection-accepted
+    // Rescind Connection Request: Only available after connection-request
+    // Allowed in "No" branch of "If Connection Accepted" (connection not accepted)
+    // Not allowed in "Yes" branch or main sequence after the conditional
     if (actionId === 'rescind-connection-request') {
       const hasConnectionRequest = hasActionType('connection-request')
       const hasConnectionAccepted = hasActionType('if-connection-accepted')
@@ -944,19 +1151,21 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       // Must have sent a connection request
       if (!hasConnectionRequest) return false
       
-      // Cannot rescind after the conditional check (if-connection-accepted)
+      // If "If Connection Accepted" exists, check which branch path we're in
       if (hasConnectionAccepted) {
-        // If we're in a branch context, check if we're adding before or after the conditional
-        if (pendingBranch?.parentId) {
-          const conditionalNode = nodes.find(n => n.data.actionType === 'if-connection-accepted')
-          // Can't add rescind in branches after the conditional
-          if (conditionalNode) return false
-        } else {
-          // Not in a branch, but conditional exists - can't add rescind
-          return false
+        // Determine which branch path we came through from "If Connection Accepted"
+        const branchPath = getBranchPathFromConditional('if-connection-accepted', pendingBranch?.parentId || pendingParent || undefined)
+        
+        // Allow rescind only in the "No" branch (connection was not accepted)
+        if (branchPath === 'no') {
+          return true
         }
+        
+        // Block rescind in "Yes" branch or if we can't determine the path (main sequence after conditional)
+        return false
       }
       
+      // No conditional exists yet, allow rescind
       return true
     }
 
@@ -983,6 +1192,68 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
     
     return descendants
   }, [])
+
+  // Helper to recalculate branch positions for symmetry
+  const recalculateBranchPositions = useCallback((
+    conditionalNodeId: string,
+    currentNodes: Node[],
+    currentEdges: Edge[]
+  ): Node[] => {
+    const conditionalNode = currentNodes.find(n => n.id === conditionalNodeId)
+    if (!conditionalNode || conditionalNode.type !== 'conditionalNode') {
+      return currentNodes
+    }
+
+    // Find direct children of yes and no branches
+    const yesEdge = currentEdges.find(e => e.source === conditionalNodeId && e.sourceHandle === 'yes')
+    const noEdge = currentEdges.find(e => e.source === conditionalNodeId && e.sourceHandle === 'no')
+    
+    if (!yesEdge && !noEdge) {
+      return currentNodes // No branches to recalculate
+    }
+
+    // Get the conditional node's height (should be compact when both branches exist)
+    const conditionalHeight = NODE_HEIGHTS.conditionalWithoutButtons // 64px when compact
+    
+    // Calculate the target Y position for direct branch children
+    // They should be positioned at: parent bottom + DESIRED_GAP + vertical offset for smoother curves
+    const targetYForBranchChildren = conditionalNode.position.y + conditionalHeight + DESIRED_GAP + BRANCH_VERTICAL_OFFSET
+
+    const updatedNodes = currentNodes.map(node => ({ ...node }))
+
+    // Helper to adjust a branch and all its descendants
+    const adjustBranch = (branchEdge: Edge) => {
+      const firstChildId = branchEdge.target
+      const firstChild = updatedNodes.find(n => n.id === firstChildId)
+      
+      if (!firstChild) return
+
+      // Calculate how much we need to shift this branch
+      const currentY = firstChild.position.y
+      const yDelta = targetYForBranchChildren - currentY
+
+      if (Math.abs(yDelta) < 1) return // Already positioned correctly
+
+      // Move the first child and all its descendants
+      const branchDescendants = [firstChildId, ...findAllDescendants(firstChildId, currentEdges)]
+      
+      branchDescendants.forEach(nodeId => {
+        const node = updatedNodes.find(n => n.id === nodeId)
+        if (node) {
+          node.position = {
+            ...node.position,
+            y: node.position.y + yDelta
+          }
+        }
+      })
+    }
+
+    // Adjust both branches to have identical vertical positioning
+    if (yesEdge) adjustBranch(yesEdge)
+    if (noEdge) adjustBranch(noEdge)
+
+    return updatedNodes
+  }, [findAllDescendants])
 
   const confirmDelete = useCallback((nodeId: string) => {
     setNodeToDelete(nodeId)
@@ -1039,7 +1310,8 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
         }
       })
       
-      // REPOSITION: Adjust vertical spacing for conditional nodes that changed size
+      // Handle conditional node expansion when a branch is deleted
+      // When a branch is deleted, the conditional node transitions from compact (64px) to showing buttons (108px)
       const conditionalNodes = updatedNodes.filter(node => node.type === 'conditionalNode')
       
       conditionalNodes.forEach(condNode => {
@@ -1052,21 +1324,21 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
         const hasOneBranch = (hasYes && !hasNo) || (!hasYes && hasNo)
         
         if (hasOneBranch) {
-          // Node now shows a button (108px) where before it might have been compact (64px)
-          // We need to check if its children were positioned for the compact version
-          // The height difference is: 108 - 64 = 44px
+          // Node now shows a button (108px) where before it was compact (64px)
+          // The height increase is: 108 - 64 = 44px
           const heightIncrease = NODE_HEIGHTS.conditionalWithButtons - NODE_HEIGHTS.conditionalWithoutButtons // 44px
           
-          // Find all descendants of this conditional node
+          // Find all descendants of this conditional node (the remaining branch)
           const descendants = findAllDescendants(condNode.id, remainingEdges)
           
-          // Move descendants DOWN by the height increase to close the visual gap
-          // This keeps the proper DESIRED_GAP spacing
-          updatedNodes.forEach(node => {
-            if (descendants.includes(node.id)) {
+          // Push descendants DOWN by the height increase to maintain proper DESIRED_GAP spacing
+          // This ensures the gap between the conditional node bottom and first branch child remains 40px
+          descendants.forEach(nodeId => {
+            const node = updatedNodes.find(n => n.id === nodeId)
+            if (node) {
               node.position = {
                 ...node.position,
-                y: node.position.y - heightIncrease // Move up to close gap
+                y: node.position.y + heightIncrease
               }
             }
           })
@@ -1166,7 +1438,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
           label: actionType.label,
           actionType: actionType.id
         },
-        draggable: true
+        draggable: false
       }
 
       setNodes([newNode])
@@ -1195,25 +1467,29 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       const newActionId = `action-${actionCount}`
       const waitNodeId = `wait-${actionCount}`
       
-      // Use grid-based X positioning for branches
-      const branchX = getBranchXPosition(pendingBranch.branch, parentNode.position.x)
+      // Check if this is the second branch being added (transition from 108px to 64px)
+      const isAddingSecondBranch = (pendingBranch.branch === 'yes' && parentNode.data.hasNoChild) ||
+                                    (pendingBranch.branch === 'no' && parentNode.data.hasYesChild)
+      
+      // When adding the second branch, use the compact height for positioning
+      const parentHeight = isAddingSecondBranch 
+        ? NODE_HEIGHTS.conditionalWithoutButtons 
+        : getNodeHeight(parentNode)
+      const waitNodeHeight = NODE_HEIGHTS.wait
+      
+      // Position wait node: parent bottom + DESIRED_GAP + vertical offset for smoother curves
+      const waitY = parentNode.position.y + parentHeight + DESIRED_GAP + BRANCH_VERTICAL_OFFSET
+      
+      // Use grid-based X positioning for branches, checking for collisions at the target Y level
+      const branchX = getBranchXPosition(pendingBranch.branch, parentNode.position.x, waitY, nodes)
       console.log('Branch positioning:', { 
         branch: pendingBranch.branch, 
         parentX: parentNode.position.x, 
-        branchX 
+        branchX,
+        waitY,
+        isAddingSecondBranch
       })
       
-      // Calculate dynamic positions based on actual node heights
-      const parentHeight = getNodeHeight(parentNode)
-      const waitNodeHeight = NODE_HEIGHTS.wait
-      
-      // Calculate total vertical distance from parent bottom to child top
-      const totalVerticalSpace = DESIRED_GAP * 2 + waitNodeHeight
-      
-      // Position wait node so it's perfectly centered in the vertical space
-      // Parent bottom is at: parentNode.position.y + parentHeight
-      // Wait node should start at: parent bottom + DESIRED_GAP
-      const waitY = parentNode.position.y + parentHeight + DESIRED_GAP
       const [waitX, snappedWaitY] = snapToGrid(branchX, waitY)
 
       // Position action node: wait node bottom + DESIRED_GAP
@@ -1241,7 +1517,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
           label: actionType.label,
           actionType: actionType.id
         },
-        draggable: true
+        draggable: false
       }
 
       // Create edges
@@ -1280,21 +1556,33 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
       console.log('Marking parent node with flag:', { 
         parentId: pendingBranch.parentId, 
         branch: pendingBranch.branch,
-        flag: branchFlag 
+        flag: branchFlag,
+        isAddingSecondBranch
       })
       
-      setNodes((nds) => nds.map(n => {
-        if (n.id === pendingBranch.parentId) {
-          return {
-            ...n,
-            data: {
-              ...n.data,
-              [branchFlag]: true
+      setNodes((nds) => {
+        // First, add the new nodes and update the parent's branch flags
+        let updatedNodes = nds.map(n => {
+          if (n.id === pendingBranch.parentId) {
+            return {
+              ...n,
+              data: {
+                ...n.data,
+                [branchFlag]: true
+              }
             }
           }
+          return n
+        }).concat([waitNode, newActionNode])
+
+        // If adding the second branch, recalculate positions for symmetry
+        if (isAddingSecondBranch) {
+          const newEdges = [...edges, edgeToWait, edgeToAction]
+          updatedNodes = recalculateBranchPositions(pendingBranch.parentId, updatedNodes, newEdges)
         }
-        return n
-      }).concat([waitNode, newActionNode]))
+
+        return updatedNodes
+      })
       
       setEdges((eds) => [...eds, edgeToWait, edgeToAction])
       setActionCount(actionCount + 1)
@@ -1373,7 +1661,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
         label: actionType.label,
         actionType: actionType.id
       },
-      draggable: true
+      draggable: false
     }
 
     // Create edges
@@ -1422,7 +1710,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
     setTimeout(() => {
       reactFlowInstance.fitView({ padding: 0.2, duration: 400 })
     }, 50)
-  }, [nodes, actionCount, setNodes, setEdges, pendingBranch, pendingParent, reactFlowInstance])
+  }, [nodes, edges, actionCount, setNodes, setEdges, pendingBranch, pendingParent, reactFlowInstance, recalculateBranchPositions])
 
   const handleClearSequence = useCallback(() => {
     setShowClearConfirm(true)
@@ -1443,17 +1731,16 @@ function SequencerTabInner({ jobDescriptionId: initialJobId }: SequencerTabProps
     }
     
     // Simulate AI-generated message based on instructions
-    const sampleCandidate = sampleCandidates[0] || { name: 'John Doe', title: 'Software Engineer', company: 'Tech Corp' }
-    const generatedText = `Hi ${sampleCandidate.name.split(' ')[0]},
+    const generatedText = `Hi there,
 
-I noticed your experience as a ${sampleCandidate.title} at ${sampleCandidate.company}. ${messageInstructions}
+I noticed your experience and background. ${messageInstructions}
 
 Looking forward to connecting!
 
 Best regards`
     
     setGeneratedMessage(generatedText)
-  }, [messageInstructions, sampleCandidates])
+  }, [messageInstructions])
 
   const handleGenerateResponderExample = useCallback(() => {
     if (!responderInstructions.trim()) {
@@ -1522,7 +1809,7 @@ Example response: Based on your instructions, the responder will handle incoming
             }}
           >
             <SelectTrigger className={`w-full ${!selectedJobId ? 'border-gray-400 focus:border-gray-600' : ''}`}>
-              <SelectValue placeholder="Select a job posting..." />
+              <SelectValue placeholder="No role selected" />
             </SelectTrigger>
             <SelectContent>
               {selectedJobId && (
@@ -1547,62 +1834,15 @@ Example response: Based on your instructions, the responder will handle incoming
               )}
             </SelectContent>
           </Select>
-          {!selectedJobId && (
-            <p className="text-xs text-gray-600 mt-2">
-              Please select a job posting to view campaign details
-            </p>
-          )}
         </CardContent>
       </Card>
 
-      {/* Candidates Summary & Table */}
+      {/* Candidates Summary */}
       {selectedJobId && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">{approvedCount} Approved Candidates</CardTitle>
-              <Button
-                onClick={handleRefreshCandidates}
-                disabled={approvedCount <= 5}
-                variant="outline"
-                size="sm"
-                className="bg-white hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <RefreshCcw className="h-4 w-4" />
-              </Button>
-            </div>
+            <CardTitle className="text-lg">{approvedCount} Approved Candidates</CardTitle>
           </CardHeader>
-          <CardContent>
-            {sampleCandidates.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Name</th>
-                      <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Title</th>
-                      <th className="text-left py-3 px-4 font-medium text-sm text-gray-600">Company</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sampleCandidates.map((candidate) => (
-                      <tr 
-                        key={candidate.id}
-                        className="border-b hover:bg-gray-50 transition-colors"
-                      >
-                        <td className="py-3 px-4 text-sm">{candidate.name}</td>
-                        <td className="py-3 px-4 text-sm text-gray-600">{candidate.title}</td>
-                        <td className="py-3 px-4 text-sm text-gray-600">{candidate.company}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <p className="text-sm">No approved candidates for this role yet.</p>
-              </div>
-            )}
-          </CardContent>
         </Card>
       )}
 
@@ -1645,6 +1885,13 @@ Example response: Based on your instructions, the responder will handle incoming
                 className="bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Clear Sequence
+              </Button>
+              <Button
+                onClick={() => onNavigateToSandbox?.()}
+                variant="outline"
+                className="bg-white hover:bg-gray-50"
+              >
+                Test
               </Button>
               <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-300">
                 <span className="text-sm font-semibold text-gray-900">
@@ -1709,7 +1956,7 @@ Example response: Based on your instructions, the responder will handle incoming
               snapToGrid={true}
               snapGrid={[GRID_SIZE, GRID_SIZE]}
               className="bg-gray-50"
-              nodesDraggable={true}
+              nodesDraggable={false}
               nodesConnectable={false}
               elementsSelectable={true}
               preventScrolling={false}

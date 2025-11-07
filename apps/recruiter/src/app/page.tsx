@@ -160,8 +160,8 @@ export default function RecruiterApp () {
       icon: Rocket, 
       subItems: []
     },
-    { id: 'inbox', label: 'Inbox', icon: Inbox, subItems: [] },
     { id: 'sandbox', label: 'Sandbox', icon: Box, subItems: [] },
+    { id: 'inbox', label: 'Inbox', icon: Inbox, subItems: [] },
     { id: 'settings', label: 'Settings', icon: Settings, subItems: [] }
   ]
 
@@ -207,6 +207,7 @@ export default function RecruiterApp () {
         return (
           <SequencerTab 
             jobDescriptionId={currentJobDescriptionId}
+            onNavigateToSandbox={() => setRecruiterTab('sandbox')}
           />
         )
       case 'inbox':

@@ -2,12 +2,35 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Menu, X, User, Globe } from 'lucide-react'
-import { AuthWrapper } from '@/components/auth/auth-wrapper''
+import { Menu, X, User, Rocket, Settings, Database } from 'lucide-react'
+import { AuthWrapper } from '@/components/auth/auth-wrapper'
+import { LeadSourcesTab } from '@/components/inbounder/LeadSourcesTab'
+import { SequencerTab } from '@/components/inbounder/SequencerTab'
+import { SettingsTab } from '@/components/inbounder/SettingsTab'
 
 export default function InbounderApp () {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [inbounderTab, setInbounderTab] = useState('sequencer')
+
+  // Inbounder tabs
+  const inbounderTabs = [
+    { id: 'lead-sources', label: 'Lead Sources', icon: Database },
+    { id: 'sequencer', label: 'Sequencer', icon: Rocket },
+    { id: 'settings', label: 'Settings', icon: Settings }
+  ]
+
+  const renderInbounderContent = () => {
+    switch (inbounderTab) {
+      case 'lead-sources':
+        return <LeadSourcesTab />
+      case 'sequencer':
+        return <SequencerTab />
+      case 'settings':
+        return <SettingsTab />
+      default:
+        return null
+    }
+  }
 
   return (
     <AuthWrapper>
@@ -29,6 +52,28 @@ export default function InbounderApp () {
             </Button>
           </div>
 
+          {/* Navigation */}
+          <nav className={`flex-1 ${sidebarOpen ? 'p-2 space-y-2' : 'p-2 space-y-2'}`}>
+            {inbounderTabs.map((tab) => {
+              const Icon = tab.icon
+              
+              return (
+                <Button
+                  key={tab.id}
+                  variant={inbounderTab === tab.id ? 'default' : 'ghost'}
+                  size={sidebarOpen ? 'default' : 'icon'}
+                  className={`w-full h-9 flex items-center ${sidebarOpen ? 'justify-start px-3' : 'justify-center px-2'}`}
+                  onClick={() => setInbounderTab(tab.id)}
+                >
+                  <Icon className="h-4 w-4 flex-shrink-0" />
+                  {sidebarOpen && (
+                    <span className="ml-2 flex items-center">{tab.label}</span>
+                  )}
+                </Button>
+              )
+            })}
+          </nav>
+
           {/* User Button */}
           <div className="mt-auto p-2 border-t border-border">
             <div className="flex items-center gap-2 p-2">
@@ -43,30 +88,12 @@ export default function InbounderApp () {
         <div className="flex-1 flex flex-col overflow-hidden">
           <main className="flex-1 overflow-auto p-6">
             <div className="mb-5">
-              <h1 className="text-xl font-bold text-foreground">Inbounder</h1>
-              <p className="text-muted-foreground mt-2">Lead capture and qualification</p>
+              <h1 className="text-xl font-bold text-foreground">
+                {inbounderTabs.find(tab => tab.id === inbounderTab)?.label}
+              </h1>
             </div>
             
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <Globe className="h-8 w-8 text-green-600" />
-                    <div>
-                      <CardTitle>Welcome to Inbounder</CardTitle>
-                      <CardDescription>
-                        Capture and qualify inbound leads automatically
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">
-                    This application is under development. Lead capture, qualification, and routing features will be available soon.
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+            {renderInbounderContent()}
           </main>
         </div>
       </div>
