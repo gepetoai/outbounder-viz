@@ -17,12 +17,14 @@ interface SequenceAction {
   type: ActionType
   label: string
   column: number
+  row: number
   parentId: string | null
   branch: 'yes' | 'no' | null
   children: {
     yes?: string
     no?: string
   }
+  isSpacer?: boolean
 }
 
 const actionTypes = [
@@ -49,13 +51,29 @@ export default function SequencerTab () {
   // Zoom state
   const [zoomLevel, setZoomLevel] = useState(1)
 
+  const shiftColumnsRows = (baseActions: SequenceAction[], columns: number[], fromRow: number) => {
+    if (columns.length === 0) return baseActions
+    const columnSet = new Set(columns)
+    return baseActions.map(action => {
+      if (columnSet.has(action.column) && action.row >= fromRow) {
+        return { ...action, row: action.row + 1 }
+      }
+      return action
+    })
+  }
+
   const handleAddAction = (actionType: typeof actionTypes[0]) => {
     const { parentId, branch } = pendingAction
     
     let column = 0
+    let row = 0
+    
     if (parentId && branch) {
       const parent = actions.find(a => a.id === parentId)
       if (parent) {
+        // Both Yes and No branches go to parent.row + 1 (same row as each other!)
+        row = parent.row + 1
+        
         if (branch === 'yes') {
           // Yes branch stays in same column
           column = parent.column
@@ -69,7 +87,11 @@ export default function SequencerTab () {
       const parent = actions.find(a => a.id === parentId)
       if (parent) {
         column = parent.column
+        row = parent.row + 1
       }
+    } else {
+      // First action, no parent
+      row = 1 // Begin Sequence is row 0
     }
 
     const newAction: SequenceAction = {
@@ -77,23 +99,93 @@ export default function SequencerTab () {
       type: actionType.id as ActionType,
       label: actionType.label,
       column,
+      row,
       parentId,
       branch,
       children: {}
     }
 
-    // Update parent's children reference
-    if (parentId && branch) {
-      setActions(actions.map(a => 
-        a.id === parentId 
-          ? { ...a, children: { ...a.children, [branch]: newAction.id } }
+    let updatedActions = [...actions]
+    let currentCount = actionCount
+    
+    // Check if we need to create spacer cards (for No branches that skip columns)
+    if (parentId && branch === 'no') {
+      const parent = updatedActions.find(a => a.id === parentId)
+      if (parent && column > parent.column + 1) {
+        // We need spacers in intermediate columns
+        const spacers: SequenceAction[] = []
+        
+        // Identify which columns we'll be adding spacers to
+        const spacerColumns: number[] = []
+        for (let col = parent.column + 1; col < column; col++) {
+          spacerColumns.push(col)
+        }
+        
+        // CRITICAL: Bump down existing cards in these columns at/after this row
+        updatedActions = shiftColumnsRows(updatedActions, spacerColumns, newAction.row)
+        
+        // Create spacer cards for each intermediate column
+        // All spacers should be on the same row as the new action
+        for (let col = parent.column + 1; col < column; col++) {
+          const spacer: SequenceAction = {
+            id: `spacer-${currentCount}`,
+            type: 'wait',
+            label: 'Spacer',
+            column: col,
+            row: newAction.row, // Same row as the target No branch action!
+            parentId: null, // Will be set below
+            branch: null,
+            children: {},
+            isSpacer: true
+          }
+          spacers.push(spacer)
+          currentCount++
+        }
+        
+        // Now link everything together properly
+        if (spacers.length > 0) {
+          // First spacer is the No child of the parent
+          spacers[0].parentId = parentId
+          spacers[0].branch = 'no'
+          
+          // Link spacers in chain
+          for (let i = 0; i < spacers.length - 1; i++) {
+            spacers[i + 1].parentId = spacers[i].id
+            spacers[i + 1].branch = null
+          }
+          
+          // Last spacer has the new action as its child
+          newAction.parentId = spacers[spacers.length - 1].id
+          newAction.branch = null
+          
+          // Update parent to point to first spacer
+          updatedActions = updatedActions.map(a => 
+            a.id === parentId 
+              ? { ...a, children: { ...a.children, no: spacers[0].id } }
+              : a
+          )
+          
+          // Add all spacers to the actions array
+          updatedActions = updatedActions.concat(spacers)
+        }
+      }
+    }
+
+    // Update parent's children reference (for non-spacer cases, or when spacers weren't needed)
+    if (newAction.parentId && newAction.branch) {
+      const branchKey = newAction.branch
+      updatedActions = updatedActions.map(a => 
+        a.id === newAction.parentId 
+          ? { ...a, children: { ...a.children, [branchKey]: newAction.id } }
           : a
-      ).concat(newAction))
-    } else {
-      setActions([...actions, newAction])
+      )
     }
     
-    setActionCount(actionCount + 1)
+    // Add the new action
+    updatedActions.push(newAction)
+    
+    setActions(updatedActions)
+    setActionCount(currentCount + 1)
     setShowActionMenu(false)
     setPendingAction({ parentId: null, branch: null })
   }
@@ -167,7 +259,24 @@ export default function SequencerTab () {
     const fitZoom = Math.min(zoomX, zoomY)
     
     // Clamp between 0.3 and 2.0
-    setZoomLevel(Math.max(0.3, Math.min(2.0, fitZoom)))
+    const newZoom = Math.max(0.3, Math.min(2.0, fitZoom))
+    setZoomLevel(newZoom)
+    
+    // Center the view after zoom is applied
+    setTimeout(() => {
+      const scaledContentWidth = contentWidth * newZoom
+      const scaledContentHeight = contentHeight * newZoom
+      
+      // Calculate scroll position to center content
+      const scrollLeft = Math.max(0, (scaledContentWidth - containerWidth) / 2)
+      const scrollTop = Math.max(0, (scaledContentHeight - containerHeight) / 2)
+      
+      container.scrollTo({
+        left: scrollLeft,
+        top: scrollTop,
+        behavior: 'smooth'
+      })
+    }, 50) // Small delay to ensure zoom transform is applied
   }
 
   const getActionIcon = (type: ActionType) => {
@@ -184,6 +293,9 @@ export default function SequencerTab () {
 
   // Calculate max column for grid layout
   const maxColumn = actions.length > 0 ? Math.max(...actions.map(a => a.column)) : 0
+  
+  // Check if there are any real (non-spacer) actions
+  const hasRealActions = actions.some(a => !a.isSpacer)
 
   // Find next action in column
   const getNextInColumn = (actionId: string): SequenceAction | null => {
@@ -191,63 +303,32 @@ export default function SequencerTab () {
     if (!action) return null
     
     // Look for an action with this action as parent and no branch (direct child)
-    return actions.find(a => a.parentId === actionId && a.branch === null) || null
+    // Also exclude spacers from consideration
+    return actions.find(a => a.parentId === actionId && a.branch === null && !a.isSpacer) || null
   }
 
   // Check if action is last in its branch
   const isLastInBranch = (actionId: string): boolean => {
+    const action = actions.find(a => a.id === actionId)
+    // Spacers should never show "Add Next Action" button
+    if (action?.isSpacer) return false
     return !getNextInColumn(actionId)
   }
 
   // Build a tree structure to organize rendering
   const buildActionTree = () => {
     const tree: Array<{ action: SequenceAction | null; row: number; column: number }> = []
-    let currentRow = 0
     
-    // Start with Begin Sequence
-    tree.push({ action: null, row: currentRow++, column: 0 })
+    // Start with Begin Sequence at row 0
+    tree.push({ action: null, row: 0, column: 0 })
     
-    // Process actions level by level
-    const processAction = (actionId: string | null, row: number, column: number): number => {
-      if (!actionId) return row
-      
-      const action = actions.find(a => a.id === actionId)
-      if (!action) return row
-      
-      tree.push({ action, row, column })
-      
-      // If this has both yes and no branches, they should be on the same row
-      if (action.type === 'condition' && (action.children.yes || action.children.no)) {
-        const nextRow = row + 1
-        let maxRow = nextRow
-        
-        if (action.children.yes) {
-          maxRow = Math.max(maxRow, processAction(action.children.yes, nextRow, column))
-        }
-        if (action.children.no) {
-          const noChild = actions.find(a => a.id === action.children.no)
-          if (noChild) {
-            maxRow = Math.max(maxRow, processAction(action.children.no, nextRow, noChild.column))
-          }
-        }
-        
-        return maxRow
-      } else {
-        // Regular action - check for direct child (non-branch)
-        const directChild = actions.find(a => a.parentId === actionId && a.branch === null)
-        if (directChild) {
-          return processAction(directChild.id, row + 1, column)
-        }
-      }
-      
-      return row
-    }
-    
-    // Start processing from root actions (those with no parent)
-    const rootActions = actions.filter(a => !a.parentId)
-    let maxRow = currentRow
-    rootActions.forEach(action => {
-      maxRow = Math.max(maxRow, processAction(action.id, currentRow, action.column))
+    // Add all actions using their pre-calculated row and column values
+    actions.forEach(action => {
+      tree.push({
+        action,
+        row: action.row,
+        column: action.column
+      })
     })
     
     return tree
@@ -310,7 +391,7 @@ export default function SequencerTab () {
       clearTimeout(timeoutId)
       window.removeEventListener('resize', calculatePositions)
     }
-  }, [actions.length])
+  }, [actions, zoomLevel])
 
   // Helper function to determine connections
   interface Connection {
@@ -456,7 +537,7 @@ export default function SequencerTab () {
                 size="sm"
                 className="bg-white hover:bg-gray-50"
                 onClick={handleClearSequence}
-                disabled={actions.length === 0}
+                disabled={!hasRealActions}
               >
                 Clear Sequence
               </Button>
@@ -554,7 +635,7 @@ export default function SequencerTab () {
                                 <Settings className="h-4 w-4" />
                               </button>
                             </div>
-                            {actions.length === 0 && (
+                            {!hasRealActions && (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -568,6 +649,23 @@ export default function SequencerTab () {
                           </CardContent>
                         </Card>
                       </div>
+                    )
+                  }
+                  
+                  // Spacer Card (invisible, just for positioning)
+                  if (action.isSpacer) {
+                    return (
+                      <div 
+                        key={action.id}
+                        ref={(el) => { cardRefs.current[action.id] = el }}
+                        style={{
+                          gridRow: row + 1,
+                          gridColumn: column + 1,
+                          width: '320px',
+                          height: '180px'
+                        }}
+                        className="pointer-events-none"
+                      />
                     )
                   }
                   

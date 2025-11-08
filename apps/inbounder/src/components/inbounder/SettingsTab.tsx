@@ -26,6 +26,67 @@ import {
   Phone,
   Plus
 } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+
+// Comprehensive list of Salesforce Lead object fields
+const ALL_SALESFORCE_FIELDS = [
+  'FirstName',
+  'LastName',
+  'Email',
+  'Phone',
+  'Company',
+  'Title',
+  'Description',
+  'LeadSource',
+  'Street',
+  'City',
+  'State',
+  'PostalCode',
+  'Country',
+  'Website',
+  'Industry',
+  'NumberOfEmployees',
+  'AnnualRevenue',
+  'Rating',
+  'Status',
+  'MobilePhone',
+  'Fax',
+  'Salutation',
+  'MiddleName',
+  'Suffix',
+  'EmailBouncedDate',
+  'EmailBouncedReason',
+  'Jigsaw',
+  'JigsawContactId',
+  'CleanStatus',
+  'CompanyDunsNumber',
+  'DandbCompanyId',
+  'PhotoUrl',
+  'IndividualId',
+  'ConvertedDate',
+  'ConvertedAccountId',
+  'ConvertedContactId',
+  'ConvertedOpportunityId',
+  'IsConverted',
+  'IsUnreadByOwner',
+  'CurrentGenerators__c',
+  'NumberofLocations__c',
+  'Primary__c',
+  'ProductInterest__c',
+  'SICCode__c'
+]
+
+// Default selected fields matching current CRMMapping
+const DEFAULT_SELECTED_FIELDS = [
+  'FirstName',
+  'LastName',
+  'Email',
+  'Phone',
+  'Company',
+  'Title',
+  'Description',
+  'LeadSource'
+]
 
 export function SettingsTab () {
   const [aiProvider, setAiProvider] = useState<'248' | 'openai' | 'anthropic' | 'grok'>('248')
@@ -37,9 +98,13 @@ export function SettingsTab () {
   const [aiSettingsSaved, setAiSettingsSaved] = useState(false)
   
   const [crmConnections, setCrmConnections] = useState({
-    salesforce: false,
+    salesforce: true, // Default to connected
     hubspot: false
   })
+  
+  const [salesforceSelectedFields, setSalesforceSelectedFields] = useState<string[]>(DEFAULT_SELECTED_FIELDS)
+  const [salesforceConnectionStep, setSalesforceConnectionStep] = useState<'connect' | 'select-fields'>('connect')
+  const [isFetchingFields, setIsFetchingFields] = useState(false)
   
   const [connectionDialog, setConnectionDialog] = useState<{
     open: boolean
@@ -100,11 +165,57 @@ export function SettingsTab () {
   }
 
   const handleConnectCrm = (crm: 'salesforce' | 'hubspot') => {
+    if (crm === 'salesforce') {
+      setSalesforceConnectionStep('connect')
+    }
     setConnectionDialog({ open: true, crm })
   }
 
   const handleDisconnectCrm = (crm: 'salesforce' | 'hubspot') => {
     setCrmConnections(prev => ({ ...prev, [crm]: false }))
+    if (crm === 'salesforce') {
+      setSalesforceConnectionStep('connect')
+      setSalesforceSelectedFields(DEFAULT_SELECTED_FIELDS)
+    }
+  }
+
+  const handleToggleSalesforceField = (field: string) => {
+    setSalesforceSelectedFields(prev => 
+      prev.includes(field)
+        ? prev.filter(f => f !== field)
+        : [...prev, field]
+    )
+  }
+
+  const handleSelectAllSalesforceFields = () => {
+    setSalesforceSelectedFields(ALL_SALESFORCE_FIELDS)
+  }
+
+  const handleDeselectAllSalesforceFields = () => {
+    setSalesforceSelectedFields([])
+  }
+
+  const handleAuthorizeSalesforce = async () => {
+    setIsConnecting(true)
+    // Simulate OAuth/authorization process
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    setIsConnecting(false)
+    
+    // After successful authorization, fetch fields
+    setIsFetchingFields(true)
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    setIsFetchingFields(false)
+    
+    // Move to field selection step
+    setSalesforceConnectionStep('select-fields')
+  }
+
+  const handleCompleteSalesforceConnection = () => {
+    if (salesforceSelectedFields.length === 0) return
+    
+    setCrmConnections(prev => ({ ...prev, salesforce: true }))
+    setConnectionDialog({ open: false, crm: null })
+    setSalesforceConnectionStep('connect')
   }
 
   const handleConfirmConnection = async () => {
@@ -388,35 +499,165 @@ export function SettingsTab () {
       </Card>
 
       {/* Connection Dialog */}
-      <Dialog open={connectionDialog.open} onOpenChange={(open) => setConnectionDialog({ open, crm: open ? connectionDialog.crm : null })}>
-        <DialogContent className="border-border">
+      <Dialog open={connectionDialog.open} onOpenChange={(open) => {
+        setConnectionDialog({ open, crm: open ? connectionDialog.crm : null })
+        if (!open && connectionDialog.crm === 'salesforce') {
+          setSalesforceConnectionStep('connect')
+        }
+      }}>
+        <DialogContent className="border-border max-w-2xl max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle>Connect {connectionDialog.crm && crmNames[connectionDialog.crm]}</DialogTitle>
+            <DialogTitle>
+              {connectionDialog.crm === 'salesforce' 
+                ? (salesforceConnectionStep === 'connect' ? 'Connect Salesforce' : 'Select Salesforce Fields')
+                : `Connect ${connectionDialog.crm && crmNames[connectionDialog.crm]}`
+              }
+            </DialogTitle>
             <DialogDescription>
-              You will be redirected to {connectionDialog.crm && crmNames[connectionDialog.crm]} to authorize the connection.
+              {connectionDialog.crm === 'salesforce' 
+                ? (salesforceConnectionStep === 'connect' 
+                    ? 'Authorize access to your Salesforce account to fetch available Lead fields.'
+                    : 'Select which Lead fields you want to make available for mapping.'
+                  )
+                : `You will be redirected to ${connectionDialog.crm && crmNames[connectionDialog.crm]} to authorize the connection.`
+              }
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <div className="space-y-4">
-              <div className="p-4 border border-border rounded-lg bg-gray-50">
-                <Button
-                  onClick={handleConfirmConnection}
-                  disabled={isConnecting}
-                  className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-900"
-                >
-                  {isConnecting ? (
-                    <>
-                      <span className="mr-2">Connecting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Link2 className="h-4 w-4 mr-2" />
-                      Continue to {connectionDialog.crm && crmNames[connectionDialog.crm]}
-                    </>
-                  )}
-                </Button>
+            {connectionDialog.crm === 'salesforce' ? (
+              <>
+                {/* Step 1: Connect/Authorize */}
+                {salesforceConnectionStep === 'connect' && (
+                  <div className="space-y-4">
+                    <div className="p-6 border border-gray-300 rounded-lg bg-gray-50 text-center">
+                      <Building2 className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                      <h3 className="font-semibold mb-2">Authorize Salesforce</h3>
+                      <p className="text-sm text-gray-600 mb-6">
+                        You'll be redirected to Salesforce to log in and authorize access. 
+                        We'll then fetch your Lead object fields.
+                      </p>
+                      <Button
+                        onClick={handleAuthorizeSalesforce}
+                        disabled={isConnecting || isFetchingFields}
+                        className="bg-black hover:bg-gray-800 text-white"
+                      >
+                        {isConnecting ? (
+                          'Authorizing...'
+                        ) : isFetchingFields ? (
+                          'Fetching Fields...'
+                        ) : (
+                          <>
+                            <Link2 className="h-4 w-4 mr-2" />
+                            Authorize with Salesforce
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 2: Select Fields */}
+                {salesforceConnectionStep === 'select-fields' && (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        <p className="text-sm text-green-800">
+                          Successfully connected to Salesforce and fetched Lead fields
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-semibold">Available Lead Fields</Label>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleSelectAllSalesforceFields}
+                          className="text-xs"
+                        >
+                          Select All
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleDeselectAllSalesforceFields}
+                          className="text-xs"
+                        >
+                          Deselect All
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="h-[350px] border border-gray-300 rounded-lg p-4 overflow-y-auto">
+                      <div className="grid grid-cols-2 gap-3">
+                        {ALL_SALESFORCE_FIELDS.map((field) => (
+                          <div key={field} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={field}
+                              checked={salesforceSelectedFields.includes(field)}
+                              onCheckedChange={() => handleToggleSalesforceField(field)}
+                            />
+                            <label
+                              htmlFor={field}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              {field}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <p className="text-xs text-gray-600">
+                        <strong>{salesforceSelectedFields.length}</strong> field{salesforceSelectedFields.length !== 1 ? 's' : ''} selected. 
+                        These fields will be available for mapping in Lead Source configuration.
+                      </p>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setSalesforceConnectionStep('connect')}
+                        className="flex-1"
+                      >
+                        Back
+                      </Button>
+                      <Button
+                        onClick={handleCompleteSalesforceConnection}
+                        disabled={salesforceSelectedFields.length === 0}
+                        className="flex-1 bg-black hover:bg-gray-800 text-white"
+                      >
+                        Complete Connection
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="space-y-4">
+                <div className="p-4 border border-border rounded-lg bg-gray-50">
+                  <Button
+                    onClick={handleConfirmConnection}
+                    disabled={isConnecting}
+                    className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-900"
+                  >
+                    {isConnecting ? (
+                      <>
+                        <span className="mr-2">Connecting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Link2 className="h-4 w-4 mr-2" />
+                        Continue to {connectionDialog.crm && crmNames[connectionDialog.crm]}
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

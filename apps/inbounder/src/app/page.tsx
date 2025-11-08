@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Menu, X, User, Rocket, Settings, Database } from 'lucide-react'
+import { Menu, X, User, Rocket, Settings, Database, Box, Inbox } from 'lucide-react'
 import { AuthWrapper } from '@/components/auth/auth-wrapper'
 import { LeadSourcesTab } from '@/components/inbounder/LeadSourcesTab'
 import { SequencerTab } from '@/components/inbounder/SequencerTab'
@@ -16,6 +16,8 @@ export default function InbounderApp () {
   const inbounderTabs = [
     { id: 'lead-sources', label: 'Lead Sources', icon: Database },
     { id: 'sequencer', label: 'Sequencer', icon: Rocket },
+    { id: 'sandbox', label: 'Sandbox', icon: Box },
+    { id: 'inbox', label: 'Inbox', icon: Inbox },
     { id: 'settings', label: 'Settings', icon: Settings }
   ]
 
@@ -25,6 +27,26 @@ export default function InbounderApp () {
         return <LeadSourcesTab />
       case 'sequencer':
         return <SequencerTab />
+      case 'sandbox':
+        return (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Box className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+              <h2 className="text-2xl font-semibold mb-2 text-gray-900">Sandbox</h2>
+              <p className="text-gray-600">In development</p>
+            </div>
+          </div>
+        )
+      case 'inbox':
+        return (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Inbox className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+              <h2 className="text-2xl font-semibold mb-2 text-gray-900">Inbox</h2>
+              <p className="text-gray-600">In development</p>
+            </div>
+          </div>
+        )
       case 'settings':
         return <SettingsTab />
       default:

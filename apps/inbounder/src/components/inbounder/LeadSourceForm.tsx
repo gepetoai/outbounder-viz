@@ -82,6 +82,9 @@ export function LeadSourceForm ({ open, onOpenChange, source, onSave }: LeadSour
   const [formFields, setFormFields] = useState<FormField[]>([])
   const [outputFields, setOutputFields] = useState<OutputField[]>([])
   const [crmMappings, setCrmMappings] = useState<Record<string, string>>({})
+  const [fetchedInputFields, setFetchedInputFields] = useState<string[]>([])
+  const [isTesting, setIsTesting] = useState(false)
+  const [hasTested, setHasTested] = useState(false)
 
   useEffect(() => {
     if (source) {
@@ -112,6 +115,100 @@ export function LeadSourceForm ({ open, onOpenChange, source, onSave }: LeadSour
 
   const generateWebhookUrl = (sourceId: string) => {
     return `https://api.inbounder.com/webhooks/${sourceId}`
+  }
+
+  const getWebhookPayloadFields = (type: LeadSourceType): string[] => {
+    switch (type) {
+      case 'instagram-ads':
+        return ['full_name', 'email_address', 'phone_number', 'company', 'message']
+      case 'linkedin-ads':
+        return ['firstName', 'lastName', 'email', 'phone', 'companyName', 'jobTitle', 'comments']
+      case 'google-ads':
+        return ['name', 'email', 'phone', 'campaign_name', 'ad_group', 'keyword', 'gclid']
+      case 'paid-lead-source':
+        return ['first_name', 'last_name', 'email', 'phone', 'source_name', 'campaign_id', 'cost_per_lead']
+      default:
+        return ['name', 'email', 'phone', 'company', 'message']
+    }
+  }
+
+  const getWebhookPayloadExample = (type: LeadSourceType): string => {
+    switch (type) {
+      case 'instagram-ads':
+        return JSON.stringify({
+          full_name: 'John Doe',
+          email_address: 'john@example.com',
+          phone_number: '+1234567890',
+          company: 'Acme Corp',
+          message: 'Interested in your services'
+        }, null, 2)
+      case 'linkedin-ads':
+        return JSON.stringify({
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@example.com',
+          phone: '+1234567890',
+          companyName: 'Acme Corp',
+          jobTitle: 'Marketing Director',
+          comments: 'Looking for B2B solutions'
+        }, null, 2)
+      case 'google-ads':
+        return JSON.stringify({
+          name: 'John Doe',
+          email: 'john@example.com',
+          phone: '+1234567890',
+          campaign_name: 'Search Campaign Q1',
+          ad_group: 'Lead Gen Keywords',
+          keyword: 'b2b software',
+          gclid: 'abc123xyz'
+        }, null, 2)
+      case 'paid-lead-source':
+        return JSON.stringify({
+          first_name: 'John',
+          last_name: 'Doe',
+          email: 'john@example.com',
+          phone: '+1234567890',
+          source_name: 'Partner Referral',
+          campaign_id: 'CAMP-2024-Q1',
+          cost_per_lead: '25.00'
+        }, null, 2)
+      default:
+        return JSON.stringify({
+          name: 'John Doe',
+          email: 'john@example.com',
+          phone: '+1234567890',
+          company: 'Acme Corp',
+          message: 'Interested in your services'
+        }, null, 2)
+    }
+  }
+
+  const mockFetchTypeformFields = () => {
+    setIsTesting(true)
+    setTimeout(() => {
+      setFetchedInputFields(['form_id', 'response_id', 'submitted_at', 'answers'])
+      setIsTesting(false)
+      setHasTested(true)
+    }, 1000)
+  }
+
+  const mockFetchZapierFields = () => {
+    setIsTesting(true)
+    setTimeout(() => {
+      setFetchedInputFields(['First Name', 'Last Name', 'Lead Source', 'Address', 'Email'])
+      setIsTesting(false)
+      setHasTested(true)
+    }, 1000)
+  }
+
+  const mockFetchWebhookFields = () => {
+    setIsTesting(true)
+    setTimeout(() => {
+      const fields = getWebhookPayloadFields(formData.type || 'website-form')
+      setFetchedInputFields(fields)
+      setIsTesting(false)
+      setHasTested(true)
+    }, 1000)
   }
 
   const handleNext = () => {
@@ -168,8 +265,8 @@ export function LeadSourceForm ({ open, onOpenChange, source, onSave }: LeadSour
         if (formData.connectionMethod === 'form-fill') {
           return formFields.length > 0
         }
-        // Webhook, Typeform, and Zapier can proceed without additional setup
-        return true
+        // For webhook/typeform/zapier, require testing
+        return hasTested && fetchedInputFields.length > 0
       case 4:
         return outputFields.length > 0
       case 5:
@@ -188,10 +285,20 @@ export function LeadSourceForm ({ open, onOpenChange, source, onSave }: LeadSour
     }
   }, [formData.connectionMethod, formData.webhookUrl, source?.id])
 
+  useEffect(() => {
+    setFetchedInputFields([])
+    setHasTested(false)
+  }, [formData.connectionMethod])
+
   const getInputFields = () => {
     if (formData.connectionMethod === 'form-fill') {
       return formFields.map(f => f.label)
     }
+    // Use fetched fields if available
+    if (hasTested && fetchedInputFields.length > 0) {
+      return fetchedInputFields
+    }
+    // Fallback to hardcoded fields
     // For typeform
     if (formData.connectionMethod === 'typeform') {
       return ['form_id', 'response_id', 'submitted_at', 'answers']
@@ -425,6 +532,27 @@ export function LeadSourceForm ({ open, onOpenChange, source, onSave }: LeadSour
                       )}
                     </div>
                   </div>
+                  <Button
+                    type="button"
+                    onClick={formData.connectionMethod === 'typeform' ? mockFetchTypeformFields : mockFetchZapierFields}
+                    disabled={isTesting}
+                    className="bg-black hover:bg-gray-800 text-white w-full"
+                  >
+                    {isTesting ? 'Testing...' : hasTested ? 'Test Again' : 'Test Connection'}
+                  </Button>
+                  {hasTested && fetchedInputFields.length > 0 && (
+                    <div className="p-4 border-2 border-gray-900 rounded-lg bg-white">
+                      <Label className="text-sm font-semibold mb-3 block">Detected Input Fields</Label>
+                      <div className="space-y-2">
+                        {fetchedInputFields.map((field, index) => (
+                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                            <CheckCircle2 className="h-4 w-4 text-gray-600" />
+                            <span className="text-sm font-mono">{field}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -459,13 +587,7 @@ export function LeadSourceForm ({ open, onOpenChange, source, onSave }: LeadSour
                   <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
                     <p className="text-sm font-medium mb-2">Webhook Payload Example</p>
                     <pre className="text-xs bg-white p-3 rounded border border-gray-200 overflow-x-auto">
-{JSON.stringify({
-  full_name: 'John Doe',
-  email_address: 'john@example.com',
-  phone_number: '+1234567890',
-  company: 'Acme Corp',
-  message: 'Interested in your services'
-}, null, 2)}
+{getWebhookPayloadExample(formData.type || 'website-form')}
                     </pre>
                   </div>
                   <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
@@ -473,6 +595,27 @@ export function LeadSourceForm ({ open, onOpenChange, source, onSave }: LeadSour
                       This is a generic webhook endpoint. Send POST requests with any JSON payload structure. Perfect for custom integrations or third-party services.
                     </p>
                   </div>
+                  <Button
+                    type="button"
+                    onClick={mockFetchWebhookFields}
+                    disabled={isTesting}
+                    className="bg-black hover:bg-gray-800 text-white w-full"
+                  >
+                    {isTesting ? 'Testing...' : hasTested ? 'Test Again' : 'Test Webhook'}
+                  </Button>
+                  {hasTested && fetchedInputFields.length > 0 && (
+                    <div className="p-4 border-2 border-gray-900 rounded-lg bg-white">
+                      <Label className="text-sm font-semibold mb-3 block">Detected Input Fields</Label>
+                      <div className="space-y-2">
+                        {fetchedInputFields.map((field, index) => (
+                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                            <CheckCircle2 className="h-4 w-4 text-gray-600" />
+                            <span className="text-sm font-mono">{field}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

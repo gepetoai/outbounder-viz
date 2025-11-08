@@ -14,10 +14,12 @@ interface CRMMappingProps {
 
 // Mock CRM connection status - in real app, this would come from Settings
 const CRM_CONNECTIONS = {
-  salesforce: true, // Mock: assume connected
+  salesforce: true, // Mock: assume connected (matches Settings default)
   hubspot: false
 }
 
+// In production, these fields would come from Settings based on user's field selection
+// Using the default selected fields that match Settings
 const SALESFORCE_FIELDS = [
   'FirstName',
   'LastName',
@@ -70,17 +72,24 @@ export function CRMMapping ({ inputFields, outputFields, mappings, onChange }: C
 
   if (!hasCRMConnected) {
     return (
-      <Card className="border-gray-300">
-        <CardContent className="p-8 text-center">
-          <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-base font-medium text-gray-900 mb-2">
-            No CRM Connected
-          </p>
-          <p className="text-sm text-gray-600 mb-4">
-            Connect a CRM in Settings to enable field mapping
-          </p>
-          <p className="text-xs text-gray-500">
-            You can still use webhooks without CRM mapping
+      <Card className="border-gray-900 border-2">
+        <CardContent className="p-8 text-center space-y-4">
+          <Building2 className="h-12 w-12 text-gray-600 mx-auto" />
+          <div>
+            <p className="text-base font-semibold text-gray-900 mb-2">
+              Salesforce Connection Required
+            </p>
+            <p className="text-sm text-gray-600">
+              Please connect your Salesforce account in the Settings tab to map CRM fields
+            </p>
+          </div>
+          <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            <p className="text-xs text-gray-600">
+              Go to <strong>Settings → CRM → Connect Salesforce</strong>
+            </p>
+          </div>
+          <p className="text-xs text-gray-500 pt-2">
+            Note: You can still use webhooks without CRM mapping, but mapping allows automatic syncing to Salesforce
           </p>
         </CardContent>
       </Card>
@@ -100,7 +109,9 @@ export function CRMMapping ({ inputFields, outputFields, mappings, onChange }: C
         {CRM_CONNECTIONS.salesforce && (
           <div className="flex items-center gap-2 text-sm">
             <Building2 className="h-4 w-4 text-gray-600" />
-            <span className="text-gray-600">Salesforce connected</span>
+            <span className="text-gray-600">
+              Salesforce connected · {SALESFORCE_FIELDS.length} fields available
+            </span>
           </div>
         )}
         {CRM_CONNECTIONS.hubspot && (
