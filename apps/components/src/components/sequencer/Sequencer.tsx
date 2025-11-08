@@ -34,6 +34,62 @@ const nodeTypes = {
   end: EndNode
 }
 
+// Helper function to check if a node is configured
+function isNodeConfigured (actionType: string, config: any): boolean {
+  if (!config) return false
+  
+  switch (actionType) {
+    case 'connection-request':
+      return !!(config.instructions && config.instructions.trim())
+    case 'send-message':
+      return !!(config.instructions && config.instructions.trim())
+    case 'wait':
+      return !!(config.duration && config.duration > 0)
+    case 'if-then':
+      return !!(config.condition && config.condition.trim())
+    case 'update-salesforce':
+      // Check if at least one mapping field has a value
+      return Object.keys(config).some(key => key.startsWith('mapping_') && config[key] && config[key].trim())
+    case 'webhook':
+      return !!(config.url && config.url.trim())
+    case 'like-post':
+      return !!(config.postSelection)
+    case 'view-profile':
+      return !!(config.timeOfDay)
+    case 'rescind-connection':
+      return true // No config needed
+    case 'end-sequence':
+      return true // No config needed
+    default:
+      return false
+  }
+}
+
+// Helper function to determine edge type based on node positions
+// Use straight edges for vertically aligned nodes, curves for displaced/branching nodes
+function updateEdgeTypes (nodes: Node[], edges: Edge[]): Edge[] {
+  return edges.map(edge => {
+    const sourceNode = nodes.find(n => n.id === edge.source)
+    const targetNode = nodes.find(n => n.id === edge.target)
+    
+    if (!sourceNode || !targetNode) {
+      return edge
+    }
+    
+    // Calculate horizontal distance between nodes
+    const horizontalDistance = Math.abs(targetNode.position.x - sourceNode.position.x)
+    
+    // If nodes are roughly vertically aligned (within 50px), use straight edge
+    // Otherwise, use smooth curve for organic feel
+    const edgeType = horizontalDistance < 50 ? 'straight' : 'smoothstep'
+    
+    return {
+      ...edge,
+      type: edgeType
+    }
+  })
+}
+
 function SequencerFlow () {
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
@@ -42,6 +98,7 @@ function SequencerFlow () {
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false)
   const [insertPosition, setInsertPosition] = useState<{ parentId: string; branchType?: 'yes' | 'no' } | null>(null)
   const [forceLayout, setForceLayout] = useState(0) // Force layout trigger
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null) // Track selected node
   const layoutTimeoutRef = useRef<NodeJS.Timeout>()
   const reactFlowInstance = useRef<any>(null)
 
@@ -56,10 +113,22 @@ function SequencerFlow () {
       data: { 
         label: 'Start',
         onAddAction: handleAddActionClick,
-        hasChildren: false
+        hasChildren: false,
+        isSelected: false
       }
     }
     setNodes([startNode])
+  }, [])
+
+  // Node click handler for selection
+  const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    event.stopPropagation()
+    setSelectedNodeId(node.id)
+  }, [])
+
+  // Pane click handler to clear selection
+  const handlePaneClick = useCallback(() => {
+    setSelectedNodeId(null)
   }, [])
 
   // Helper function to update hasChildren properties based on current edges
@@ -67,6 +136,10 @@ function SequencerFlow () {
     setNodes(prevNodes => {
       return prevNodes.map(node => {
         const hasChildren = currentEdges.some(edge => edge.source === node.id)
+        const isSelected = node.id === selectedNodeId
+        const isConfigured = node.data.actionType 
+          ? isNodeConfigured(node.data.actionType, node.data.config)
+          : true // Start node is always "configured"
         
         // For conditional nodes, track yes/no branches separately
         if (node.type === 'conditional') {
@@ -79,7 +152,9 @@ function SequencerFlow () {
               ...node.data,
               hasChildren,
               hasYesChild,
-              hasNoChild
+              hasNoChild,
+              isSelected,
+              isConfigured
             }
           }
         } else {
@@ -87,13 +162,28 @@ function SequencerFlow () {
             ...node,
             data: {
               ...node.data,
-              hasChildren
+              hasChildren,
+              isSelected,
+              isConfigured
             }
           }
         }
       })
     })
-  }, [setNodes])
+  }, [setNodes, selectedNodeId])
+
+  // Update isSelected when selectedNodeId changes
+  useEffect(() => {
+    setNodes(prevNodes => 
+      prevNodes.map(node => ({
+        ...node,
+        data: {
+          ...node.data,
+          isSelected: node.id === selectedNodeId
+        }
+      }))
+    )
+  }, [selectedNodeId, setNodes])
 
   // Apply WebCola layout whenever nodes/edges change OR when forced
   useEffect(() => {
@@ -106,7 +196,10 @@ function SequencerFlow () {
       // Debounce layout updates
       layoutTimeoutRef.current = setTimeout(() => {
         const layoutedNodes = applyColaLayout(nodes, edges)
+        const updatedEdges = updateEdgeTypes(layoutedNodes, edges)
+        
         setNodes(layoutedNodes)
+        setEdges(updatedEdges)
         
         // Auto-fit view after layout with extra padding for + buttons
         setTimeout(() => {
@@ -149,9 +242,14 @@ function SequencerFlow () {
       actionType: actionType.id,
       icon: actionType.icon,
       config: {},
-      onEdit: () => setSelectedNodeForConfig(newNodeId),
+      onEdit: () => {
+        setSelectedNodeId(newNodeId)
+        setSelectedNodeForConfig(newNodeId)
+      },
       onDelete: () => handleDeleteNode(newNodeId),
-      onAddAction: handleAddActionClick
+      onAddAction: handleAddActionClick,
+      isSelected: false,
+      isConfigured: isNodeConfigured(actionType.id, {})
     }
     
     // For conditional nodes, add branch-specific tracking
@@ -172,13 +270,12 @@ function SequencerFlow () {
     }
 
     // Create edge from parent to new node
-    // Use straight edges for clean, direct lines
     const newEdge: Edge = {
       id: `edge-${insertPosition.parentId}-${newNodeId}`,
       source: insertPosition.parentId,
       target: newNodeId,
       sourceHandle: insertPosition.branchType || null,
-      type: 'straight',
+      type: 'smoothstep',
       animated: false,
       style: { stroke: '#9CA3AF', strokeWidth: 2 }
     }
@@ -265,10 +362,17 @@ function SequencerFlow () {
           actionType: n.data.actionType,
           icon: actionType?.icon,
           config: n.data.config || {},
-          onEdit: () => setSelectedNodeForConfig(n.id),
+          onEdit: () => {
+            setSelectedNodeId(n.id)
+            setSelectedNodeForConfig(n.id)
+          },
           onDelete: () => handleDeleteNode(n.id),
           onAddAction: handleAddActionClick,
-          hasChildren: false
+          hasChildren: false,
+          isSelected: false,
+          isConfigured: n.data.actionType 
+            ? isNodeConfigured(n.data.actionType, n.data.config || {})
+            : true
         }
         
         // For conditional nodes, add branch-specific tracking
@@ -286,25 +390,26 @@ function SequencerFlow () {
         }
       })
 
-      // Reconstruct edges - use straight for clean, direct lines
+      // Reconstruct edges with smooth curves
       const reconstructedEdges: Edge[] = template.edges.map((e: any) => ({
         id: e.id,
         source: e.source,
         target: e.target,
         sourceHandle: e.sourceHandle || null,
-        type: 'straight',
+        type: 'smoothstep',
         animated: false,
         style: { stroke: '#9CA3AF', strokeWidth: 2 }
       }))
 
       // IMMEDIATELY apply layout before setting state
       const layoutedNodes = applyColaLayout(reconstructedNodes, reconstructedEdges)
+      const updatedEdges = updateEdgeTypes(layoutedNodes, reconstructedEdges)
       
       setNodes(layoutedNodes)
-      setEdges(reconstructedEdges)
+      setEdges(updatedEdges)
       
       // Update hasChildren immediately after loading template
-      updateHasChildren(reconstructedEdges)
+      updateHasChildren(updatedEdges)
       
       // Auto-fit view after a brief delay for render
       setTimeout(() => {
@@ -325,7 +430,7 @@ function SequencerFlow () {
       setEdges(eds => {
         const newEdges = addEdge({
           ...connection,
-          type: 'straight',
+          type: 'smoothstep',
           animated: false,
           style: { stroke: '#9CA3AF', strokeWidth: 2 }
         }, eds)
@@ -368,10 +473,12 @@ function SequencerFlow () {
         data: { 
           label: 'Start',
           onAddAction: handleAddActionClick,
-          hasChildren: false
+          hasChildren: false,
+          isSelected: false
         }
       }
       setNodes([startNode])
+      setSelectedNodeId(null)
       
       // Update hasChildren with empty edges
       updateHasChildren([])
@@ -436,6 +543,8 @@ function SequencerFlow () {
           onConnect={onConnect}
           nodeTypes={nodeTypes}
           onInit={(instance) => { reactFlowInstance.current = instance }}
+          onNodeClick={handleNodeClick}
+          onPaneClick={handlePaneClick}
           fitView
           minZoom={0.1}
           maxZoom={2}
@@ -468,11 +577,22 @@ function SequencerFlow () {
           node={nodes.find(n => n.id === selectedNodeForConfig)}
           onClose={() => setSelectedNodeForConfig(null)}
           onSave={(config) => {
-            setNodes(prev => prev.map(n => 
-              n.id === selectedNodeForConfig 
-                ? { ...n, data: { ...n.data, config } }
-                : n
-            ))
+            setNodes(prev => prev.map(n => {
+              if (n.id === selectedNodeForConfig) {
+                const isConfigured = n.data.actionType 
+                  ? isNodeConfigured(n.data.actionType, config)
+                  : true
+                return { 
+                  ...n, 
+                  data: { 
+                    ...n.data, 
+                    config,
+                    isConfigured
+                  } 
+                }
+              }
+              return n
+            }))
             setSelectedNodeForConfig(null)
           }}
         />

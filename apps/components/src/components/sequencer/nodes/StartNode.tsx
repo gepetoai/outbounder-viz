@@ -4,9 +4,13 @@ import { Play, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const StartNode = memo(({ data }: NodeProps) => {
+  const isSelected = data.isSelected || false
+
   return (
     <div className="relative">
-      <div className="bg-white border-2 border-gray-900 rounded-lg p-6 min-w-[180px] shadow-sm">
+      <div className={`bg-white border-2 rounded-lg p-6 min-w-[180px] shadow-sm transition-all duration-200 ${
+        isSelected ? 'border-gray-900 ring-4 ring-gray-400 ring-opacity-50' : 'border-gray-900'
+      }`}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full border-2 border-gray-900 flex items-center justify-center bg-gray-50">
             <Play className="h-5 w-5 text-gray-900" />

@@ -1,16 +1,29 @@
 import { memo } from 'react'
 import { Handle, Position, NodeProps } from 'reactflow'
-import { Settings, Trash2, Plus, Clock } from 'lucide-react'
+import { Settings, Trash2, Plus, Clock, CheckCircle, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const ActionNode = memo(({ id, data }: NodeProps) => {
   const Icon = data.icon || Settings
   const isWaitNode = data.actionType === 'wait'
   const waitDuration = data.config?.duration ? `${data.config.duration} ${data.config.unit || 'minutes'}` : null
+  const isSelected = data.isSelected || false
+  const isConfigured = data.isConfigured !== undefined ? data.isConfigured : false
 
   return (
     <div className="relative group">
-      <div className="bg-white border-2 border-gray-900 rounded-lg p-4 min-w-[160px] shadow-sm hover:shadow-md transition-all">
+      <div className={`bg-white border-2 rounded-lg p-4 min-w-[160px] shadow-sm hover:shadow-md transition-all duration-200 ${
+        isSelected ? 'border-gray-900 ring-4 ring-gray-400 ring-opacity-50' : 'border-gray-900'
+      }`}>
+        {/* Configuration status indicator - top left */}
+        <div className="absolute -left-1 -top-1 w-5 h-5 rounded-full bg-white border-2 border-gray-900 flex items-center justify-center">
+          {isConfigured ? (
+            <CheckCircle className="h-3 w-3 text-gray-900" />
+          ) : (
+            <AlertCircle className="h-3 w-3 text-gray-400" />
+          )}
+        </div>
+
         {/* Top handle - centered */}
         <Handle
           type="target"

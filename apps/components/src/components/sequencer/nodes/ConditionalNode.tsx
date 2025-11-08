@@ -1,14 +1,27 @@
 import { memo } from 'react'
 import { Handle, Position, NodeProps } from 'reactflow'
-import { GitBranch, Settings, Trash2, Plus } from 'lucide-react'
+import { GitBranch, Settings, Trash2, Plus, CheckCircle, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const ConditionalNode = memo(({ id, data }: NodeProps) => {
   const condition = data.config?.condition || 'Not configured'
+  const isSelected = data.isSelected || false
+  const isConfigured = data.isConfigured !== undefined ? data.isConfigured : false
 
   return (
     <div className="relative group">
-      <div className="bg-white border-2 border-gray-900 rounded-lg p-4 min-w-[180px] shadow-sm hover:shadow-md transition-all">
+      <div className={`bg-white border-2 rounded-lg p-4 min-w-[180px] shadow-sm hover:shadow-md transition-all duration-200 ${
+        isSelected ? 'border-gray-900 ring-4 ring-gray-400 ring-opacity-50' : 'border-gray-900'
+      }`}>
+        {/* Configuration status indicator - top left */}
+        <div className="absolute -left-1 -top-1 w-5 h-5 rounded-full bg-white border-2 border-gray-900 flex items-center justify-center">
+          {isConfigured ? (
+            <CheckCircle className="h-3 w-3 text-gray-900" />
+          ) : (
+            <AlertCircle className="h-3 w-3 text-gray-400" />
+          )}
+        </div>
+
         {/* Top handle - centered */}
         <Handle
           type="target"
@@ -59,28 +72,28 @@ export const ConditionalNode = memo(({ id, data }: NodeProps) => {
         </div>
 
         {/* Bottom handles for Yes/No branches */}
-        {/* YES handle on RIGHT (85%) to match YES branch positioning */}
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="yes"
-          className="w-3 h-3 !bg-gray-900 !border-2 !border-white"
-          style={{ left: '85%', transform: 'translateX(-50%)' }}
-        />
-        {/* NO handle on LEFT (15%) to match NO branch positioning */}
+        {/* NO handle on LEFT (30%) aligned with + button */}
         <Handle
           type="source"
           position={Position.Bottom}
           id="no"
           className="w-3 h-3 !bg-gray-900 !border-2 !border-white"
-          style={{ left: '15%', transform: 'translateX(-50%)' }}
+          style={{ left: '30%', transform: 'translateX(-50%)' }}
+        />
+        {/* YES handle on RIGHT (70%) aligned with + button */}
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="yes"
+          className="w-3 h-3 !bg-gray-900 !border-2 !border-white"
+          style={{ left: '70%', transform: 'translateX(-50%)' }}
         />
       </div>
 
       {/* Add Action Buttons for both branches */}
-      {/* NO button on LEFT (matches NO branch positioning) - only show if NO branch has no child */}
+      {/* NO button on LEFT (30%) - aligned with NO handle */}
       {!data.hasNoChild && (
-        <div className="absolute -bottom-4 left-1/4 transform -translate-x-1/2">
+        <div className="absolute -bottom-12 transform -translate-x-1/2" style={{ left: '30%' }}>
           <Button
             onClick={() => data.onAddAction?.(id, 'no')}
             size="sm"
@@ -91,9 +104,9 @@ export const ConditionalNode = memo(({ id, data }: NodeProps) => {
           </Button>
         </div>
       )}
-      {/* YES button on RIGHT (matches YES branch positioning) - only show if YES branch has no child */}
+      {/* YES button on RIGHT (70%) - aligned with YES handle */}
       {!data.hasYesChild && (
-        <div className="absolute -bottom-4 left-3/4 transform -translate-x-1/2">
+        <div className="absolute -bottom-12 transform -translate-x-1/2" style={{ left: '70%' }}>
           <Button
             onClick={() => data.onAddAction?.(id, 'yes')}
             size="sm"

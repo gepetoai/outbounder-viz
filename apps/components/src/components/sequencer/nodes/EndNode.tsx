@@ -4,9 +4,13 @@ import { X, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const EndNode = memo(({ id, data }: NodeProps) => {
+  const isSelected = data.isSelected || false
+
   return (
     <div className="relative group">
-      <div className="bg-white border-2 border-gray-900 rounded-lg p-4 min-w-[160px] shadow-sm hover:shadow-md transition-all">
+      <div className={`bg-white border-2 rounded-lg p-4 min-w-[160px] shadow-sm hover:shadow-md transition-all duration-200 ${
+        isSelected ? 'border-gray-900 ring-4 ring-gray-400 ring-opacity-50' : 'border-gray-900'
+      }`}>
         {/* Top handle - centered */}
         <Handle
           type="target"
