@@ -46,3 +46,6 @@ next-env.d.ts
 # cursor ai rules (personal preferences)
 .cursorrules
 .cursor/rules/
+
+# temporary development notes
+ARCHITECTURE_NOTES.md
