@@ -9,7 +9,8 @@ import {
   approveCandidateFromRejected,
   rejectCandidateFromShortlisted,
   bulkDeleteShortlistedCandidates,
-  bulkDeleteRejectedCandidates
+  bulkDeleteRejectedCandidates,
+  EnrichedCandidateResponse
 } from '@/lib/search-api'
 
 export function useApproveCandidate() {
@@ -19,9 +20,18 @@ export function useApproveCandidate() {
     mutationFn: approveCandidate,
     onSuccess: (_, variables) => {
       console.log('Candidate approved successfully:', variables.fk_candidate_id)
-      // Invalidate candidates query to refresh the data
-      queryClient.invalidateQueries({ queryKey: ['candidates'] })
-      queryClient.invalidateQueries({ queryKey: ['shortlistedCandidates'] })
+
+      // Optimistically update the review candidates cache by removing the approved candidate
+      queryClient.setQueryData<EnrichedCandidateResponse[]>(
+        ['candidates', 'review', variables.fk_job_description_id],
+        (oldData) => {
+          if (!oldData) return oldData
+          return oldData.filter(candidate => candidate.id !== variables.fk_candidate_id)
+        }
+      )
+
+      // Invalidate shortlisted candidates to show updated count
+      queryClient.invalidateQueries({ queryKey: ['shortlistedCandidates'], refetchType: 'active' })
     },
     onError: (error) => {
       console.error('Failed to approve candidate:', error)
@@ -36,9 +46,18 @@ export function useRejectCandidate() {
     mutationFn: rejectCandidate,
     onSuccess: (_, variables) => {
       console.log('Candidate rejected successfully:', variables.fk_candidate_id)
-      // Invalidate candidates query to refresh the data
-      queryClient.invalidateQueries({ queryKey: ['candidates'] })
-      queryClient.invalidateQueries({ queryKey: ['rejectedCandidates'] })
+
+      // Optimistically update the review candidates cache by removing the rejected candidate
+      queryClient.setQueryData<EnrichedCandidateResponse[]>(
+        ['candidates', 'review', variables.fk_job_description_id],
+        (oldData) => {
+          if (!oldData) return oldData
+          return oldData.filter(candidate => candidate.id !== variables.fk_candidate_id)
+        }
+      )
+
+      // Invalidate rejected candidates to show updated count
+      queryClient.invalidateQueries({ queryKey: ['rejectedCandidates'], refetchType: 'active' })
     },
     onError: (error) => {
       console.error('Failed to reject candidate:', error)
