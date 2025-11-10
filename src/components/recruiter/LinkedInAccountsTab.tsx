@@ -81,18 +81,18 @@ export function LinkedInAccountsTab() {
       </div>
 
       {/* Table */}
-      <Card>
+      <Card className="pt-4">
         <CardContent className="p-0">
           <div className="w-full">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[60px]"></TableHead>
-                  <TableHead className="w-[200px]">Name</TableHead>
-                  <TableHead className="w-[250px]">Email</TableHead>
-                  <TableHead className="w-[120px]">Premium</TableHead>
-                  <TableHead className="hidden lg:table-cell w-[150px]">Created</TableHead>
-                  <TableHead className="w-[80px]">Actions</TableHead>
+              <TableHeader className="[&_tr]:border-b">
+                <TableRow className="border-b">
+                  <TableHead className="w-[60px] h-auto px-2 pb-4"></TableHead>
+                  <TableHead className="w-[225px] h-auto px-2 pb-4">Name</TableHead>
+                  <TableHead className="w-[225px] h-auto px-2 pb-4">Email</TableHead>
+                  <TableHead className="w-[120px] h-auto px-2 pb-4">Premium</TableHead>
+                  <TableHead className="hidden lg:table-cell w-[150px] h-auto px-2 pb-4">Created</TableHead>
+                  <TableHead className="w-[80px] h-auto px-2 pb-4">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -155,7 +155,7 @@ export function LinkedInAccountsTab() {
                           <span>{getFullName(account)}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="max-w-[250px] py-4">
+                      <TableCell className="max-w-[225px] py-4">
                         <div className="flex items-center">
                           <div className="truncate" title={account.email}>
                             {account.email}
