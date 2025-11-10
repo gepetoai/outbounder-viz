@@ -1,19 +1,48 @@
 'use client'
 
+import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Plus, ExternalLink, Crown, Loader2, MoreVertical } from 'lucide-react'
-import { useLinkedInAccounts, useConnectLinkedInAccount } from '@/hooks/useLinkedInAccounts'
+import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog'
+import { Plus, ExternalLink, Crown, Loader2, MoreVertical, LogOut } from 'lucide-react'
+import { useLinkedInAccounts, useConnectLinkedInAccount, useDisconnectLinkedInAccount } from '@/hooks/useLinkedInAccounts'
+import type { LinkedInAccount } from '@/hooks/useLinkedInAccounts'
 
 export function LinkedInAccountsTab() {
   const { data: accounts = [], isLoading } = useLinkedInAccounts()
   const connectAccountMutation = useConnectLinkedInAccount()
+  const disconnectAccountMutation = useDisconnectLinkedInAccount()
+  const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false)
+  const [accountToDisconnect, setAccountToDisconnect] = useState<LinkedInAccount | null>(null)
+  const [openPopoverId, setOpenPopoverId] = useState<number | null>(null)
 
   const handleConnectAccount = () => {
     connectAccountMutation.mutate()
+  }
+
+  const handleOpenDisconnectDialog = (account: LinkedInAccount) => {
+    setOpenPopoverId(null) // Close the popover
+    setAccountToDisconnect(account)
+    setDisconnectDialogOpen(true)
+  }
+
+  const handleConfirmDisconnect = () => {
+    if (accountToDisconnect) {
+      disconnectAccountMutation.mutate(accountToDisconnect.id, {
+        onSuccess: () => {
+          setDisconnectDialogOpen(false)
+          setAccountToDisconnect(null)
+        },
+      })
+    }
+  }
+
+  const handleCancelDisconnect = () => {
+    setDisconnectDialogOpen(false)
+    setAccountToDisconnect(null)
   }
 
   const getFullName = (account: { first_name: string; last_name: string }) => {
@@ -183,7 +212,7 @@ export function LinkedInAccountsTab() {
                       </TableCell>
                       <TableCell className="py-4">
                         <div className="flex items-center justify-center">
-                          <Popover>
+                          <Popover open={openPopoverId === account.id} onOpenChange={(open) => setOpenPopoverId(open ? account.id : null)}>
                             <PopoverTrigger asChild>
                               <Button
                                 variant="ghost"
@@ -201,11 +230,24 @@ export function LinkedInAccountsTab() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm transition-colors cursor-pointer"
-                                onClick={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setOpenPopoverId(null)
+                                }}
                               >
                                 <ExternalLink className="h-4 w-4" />
                                 View Profile
                               </a>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleOpenDisconnectDialog(account)
+                                }}
+                                className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm transition-colors cursor-pointer w-full text-left text-red-600 hover:text-red-700"
+                              >
+                                <LogOut className="h-4 w-4" />
+                                Disconnect Account
+                              </button>
                             </PopoverContent>
                           </Popover>
                         </div>
@@ -218,6 +260,18 @@ export function LinkedInAccountsTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Disconnect Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={disconnectDialogOpen}
+        onOpenChange={setDisconnectDialogOpen}
+        title="Disconnect LinkedIn Account"
+        description={`Are you sure you want to disconnect ${accountToDisconnect ? getFullName(accountToDisconnect) : 'this account'}? This will remove the account from your connected accounts and you'll need to reconnect it to use it again.`}
+        onConfirm={handleConfirmDisconnect}
+        onCancel={handleCancelDisconnect}
+        isLoading={disconnectAccountMutation.isPending}
+        confirmText="Disconnect"
+      />
     </div>
   )
 }
