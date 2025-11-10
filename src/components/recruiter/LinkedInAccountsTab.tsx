@@ -4,7 +4,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, ExternalLink, Crown, Loader2 } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Plus, ExternalLink, Crown, Loader2, MoreVertical } from 'lucide-react'
 import { useLinkedInAccounts, useConnectLinkedInAccount } from '@/hooks/useLinkedInAccounts'
 
 export function LinkedInAccountsTab() {
@@ -91,12 +92,13 @@ export function LinkedInAccountsTab() {
                   <TableHead className="w-[250px]">Email</TableHead>
                   <TableHead className="w-[120px]">Premium</TableHead>
                   <TableHead className="hidden lg:table-cell w-[150px]">Created</TableHead>
+                  <TableHead className="w-[80px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {accounts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-12">
+                    <TableCell colSpan={6} className="text-center py-12">
                       <div className="text-muted-foreground">
                         <p className="text-lg font-medium mb-2">No LinkedIn accounts connected</p>
                         <p className="text-sm mb-4">Connect your LinkedIn account to start outreach</p>
@@ -124,62 +126,89 @@ export function LinkedInAccountsTab() {
                 ) : (
                   accounts.map((account) => (
                     <TableRow key={account.id} className="hover:bg-muted/50">
-                      <TableCell className="pl-4">
-                        <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200">
-                          {account.profile_picture_url ? (
-                            <img
-                              src={account.profile_picture_url}
-                              alt={getFullName(account)}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                // Fallback to a placeholder if image fails to load
-                                const target = e.target as HTMLImageElement
-                                target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMCAxMEMxNi4xMzQgMTAgMTMgMTMuMTM0IDEzIDE3QzEzIDIwLjg2NiAxNi4xMzQgMjQgMjAgMjRDMjMuODY2IDI0IDI3IDIwLjg2NiAyNyAxN0MyNyAxMy4xMzQgMjMuODY2IDEwIDIwIDEwWk0yMCAyNkMxNi42NzcgMjYgMTAgMjguMjIzIDEwIDMxLjVWMzVIMzBWMzEuNUMzMCAyOC4yMjMgMjMuMzIzIDI2IDIwIDI2WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K'
-                              }}
-                            />
+                      <TableCell className="pl-4 py-4">
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200">
+                            {account.profile_picture_url ? (
+                              <img
+                                src={account.profile_picture_url}
+                                alt={getFullName(account)}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  // Fallback to a placeholder if image fails to load
+                                  const target = e.target as HTMLImageElement
+                                  target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMCAxMEMxNi4xMzQgMTAgMTMgMTMuMTM0IDEzIDE3QzEzIDIwLjg2NiAxNi4xMzQgMjQgMjAgMjRDMjMuODY2IDI0IDI3IDIwLjg2NiAyNyAxN0MyNyAxMy4xMzQgMjMuODY2IDEwIDIwIDEwWk0yMCAyNkMxNi42NzcgMjYgMTAgMjguMjIzIDEwIDMxLjVWMzVIMzBWMzEuNUMzMCAyOC4yMjMgMjMuMzIzIDI2IDIwIDI2WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K'
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                <span className="text-gray-500 text-xs font-medium">
+                                  {getFullName(account)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium py-4">
+                        <div className="flex items-center">
+                          <span>{getFullName(account)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[250px] py-4">
+                        <div className="flex items-center">
+                          <div className="truncate" title={account.email}>
+                            {account.email}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <div className="flex items-center">
+                          {account.is_premium ? (
+                            <Badge variant="default" className="bg-amber-100 text-amber-800 hover:bg-amber-100">
+                              <Crown className="h-3 w-3 mr-1" />
+                              Premium
+                            </Badge>
                           ) : (
-                            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                              <span className="text-gray-500 text-xs font-medium">
-                                {getFullName(account)}
-                              </span>
-                            </div>
+                            <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-100">
+                              Free
+                            </Badge>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium">
-                        <div className="flex flex-col">
-                          <span>{getFullName(account)}</span>
-                          <a
-                            href={getLinkedInProfileUrl(account.public_identifier)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-1"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            View Profile
-                          </a>
+                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground py-4">
+                        <div className="flex items-center">
+                          {formatDate(account.created_at)}
                         </div>
                       </TableCell>
-                      <TableCell className="max-w-[250px]">
-                        <div className="truncate" title={account.email}>
-                          {account.email}
+                      <TableCell className="py-4">
+                        <div className="flex items-center justify-center">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                                <span className="sr-only">Open actions menu</span>
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-48 p-1" align="end">
+                              <a
+                                href={getLinkedInProfileUrl(account.public_identifier)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm transition-colors cursor-pointer"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                                View Profile
+                              </a>
+                            </PopoverContent>
+                          </Popover>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {account.is_premium ? (
-                          <Badge variant="default" className="bg-amber-100 text-amber-800 hover:bg-amber-100">
-                            <Crown className="h-3 w-3 mr-1" />
-                            Premium
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-100">
-                            Free
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                        {formatDate(account.created_at)}
                       </TableCell>
                     </TableRow>
                   ))
