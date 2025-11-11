@@ -4,11 +4,60 @@ import { useState, useMemo } from 'react'
 import { ChatInterface } from './ChatInterface'
 import { FeedbackSection, type FeedbackItem } from './FeedbackSection'
 import { SelectionPanel } from './SelectionPanel'
-import { CandidateDetailPanel } from '../recruiter/CandidateDetailPanel'
+import { CandidateDetailModal } from './CandidateDetailModal'
 import { ChatMessageProps } from './ChatMessage'
-import { useJobPostings } from '@/hooks/useJobPostings'
-import { useCandidatesByJobDescription } from '@/hooks/useSearch'
-import { mapEnrichedCandidateToCandidate, type Candidate } from '@/lib/utils'
+import { useMockJobPostings } from './hooks/useMockJobPostings'
+import { useMockCandidatesByJobDescription } from './hooks/useMockCandidates'
+
+// Candidate type definition (standalone, no external dependencies)
+interface Candidate {
+  id: string
+  name: string
+  photo: string
+  title: string
+  company: string
+  location: string
+  linkedinUrl?: string
+  experience?: Array<{
+    title: string
+    company: string
+    duration: string
+    location?: string
+  }>
+  education?: Array<{
+    degree: string
+    school: string
+    year?: string
+  }>
+  skills?: string[]
+  bio?: string
+}
+
+// Map enriched candidate data to our Candidate interface
+function mapEnrichedCandidateToCandidate (enriched: any): Candidate {
+  const firstName = enriched.first_name || ''
+  const lastName = enriched.last_name || ''
+  const name = `${firstName} ${lastName}`.trim()
+  const rawData = enriched.raw_data || {}
+
+  return {
+    id: String(enriched.id),
+    name: name || 'Unknown',
+    photo: rawData.picture_url || 'https://i.pravatar.cc/150',
+    title: enriched.job_title || 'Unknown Title',
+    company: enriched.company_name || 'Unknown Company',
+    location: `${enriched.city || ''}, ${enriched.state || ''}`.replace(/^, |, $/g, '') || 'Unknown Location',
+    linkedinUrl: rawData.websites_linkedin,
+    bio: rawData.description,
+    experience: rawData.experience || [],
+    education: rawData.education?.map((edu: any) => ({
+      degree: edu.title || edu.major || 'Degree',
+      school: edu.institution_url?.split('/').pop()?.replace(/-/g, ' ') || 'University',
+      year: edu.date_to ? String(edu.date_to) : undefined
+    })) || [],
+    skills: rawData.skills || []
+  }
+}
 
 const MOCK_ALL_MESSAGES: ChatMessageProps[] = [
   { message: "viewed profile", type: 'system' },
@@ -46,16 +95,20 @@ export function Sandbox () {
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([])
 
-  // Fetch open roles (job postings) from API
-  const { data: jobPostings = [] } = useJobPostings()
+  // Fetch open roles (job postings) from MOCK DATA
+  const { data: jobPostings = [] } = useMockJobPostings()
 
-  // Fetch candidates from API based on selected role
+  // Fetch candidates from MOCK DATA based on selected role
   const jobDescriptionId = selectedOpenRoleId ? parseInt(selectedOpenRoleId) : null
-  const { data: candidatesByJobResponse } = useCandidatesByJobDescription(jobDescriptionId)
+  const { data: candidatesByJobResponse } = useMockCandidatesByJobDescription(jobDescriptionId)
 
   // Map enriched candidates to Candidate type
   const candidatesData = useMemo(
-    () => (candidatesByJobResponse?.candidates || []).map(mapEnrichedCandidateToCandidate),
+    () => {
+      if (!candidatesByJobResponse) return []
+      const response = candidatesByJobResponse as unknown as { candidates: any[] }
+      return response.candidates.map(mapEnrichedCandidateToCandidate)
+    },
     [candidatesByJobResponse]
   )
 
@@ -158,12 +211,11 @@ export function Sandbox () {
         </div>
       </div>
 
-      {/* Candidate Detail Panel */}
-      <CandidateDetailPanel
+      {/* Candidate Detail Modal */}
+      <CandidateDetailModal
         candidate={selectedCandidate}
         isOpen={isPanelOpen}
         onClose={() => setIsPanelOpen(false)}
-        variant="sheet"
       />
     </div>
   )
