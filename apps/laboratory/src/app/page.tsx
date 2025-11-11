@@ -2,23 +2,27 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Menu, X, User, Rocket } from 'lucide-react'
+import { Menu, X, User, Rocket, Zap } from 'lucide-react'
 import { Sequencer } from '@/components/sequencer/Sequencer'
+import { SandboxOffline } from '@/components/sandbox'
 
-type Tab = 'sequencer'
+type Tab = 'sequencer' | 'sandbox'
 
 export default function LaboratoryPage () {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('sequencer')
 
   const tabs = [
-    { id: 'sequencer' as const, label: 'Sequencer', icon: Rocket }
+    { id: 'sequencer' as const, label: 'Sequencer', icon: Rocket },
+    { id: 'sandbox' as const, label: 'Sandbox', icon: Zap }
   ]
 
   const renderContent = () => {
     switch (activeTab) {
       case 'sequencer':
         return <Sequencer />
+      case 'sandbox':
+        return <SandboxOffline />
       default:
         return null
     }
