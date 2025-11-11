@@ -112,9 +112,7 @@ export default function HomePage() {
         managementLevelExclusions: '',
         recency: undefined,
         timeInRole: undefined,
-        locationCity: '',
-        locationState: '',
-        searchRadius: undefined,
+        locations: [],
         includeWorkLocation: false,
         industryExclusions: [],
         titleExclusions: [],
@@ -146,7 +144,7 @@ export default function HomePage() {
       searchId,
       savedSearchId: savedSearch.id,
       isSearchModified: false,
-      hasCity: !!mappedParams.locationCity
+      hasLocations: mappedParams.locations.length > 0
     })
 
     // Set the search parameters
@@ -180,9 +178,7 @@ export default function HomePage() {
     managementLevelExclusions: '',
     recency: undefined,
     timeInRole: undefined,
-    locationCity: '',
-    locationState: '',
-    searchRadius: undefined,
+    locations: [],
     includeWorkLocation: false,
     industryExclusions: [],
     titleExclusions: [],
