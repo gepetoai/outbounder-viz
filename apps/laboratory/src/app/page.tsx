@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Menu, X, User, Rocket, Zap } from 'lucide-react'
+import { Menu, X, User, Rocket, Zap, Sparkles } from 'lucide-react'
 import { Sequencer } from '@/components/sequencer/Sequencer'
+import { SequencerD3 } from '@/components/sequencer/SequencerD3'
 import { SandboxOffline } from '@/components/sandbox'
 
-type Tab = 'sequencer' | 'sandbox'
+type Tab = 'sequencer' | 'sequencer-d3' | 'sandbox'
 
 export default function LaboratoryPage () {
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -14,6 +15,7 @@ export default function LaboratoryPage () {
 
   const tabs = [
     { id: 'sequencer' as const, label: 'Sequencer', icon: Rocket },
+    { id: 'sequencer-d3' as const, label: 'Sequencer D3', icon: Sparkles },
     { id: 'sandbox' as const, label: 'Sandbox', icon: Zap }
   ]
 
@@ -21,6 +23,8 @@ export default function LaboratoryPage () {
     switch (activeTab) {
       case 'sequencer':
         return <Sequencer />
+      case 'sequencer-d3':
+        return <SequencerD3 />
       case 'sandbox':
         return <SandboxOffline />
       default:
