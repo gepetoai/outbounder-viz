@@ -14,9 +14,12 @@ export interface SearchRequest {
   job_titles: string
   job_titles_lookup_order: number
   minimum_months_in_current_role: number
-  candidate_location_city: string
-  candidate_location_state: string
-  candidate_location_radius: number
+  locations: Array<{
+    city?: string
+    state?: string
+    radius?: number
+    country?: string
+  }>
   candidate_experience_location: boolean
   number_of_min_connections: number
   industry_exclusions: string
@@ -58,6 +61,12 @@ export interface SavedSearch {
   candidate_location_city_expanded: string
   candidate_location_state: string
   candidate_location_radius: number
+  locations?: Array<{
+    city?: string
+    state?: string
+    radius?: number
+    country?: string
+  }>
   candidate_experience_location: boolean
   number_of_min_connections: number
   industry_exclusions: string
@@ -146,9 +155,19 @@ export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle
     job_titles: searchParams.jobTitles.join(','),
     job_titles_lookup_order: searchParams.recency ?? 0,
     minimum_months_in_current_role: searchParams.timeInRole ?? 0,
-    candidate_location_city: searchParams.locationCity,
-    candidate_location_state: searchParams.locationState,
-    candidate_location_radius: searchParams.searchRadius ?? 0,
+    locations: searchParams.locations.map(loc => {
+      if (loc.type === 'city') {
+        return {
+          city: loc.city,
+          state: loc.state,
+          radius: loc.radius
+        }
+      } else {
+        return {
+          country: loc.country
+        }
+      }
+    }),
     candidate_experience_location: searchParams.includeWorkLocation,
     number_of_min_connections: searchParams.connections ?? 0,
     industry_exclusions: searchParams.industryExclusions.join(','),
@@ -223,17 +242,51 @@ export async function getSavedSearchesByJobDescription(jobDescriptionId: number)
 }
 
 export function mapSavedSearchToParams(savedSearch: SavedSearch): SearchParams {
-  // Extract city from location string
-  let locationCity = ''
-  if (savedSearch.candidate_location_city) {
-    // Try to match quoted format first: "City, State"
-    const quotedMatch = savedSearch.candidate_location_city.match(/"([^"]+)"/)
-    if (quotedMatch) {
-      const cityState = quotedMatch[1].split(',')
-      locationCity = cityState[0]?.trim() || ''
-    } else {
-      // Otherwise, use the value directly (simple string like "Chicago")
-      locationCity = savedSearch.candidate_location_city.trim()
+  let locations: Array<{
+    type: 'city' | 'country'
+    city?: string
+    state?: string
+    radius?: number
+    country?: string
+  }> = []
+
+  // Check if new locations format exists in the saved search
+  if (savedSearch.locations && savedSearch.locations.length > 0) {
+    // Use the new locations array directly, adding type field
+    locations = savedSearch.locations.map(loc => {
+      if (loc.country) {
+        return { type: 'country', country: loc.country }
+      } else {
+        return {
+          type: 'city',
+          city: loc.city,
+          state: loc.state,
+          radius: loc.radius
+        }
+      }
+    })
+  } else {
+    // Fall back to old format for backward compatibility
+    let locationCity = ''
+    if (savedSearch.candidate_location_city) {
+      // Try to match quoted format first: "City, State"
+      const quotedMatch = savedSearch.candidate_location_city.match(/"([^"]+)"/)
+      if (quotedMatch) {
+        const cityState = quotedMatch[1].split(',')
+        locationCity = cityState[0]?.trim() || ''
+      } else {
+        // Otherwise, use the value directly (simple string like "Chicago")
+        locationCity = savedSearch.candidate_location_city.trim()
+      }
+    }
+
+    if (locationCity && savedSearch.candidate_location_state) {
+      locations.push({
+        type: 'city',
+        city: locationCity,
+        state: savedSearch.candidate_location_state,
+        radius: savedSearch.candidate_location_radius || 25
+      })
     }
   }
 
@@ -263,9 +316,7 @@ export function mapSavedSearchToParams(savedSearch: SavedSearch): SearchParams {
     managementLevelExclusions: savedSearch.management_level,
     recency: savedSearch.job_titles_lookup_order,
     timeInRole: savedSearch.minimum_months_in_current_role,
-    locationCity: locationCity,
-    locationState: savedSearch.candidate_location_state,
-    searchRadius: savedSearch.candidate_location_radius,
+    locations: locations,
     includeWorkLocation: savedSearch.candidate_experience_location,
     industryExclusions: savedSearch.industry_exclusions ? savedSearch.industry_exclusions.split(',') : [],
     titleExclusions: savedSearch.job_title_exclusions ? savedSearch.job_title_exclusions.split(',') : [],
