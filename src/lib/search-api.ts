@@ -27,6 +27,9 @@ export interface SearchRequest {
   maximum_years_of_experience_per_role: number
   fk_job_description_id?: number | null
   search_id?: number
+  job_titles_inclusions: string
+  profile_keywords_inclusions: string
+  industry_inclusions: string
 }
 
 export interface SearchResponse {
@@ -62,6 +65,9 @@ export interface SavedSearch {
   profile_keywords_exclusions: string
   company_exclusions: string
   maximum_years_of_experience_per_role: number
+  job_titles_inclusions?: string
+  profile_keywords_inclusions?: string
+  industry_inclusions?: string
   total_addressable_market: number
   fk_job_description_id: number | null
   created_at: string
@@ -151,7 +157,10 @@ export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle
     company_exclusions: searchParams.companyExclusions,
     search_title: searchTitle,
     maximum_years_of_experience_per_role: searchParams.maxJobDuration ?? 0,
-    fk_job_description_id: jobDescriptionId
+    fk_job_description_id: jobDescriptionId,
+    job_titles_inclusions: searchParams.jobTitlesInclusions?.length > 0 ? searchParams.jobTitlesInclusions.join(',') : '',
+    profile_keywords_inclusions: searchParams.profileKeywordsInclusions?.length > 0 ? searchParams.profileKeywordsInclusions.join(',') : '',
+    industry_inclusions: searchParams.industryInclusions?.length > 0 ? searchParams.industryInclusions.join(',') : ''
   }
 }
 
@@ -263,7 +272,11 @@ export function mapSavedSearchToParams(savedSearch: SavedSearch): SearchParams {
     keywordExclusions: savedSearch.profile_keywords_exclusions ? savedSearch.profile_keywords_exclusions.split(',') : [],
     companyExclusions: savedSearch.company_exclusions,
     maxJobDuration: savedSearch.maximum_years_of_experience_per_role,
-    useExperienceFallback: savedSearch.use_experience_fallback || false
+    useExperienceFallback: savedSearch.use_experience_fallback || false,
+    // Inclusions
+    jobTitlesInclusions: savedSearch.job_titles_inclusions ? savedSearch.job_titles_inclusions.split(',').map(t => t.trim()) : [],
+    profileKeywordsInclusions: savedSearch.profile_keywords_inclusions ? savedSearch.profile_keywords_inclusions.split(',').map(k => k.trim()) : [],
+    industryInclusions: savedSearch.industry_inclusions ? savedSearch.industry_inclusions.split(',').map(i => i.trim()) : []
   }
 }
 

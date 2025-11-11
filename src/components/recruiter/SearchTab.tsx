@@ -12,7 +12,7 @@ import { Modal } from '@/components/ui/modal'
 import { SearchableMultiSelect } from '@/components/ui/searchable-multi-select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { RemovableBadge } from '@/components/ui/removable-badge'
-import { Briefcase, MapPin, GraduationCap, X, Search, Target, RefreshCw, Send, Save, Sparkles, ChevronDown } from 'lucide-react'
+import { Briefcase, MapPin, GraduationCap, X, Search, Target, RefreshCw, Send, Save, Sparkles, ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { useStates, useCities, useIndustries, useDepartments } from '@/hooks/useDropdowns'
 import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useEnrichCandidates } from '@/hooks/useSearch'
 import { useApproveCandidate, useRejectCandidate } from '@/hooks/useCandidates'
@@ -64,6 +64,11 @@ export interface SearchParams {
   companyExclusions: string
   maxJobDuration?: number
   useExperienceFallback: boolean
+
+  // Inclusions
+  jobTitlesInclusions: string[]
+  profileKeywordsInclusions: string[]
+  industryInclusions: string[]
 }
 
 interface SearchTabProps {
@@ -126,6 +131,8 @@ export function SearchTab({
   const [tempExclusionInput, setTempExclusionInput] = useState('')
   const [tempTitleExclusionInput, setTempTitleExclusionInput] = useState('')
   const [tempKeywordExclusionInput, setTempKeywordExclusionInput] = useState('')
+  const [tempJobTitleInclusionInput, setTempJobTitleInclusionInput] = useState('')
+  const [tempProfileKeywordInclusionInput, setTempProfileKeywordInclusionInput] = useState('')
   const [inputError, setInputError] = useState('')
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
@@ -340,6 +347,52 @@ export function SearchTab({
   const removeKeywordExclusion = (index: number) => {
     const newExclusions = searchParams.keywordExclusions.filter((_, i) => i !== index)
     setSearchParams({ ...searchParams, keywordExclusions: newExclusions })
+  }
+
+  const addJobTitleInclusion = () => {
+    if (tempJobTitleInclusionInput.trim()) {
+      if (isCommaSeparatedList(tempJobTitleInclusionInput)) {
+        const parsedInclusions = parseCommaSeparatedList(tempJobTitleInclusionInput)
+        setSearchParams({
+          ...searchParams,
+          jobTitlesInclusions: [...searchParams.jobTitlesInclusions, ...parsedInclusions]
+        })
+      } else {
+        setSearchParams({
+          ...searchParams,
+          jobTitlesInclusions: [...searchParams.jobTitlesInclusions, tempJobTitleInclusionInput.trim()]
+        })
+      }
+      setTempJobTitleInclusionInput('')
+    }
+  }
+
+  const removeJobTitleInclusion = (index: number) => {
+    const newInclusions = searchParams.jobTitlesInclusions.filter((_, i) => i !== index)
+    setSearchParams({ ...searchParams, jobTitlesInclusions: newInclusions })
+  }
+
+  const addProfileKeywordInclusion = () => {
+    if (tempProfileKeywordInclusionInput.trim()) {
+      if (isCommaSeparatedList(tempProfileKeywordInclusionInput)) {
+        const parsedKeywords = parseCommaSeparatedList(tempProfileKeywordInclusionInput)
+        setSearchParams({
+          ...searchParams,
+          profileKeywordsInclusions: [...searchParams.profileKeywordsInclusions, ...parsedKeywords]
+        })
+      } else {
+        setSearchParams({
+          ...searchParams,
+          profileKeywordsInclusions: [...searchParams.profileKeywordsInclusions, tempProfileKeywordInclusionInput.trim()]
+        })
+      }
+      setTempProfileKeywordInclusionInput('')
+    }
+  }
+
+  const removeProfileKeywordInclusion = (index: number) => {
+    const newKeywords = searchParams.profileKeywordsInclusions.filter((_, i) => i !== index)
+    setSearchParams({ ...searchParams, profileKeywordsInclusions: newKeywords })
   }
 
   const addSkill = () => {
@@ -1163,6 +1216,7 @@ export function SearchTab({
                 </div>
               </div>
 
+
             </div>
           </div>
 
@@ -1201,6 +1255,153 @@ export function SearchTab({
                     variant="secondary"
                   />
                 ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Search Filters - Applies to both Inclusions and Exclusions */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <SlidersHorizontal className="h-5 w-5" />
+              <h3 className="text-lg font-semibold">Search Filters</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Number of experiences to look for</Label>
+                <Input
+                  type="number"
+                  value={searchParams.recency ?? ''}
+                  onChange={(e) => setSearchParams({ ...searchParams, recency: e.target.value === '' ? undefined : parseInt(e.target.value) })}
+                  min="0"
+                  className="w-20"
+                  placeholder="3"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={searchParams.managementLevelExclusions === 'C-Level, Director, Manager, VP, Owner, Founder, President/Vice President'}
+                    onCheckedChange={(checked) => {
+                      const exclusions = checked
+                        ? 'C-Level, Director, Manager, VP, Owner, Founder, President/Vice President'
+                        : ''
+                      setSearchParams({ ...searchParams, managementLevelExclusions: exclusions })
+                    }}
+                  />
+                  <Label className="text-sm">Exclude Current or Previous Managers & Executives</Label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Inclusions Section */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <Target className="h-5 w-5" />
+              <h3 className="text-lg font-semibold">Inclusions</h3>
+            </div>
+
+            <div className="space-y-4">
+
+              {/* Industry Inclusions */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Industry Inclusions</Label>
+                <SearchableMultiSelect
+                  placeholder="Select industries to include..."
+                  options={industriesData?.industries || []}
+                  selectedValues={searchParams.industryInclusions}
+                  onSelect={(industry) => {
+                    setSearchParams({
+                      ...searchParams,
+                      industryInclusions: [...searchParams.industryInclusions, industry]
+                    })
+                  }}
+                />
+                {searchParams.industryInclusions.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {searchParams.industryInclusions.map((industry, index) => (
+                      <RemovableBadge
+                        key={index}
+                        label={industry}
+                        onRemove={() => {
+                          setSearchParams({
+                            ...searchParams,
+                            industryInclusions: searchParams.industryInclusions.filter((_, i) => i !== index)
+                          })
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Title and Keyword Inclusions */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-600">Job Title Inclusions</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g., Engineer, Developer (comma-separated)..."
+                      value={tempJobTitleInclusionInput}
+                      onChange={(e) => setTempJobTitleInclusionInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          addJobTitleInclusion()
+                        }
+                      }}
+                    />
+                    <Button onClick={addJobTitleInclusion} variant="outline" className="mt-auto">
+                      Add
+                    </Button>
+                  </div>
+                      {/* Display Title Inclusions */}
+                      {searchParams.jobTitlesInclusions.length > 0 && (
+                        <div className="space-y-2 pt-2">
+                          <div className="flex flex-wrap gap-2">
+                            {searchParams.jobTitlesInclusions.map((inclusion, index) => (
+                              <RemovableBadge
+                                key={index}
+                                label={inclusion}
+                                onRemove={() => removeJobTitleInclusion(index)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-600">Profile Keyword Inclusions</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g., AWS, Python (comma-separated)..."
+                      value={tempProfileKeywordInclusionInput}
+                      onChange={(e) => setTempProfileKeywordInclusionInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          addProfileKeywordInclusion()
+                        }
+                      }}
+                    />
+                    <Button onClick={addProfileKeywordInclusion} variant="outline" className="mt-auto">
+                      Add
+                    </Button>
+                  </div>
+                      {/* Display Keyword Inclusions */}
+                      {searchParams.profileKeywordsInclusions.length > 0 && (
+                        <div className="space-y-2 pt-2">
+                          <div className="flex flex-wrap gap-2">
+                            {searchParams.profileKeywordsInclusions.map((keyword, index) => (
+                              <RemovableBadge
+                                key={index}
+                                label={keyword}
+                                onRemove={() => removeProfileKeywordInclusion(index)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                </div>
+
               </div>
             </div>
           </div>
@@ -1312,38 +1513,7 @@ export function SearchTab({
                         </div>
                       )}
                 </div>
-                
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                {/* Number of experiences to look for */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Number of experiences to look for</Label>
-                  <Input
-                    type="number"
-                    value={searchParams.recency ?? ''}
-                    onChange={(e) => setSearchParams({ ...searchParams, recency: e.target.value === '' ? undefined : parseInt(e.target.value) })}
-                    min="0"
-                    className="w-20"
-                    placeholder="3"
-                  />
-                </div>
-
-                {/* Management Level Exclusions Toggle */}
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={searchParams.managementLevelExclusions === 'C-Level, Director, Manager, VP, Owner, Founder, President/Vice President'}
-                      onCheckedChange={(checked) => {
-                        const exclusions = checked
-                          ? 'C-Level, Director, Manager, VP, Owner, Founder, President/Vice President'
-                          : ''
-                        setSearchParams({ ...searchParams, managementLevelExclusions: exclusions })
-                      }}
-                    />
-                    <Label className="text-sm">Exclude Current or Previous Managers & Executives</Label>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
