@@ -121,7 +121,11 @@ export default function HomePage() {
         keywordExclusions: [],
         companyExclusions: '',
         maxJobDuration: undefined,
-        useExperienceFallback: false
+        useExperienceFallback: false,
+        // Inclusions
+        jobTitlesInclusions: [],
+        profileKeywordsInclusions: [],
+        industryInclusions: []
       })
       return
     }
@@ -185,7 +189,11 @@ export default function HomePage() {
     keywordExclusions: [],
     companyExclusions: '',
     maxJobDuration: undefined,
-    useExperienceFallback: false
+    useExperienceFallback: false,
+    // Inclusions
+    jobTitlesInclusions: [],
+    profileKeywordsInclusions: [],
+    industryInclusions: []
   })
   
   // Candidate state
