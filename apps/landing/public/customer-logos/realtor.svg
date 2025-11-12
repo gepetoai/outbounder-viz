@@ -1,0 +1,8 @@
+<svg width="260" height="60" viewBox="0 0 260 60" xmlns="http://www.w3.org/2000/svg">
+  <g fill="#1C1B20">
+    <!-- realtor.com text -->
+    <text x="10" y="40" font-family="Arial, sans-serif" font-size="32" font-weight="700">realtor.com</text>
+    <!-- ® symbol -->
+    <text x="240" y="25" font-family="Arial, sans-serif" font-size="16" font-weight="400">®</text>
+  </g>
+</svg>
