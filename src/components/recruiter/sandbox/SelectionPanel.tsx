@@ -26,23 +26,6 @@ export function SelectionPanel({
 }: SelectionPanelProps) {
   return (
     <div className="border rounded-lg p-4 space-y-4 bg-white">
-      {/* Select Open Role */}
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Select Open Role</Label>
-        <Select value={selectedOpenRole} onValueChange={onOpenRoleChange}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select an open role..." />
-          </SelectTrigger>
-          <SelectContent>
-            {openRoles.map((role) => (
-              <SelectItem key={role.id} value={role.id.toString()}>
-                {role.title}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* Select Candidate */}
       <div className="space-y-2">
         <Label className="text-sm font-medium">Select Candidate</Label>
