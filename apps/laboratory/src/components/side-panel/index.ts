@@ -1,0 +1,2 @@
+export { SidePanelPlaceholder } from './SidePanelPlaceholder'
+

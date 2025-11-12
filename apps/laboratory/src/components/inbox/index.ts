@@ -1,0 +1,2 @@
+export { InboxPlaceholder } from './InboxPlaceholder'
+
