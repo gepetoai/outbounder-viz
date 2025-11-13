@@ -47,6 +47,7 @@ import {
 } from 'lucide-react'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useShortlistedCandidates } from '@/hooks/useCandidates'
+import { useLinkedInAccounts } from '@/hooks/useLinkedInAccounts'
 
 interface SequencerTabProps {
   jobDescriptionId?: number | null
@@ -462,6 +463,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   const reactFlowInstance = useReactFlow()
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId || null)
   const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
+  const { data: linkedInAccounts } = useLinkedInAccounts()
   
   // Get approved candidates from API using the selected job ID (shortlisted = approved)
   const { 
@@ -471,6 +473,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   } = useShortlistedCandidates(selectedJobId)
   const approvedCount = approvedCandidatesData?.length || 0
   const [campaignStatus, setCampaignStatus] = useState<'active' | 'paused'>('paused')
+  const [selectedLinkedInAccountId, setSelectedLinkedInAccountId] = useState<number | null>(null)
   const [showActionMenu, setShowActionMenu] = useState(false)
   const [pendingBranch, setPendingBranch] = useState<{ branch: string; parentId: string } | null>(null)
   const [pendingParent, setPendingParent] = useState<string | null>(null)
@@ -1799,6 +1802,403 @@ Example response: Based on your instructions, the responder will handle incoming
     setSendingWindows(updated)
   }, [sendingWindows])
 
+  // Map UI action types to backend enum values
+  const mapActionType = (uiActionType: string): string | null => {
+    const actionTypeMap: Record<string, string> = {
+      'view-profile': 'view_profile',
+      'like-post': 'like_post',
+      'connection-request': 'send_connection_request',
+      'send-message': 'send_message',
+      'send-inmail': 'send_inmail',
+      'rescind-connection-request': 'withdraw_connection',
+    }
+    return actionTypeMap[uiActionType] || null
+  }
+
+  // Map condition types
+  const mapConditionType = (uiActionType: string): string | null => {
+    if (uiActionType === 'if-connection-accepted') {
+      return 'connection_accepted'
+    }
+    // 'if-message-responded' is not in the ConditionTypeEnum, so we'll skip it for now
+    return null
+  }
+
+  // Build action definitions from the sequence graph
+  const buildActionDefinitions = useCallback(() => {
+    if (nodes.length === 0 || edges.length === 0) {
+      return []
+    }
+
+    // Find begin-sequence node
+    const beginNode = nodes.find(n => n.id === 'begin-sequence')
+    if (!beginNode) {
+      return []
+    }
+
+    // Build a map of node ID to node for quick lookup
+    const nodeMap = new Map(nodes.map(n => [n.id, n]))
+    
+    // Build a map of source node to outgoing edges
+    const outgoingEdges = new Map<string, Edge[]>()
+    edges.forEach(edge => {
+      if (!outgoingEdges.has(edge.source)) {
+        outgoingEdges.set(edge.source, [])
+      }
+      outgoingEdges.get(edge.source)!.push(edge)
+    })
+
+    // Build a map of target node to incoming edge (for finding wait nodes before actions)
+    const incomingEdgeMap = new Map<string, Edge>()
+    edges.forEach(edge => {
+      incomingEdgeMap.set(edge.target, edge)
+    })
+
+    // Traverse the graph and collect action nodes in order
+    type ActionDefWithTemp = {
+      action_type: string | null
+      condition_type?: string | null
+      next_step_if_true?: number | null
+      next_step_if_false?: number | null
+      delay_value: number
+      delay_unit: string
+      json_metadata?: Record<string, unknown> | null
+      nodeId: string
+      index: number
+      _nextTrueNodeId?: string | null
+      _nextFalseNodeId?: string | null
+    }
+    const actionDefinitions: ActionDefWithTemp[] = []
+
+    // Map node IDs to their action definition indices
+    const nodeToIndexMap = new Map<string, number>()
+
+    // Helper to find next action node after a given node (skipping wait nodes)
+    const findNextActionNode = (currentNodeId: string, branch?: 'yes' | 'no'): string | null => {
+      const edgesFromCurrent = outgoingEdges.get(currentNodeId) || []
+      
+      // Debug logging
+      if (branch) {
+        console.log(`findNextActionNode(${currentNodeId}, ${branch}):`, {
+          edges: edgesFromCurrent.map(e => ({ target: e.target, sourceHandle: e.sourceHandle, branch: e.data?.branch })),
+          targetNodes: edgesFromCurrent.map(e => {
+            const node = nodeMap.get(e.target)
+            return node ? { id: node.id, type: node.type } : null
+          })
+        })
+      }
+      
+      for (const edge of edgesFromCurrent) {
+        // If we're looking for a specific branch, check the sourceHandle (where branch info is stored)
+        if (branch && edge.sourceHandle !== branch) {
+          continue
+        }
+        
+        const targetNode = nodeMap.get(edge.target)
+        if (!targetNode) continue
+
+        // If it's a wait node, continue to its target
+        if (targetNode.type === 'waitNode') {
+          const result = findNextActionNode(targetNode.id, branch)
+          if (result) return result
+          continue
+        }
+        
+        // If it's an action or conditional node, return it
+        if (targetNode.type === 'actionNode' || targetNode.type === 'conditionalNode') {
+          return targetNode.id
+        }
+      }
+      
+      return null
+    }
+
+    // Helper to get delay from wait node before an action
+    const getDelayFromWaitNode = (actionNodeId: string): { value: number; unit: string } => {
+      const incomingEdge = incomingEdgeMap.get(actionNodeId)
+      if (!incomingEdge) {
+        return { value: 0, unit: 'days' }
+      }
+
+      const sourceNode = nodeMap.get(incomingEdge.source)
+      if (sourceNode?.type === 'waitNode') {
+        return {
+          value: sourceNode.data.waitValue || 0,
+          unit: sourceNode.data.waitUnit || 'days'
+        }
+      }
+
+      // Check if there's a wait node in the path
+      const checkPathForWait = (nodeId: string): { value: number; unit: string } | null => {
+        const incoming = incomingEdgeMap.get(nodeId)
+        if (!incoming) return null
+        
+        const source = nodeMap.get(incoming.source)
+        if (source?.type === 'waitNode') {
+          return {
+            value: source.data.waitValue || 0,
+            unit: source.data.waitUnit || 'days'
+          }
+        }
+        return checkPathForWait(incoming.source)
+      }
+
+      return checkPathForWait(actionNodeId) || { value: 0, unit: 'days' }
+    }
+
+    // Traverse starting from begin-sequence
+    const visited = new Set<string>()
+    const queue: Array<{ nodeId: string }> = [{ nodeId: 'begin-sequence' }]
+
+    while (queue.length > 0) {
+      const { nodeId } = queue.shift()!
+      
+      if (visited.has(nodeId)) continue
+      visited.add(nodeId)
+
+      const currentNode = nodeMap.get(nodeId)
+      if (!currentNode) continue
+
+      // Skip begin-sequence and wait nodes (wait nodes are handled as delays)
+      if (nodeId === 'begin-sequence' || currentNode.type === 'waitNode') {
+        // Continue to next nodes
+        const edgesFromCurrent = outgoingEdges.get(nodeId) || []
+        for (const edge of edgesFromCurrent) {
+          if (!visited.has(edge.target)) {
+            queue.push({ nodeId: edge.target })
+          }
+        }
+        continue
+      }
+
+      // Process action and conditional nodes
+      if (currentNode.type === 'actionNode' || currentNode.type === 'conditionalNode') {
+        const actionType = currentNode.data.actionType
+        
+        // Skip end-sequence and unsupported actions
+        if (actionType === 'end-sequence' || actionType === 'activate-responder') {
+          // Still traverse to mark as visited
+          const edgesFromCurrent = outgoingEdges.get(nodeId) || []
+          for (const edge of edgesFromCurrent) {
+            if (!visited.has(edge.target)) {
+              queue.push({ nodeId: edge.target })
+            }
+          }
+          continue
+        }
+
+        // Get delay from wait node before this action
+        const delay = getDelayFromWaitNode(nodeId)
+
+        // Check if it's a conditional node
+        const conditionType = mapConditionType(actionType)
+        
+        if (conditionType) {
+          // It's a conditional node - find the wait nodes in each branch first
+          // Branch information is stored in edge.sourceHandle, not edge.data.branch
+          const edgesFromConditional = outgoingEdges.get(nodeId) || []
+          let yesWaitNodeId: string | null = null
+          let noWaitNodeId: string | null = null
+          
+          for (const edge of edgesFromConditional) {
+            // Check sourceHandle for branch info (yes/no)
+            const branch = edge.sourceHandle as 'yes' | 'no' | undefined
+            if (branch === 'yes') {
+              const targetNode = nodeMap.get(edge.target)
+              if (targetNode?.type === 'waitNode') {
+                yesWaitNodeId = targetNode.id
+              }
+            } else if (branch === 'no') {
+              const targetNode = nodeMap.get(edge.target)
+              if (targetNode?.type === 'waitNode') {
+                noWaitNodeId = targetNode.id
+              }
+            }
+          }
+          
+          // Find the action nodes after the wait nodes
+          const nextTrueNodeId = yesWaitNodeId ? findNextActionNode(yesWaitNodeId) : null
+          const nextFalseNodeId = noWaitNodeId ? findNextActionNode(noWaitNodeId) : null
+          
+          // Debug logging
+          console.log(`Conditional node ${nodeId}:`, {
+            yesWaitNodeId,
+            noWaitNodeId,
+            nextTrueNodeId,
+            nextFalseNodeId,
+            edgesFromConditional: edgesFromConditional.map(e => ({ source: e.source, target: e.target, sourceHandle: e.sourceHandle, branch: e.data?.branch }))
+          })
+          
+          // Conditional nodes have null action_type
+          const actionDef = {
+            action_type: null,
+            condition_type: conditionType,
+            next_step_if_true: null as number | null,
+            next_step_if_false: null as number | null,
+            delay_value: delay.value,
+            delay_unit: delay.unit,
+            json_metadata: null,
+            nodeId: nodeId,
+            index: actionDefinitions.length,
+            _nextTrueNodeId: nextTrueNodeId, // Temporary storage - action node ID
+            _nextFalseNodeId: nextFalseNodeId // Temporary storage - action node ID
+          }
+          
+          actionDefinitions.push(actionDef)
+          nodeToIndexMap.set(nodeId, actionDef.index)
+        } else {
+          // Regular action node
+          const mappedActionType = mapActionType(actionType)
+          if (mappedActionType) {
+            const actionDef = {
+              action_type: mappedActionType,
+              condition_type: null,
+              next_step_if_true: null,
+              next_step_if_false: null,
+              delay_value: delay.value,
+              delay_unit: delay.unit,
+              json_metadata: null,
+              nodeId: nodeId,
+              index: actionDefinitions.length
+            }
+            
+            actionDefinitions.push(actionDef)
+            nodeToIndexMap.set(nodeId, actionDef.index)
+          }
+        }
+
+        // Continue traversal
+        const edgesFromCurrent = outgoingEdges.get(nodeId) || []
+        for (const edge of edgesFromCurrent) {
+          if (!visited.has(edge.target)) {
+            queue.push({ nodeId: edge.target })
+          }
+        }
+      }
+    }
+
+    // Debug: log all nodes in map
+    console.log('All nodes in nodeToIndexMap:', Array.from(nodeToIndexMap.entries()))
+    
+    // Resolve next_step indices for conditional nodes
+    // We need to do this after all nodes are processed to ensure nodeToIndexMap is complete
+    actionDefinitions.forEach(actionDef => {
+      if (actionDef.condition_type && actionDef._nextTrueNodeId !== undefined) {
+        const nextTrueNodeId = actionDef._nextTrueNodeId
+        const nextFalseNodeId = actionDef._nextFalseNodeId
+        
+        // The stored IDs are action node IDs, so we can directly look them up
+        if (nextTrueNodeId) {
+          if (nodeToIndexMap.has(nextTrueNodeId)) {
+            actionDef.next_step_if_true = nodeToIndexMap.get(nextTrueNodeId)! + 1 // 1-indexed
+            console.log(`Resolved next_step_if_true: ${nextTrueNodeId} -> ${actionDef.next_step_if_true}`)
+          } else {
+            // Debug: log if node not found
+            console.warn(`Next true node not found in map: ${nextTrueNodeId}. Available nodes:`, Array.from(nodeToIndexMap.keys()))
+          }
+        }
+        
+        if (nextFalseNodeId) {
+          if (nodeToIndexMap.has(nextFalseNodeId)) {
+            actionDef.next_step_if_false = nodeToIndexMap.get(nextFalseNodeId)! + 1 // 1-indexed
+            console.log(`Resolved next_step_if_false: ${nextFalseNodeId} -> ${actionDef.next_step_if_false}`)
+          } else {
+            // Debug: log if node not found
+            console.warn(`Next false node not found in map: ${nextFalseNodeId}. Available nodes:`, Array.from(nodeToIndexMap.keys()))
+          }
+        }
+      }
+    })
+
+    // Remove temporary fields and return clean payload with IDs
+    return actionDefinitions.map((actionDef, idx) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { nodeId, index, _nextTrueNodeId, _nextFalseNodeId, ...rest } = actionDef
+      return {
+        id: idx + 1, // 1-indexed ID
+        ...rest,
+        next_step_if_true: rest.next_step_if_true ?? null,
+        next_step_if_false: rest.next_step_if_false ?? null,
+      }
+    })
+  }, [nodes, edges])
+
+  // Prepare campaign payload
+  const prepareCampaignPayload = useCallback(() => {
+    // Validate required fields
+    if (!selectedJobId) {
+      console.error('Please select a job posting')
+      return null
+    }
+
+    if (!selectedLinkedInAccountId && (!linkedInAccounts || linkedInAccounts.length === 0)) {
+      console.error('Please select a LinkedIn account')
+      return null
+    }
+
+    // Use selected LinkedIn account or default to first one
+    const linkedInAccountId = selectedLinkedInAccountId || (linkedInAccounts?.[0]?.id ?? null)
+    if (!linkedInAccountId) {
+      console.error('No LinkedIn account available')
+      return null
+    }
+
+    // Get job posting for name
+    const selectedJob = jobPostings?.find(job => job.id === selectedJobId)
+    const campaignName = selectedJob ? `${selectedJob.title} - Campaign` : 'Campaign'
+
+    // Convert gap values to minutes
+    const minGapMinutes = candidateGapUnit === 'hours' ? candidateGapMin * 60 : candidateGapMin
+    const maxGapMinutes = candidateGapUnit === 'hours' ? candidateGapMax * 60 : candidateGapMax
+
+    // Convert time windows from 'HH:MM' format to datetime strings (ISO format)
+    const today = new Date()
+    const sendingWindowsPayload = sendingWindows.map(window => {
+      const [startHours, startMinutes] = window.start.split(':').map(Number)
+      const [endHours, endMinutes] = window.end.split(':').map(Number)
+      
+      const startDateTime = new Date(today)
+      startDateTime.setHours(startHours, startMinutes, 0, 0)
+      
+      const endDateTime = new Date(today)
+      endDateTime.setHours(endHours, endMinutes, 0, 0)
+      
+      return {
+        window_start_time: startDateTime.toISOString(),
+        window_end_time: endDateTime.toISOString()
+      }
+    })
+
+    // Build action definitions
+    const actionDefinitions = buildActionDefinitions()
+
+    // Prepare campaign payload
+    const campaignPayload = {
+      name: campaignName,
+      status: 'draft' as const,
+      fk_linkedin_account_id: linkedInAccountId,
+      fk_job_description_id: selectedJobId,
+      daily_volume: dailyVolume,
+      min_gap_between_scheduling: minGapMinutes,
+      max_gap_between_scheduling: maxGapMinutes,
+      campaign_sending_windows: sendingWindowsPayload,
+      campaign_action_definitions: actionDefinitions
+    }
+
+    return campaignPayload
+  }, [
+    selectedJobId,
+    selectedLinkedInAccountId,
+    linkedInAccounts,
+    jobPostings,
+    dailyVolume,
+    candidateGapMin,
+    candidateGapMax,
+    candidateGapUnit,
+    sendingWindows,
+    buildActionDefinitions
+  ])
+
   return (
     <div className="space-y-6">
       {/* Job Posting Selector */}
@@ -1841,6 +2241,39 @@ Example response: Based on your instructions, the responder will handle incoming
           </Select>
         </CardContent>
       </Card>
+
+      {/* LinkedIn Account Selector */}
+      {linkedInAccounts && linkedInAccounts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Select LinkedIn Account</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select 
+              value={selectedLinkedInAccountId?.toString() || ''} 
+              onValueChange={(value) => {
+                setSelectedLinkedInAccountId(value === 'clear-selection' ? null : parseInt(value))
+              }}
+            >
+              <SelectTrigger className={`w-full ${!selectedLinkedInAccountId ? 'border-gray-400 focus:border-gray-600' : ''}`}>
+                <SelectValue placeholder={linkedInAccounts[0] ? `${linkedInAccounts[0].email} (default)` : 'No account selected'} />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedLinkedInAccountId && (
+                  <SelectItem value="clear-selection">
+                    <span className="text-muted-foreground italic">Use default (first account)</span>
+                  </SelectItem>
+                )}
+                {linkedInAccounts.map((account) => (
+                  <SelectItem key={account.id} value={account.id.toString()}>
+                    {account.email} {account.first_name || account.last_name ? `(${account.first_name} ${account.last_name})`.trim() : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Candidates Summary */}
       {selectedJobId && (
@@ -1893,14 +2326,19 @@ Example response: Based on your instructions, the responder will handle incoming
               </Button>
               <Button
                 onClick={handleClearSequence}
-                disabled={nodes.length === 0}
+                // disabled={nodes.length === 0}
                 variant="outline"
                 className="bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Clear Sequence
               </Button>
               <Button
-                onClick={() => onNavigateToSandbox?.()}
+                onClick={() => {
+                  const payload = prepareCampaignPayload()
+                  if (payload) {
+                    console.log('Campaign Payload:', JSON.stringify(payload, null, 2))
+                  }
+                }}
                 variant="outline"
                 className="bg-white hover:bg-gray-50"
               >
