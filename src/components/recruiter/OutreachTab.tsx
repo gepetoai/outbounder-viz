@@ -14,8 +14,7 @@ import ReactFlow, {
   ReactFlowProvider,
   useReactFlow,
   Handle,
-  Position,
-  NodeChange
+  Position
 } from 'reactflow'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -46,23 +45,9 @@ import {
 } from 'lucide-react'
 import { useJobPostings } from '@/hooks/useJobPostings'
 
-interface OutreachTabProps {
+interface SequencerTabProps {
   jobDescriptionId?: number | null
   onNavigateToSandbox?: () => void
-}
-
-// Dummy useCandidates hook for now
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function useCandidates(_jobDescriptionId: number | null | undefined) {
-  return {
-    data: {
-      approved_candidates: [] as unknown[],
-      rejected_candidates: [] as unknown[]
-    },
-    isLoading: false,
-    isError: false,
-    error: null
-  }
 }
 
 
@@ -103,7 +88,7 @@ const NODE_HEIGHTS = {
 }
 
 // Gap-first approach: define the desired visual gap between boxes
-const DESIRED_GAP = 10 // The consistent visual space between the bottom of one box and top of the next (tight spacing for better visual connection)
+const DESIRED_GAP = 40 // The consistent visual space between the bottom of one box and top of the next
 
 // Helper to get X position for a branch (relative to parent)
 // If parent is already in a branch (offset from START_X), use larger offset to avoid overlap
@@ -211,12 +196,6 @@ function getIcon(type: string, className = 'h-5 w-5') {
 function getNodeHeight(node: Node): number {
   if (node.type === 'waitNode') {
     return NODE_HEIGHTS.wait
-  }
-  
-  if (node.type === 'beginSequenceNode') {
-    const hasChildren = node.data.hasChildren
-    const hasButton = !hasChildren
-    return hasButton ? NODE_HEIGHTS.actionWithButton : NODE_HEIGHTS.actionWithoutButton
   }
   
   if (node.type === 'conditionalNode') {
@@ -476,12 +455,10 @@ const nodeTypes = {
   conditionalNode: ConditionalNode
 }
 
-function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox }: OutreachTabProps) {
+function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox }: SequencerTabProps) {
   const reactFlowInstance = useReactFlow()
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId || null)
   const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
-  const { data: candidatesData } = useCandidates(selectedJobId || 0)
-  const approvedCount = candidatesData?.approved_candidates?.length || 0
   const [campaignStatus, setCampaignStatus] = useState<'active' | 'paused'>('paused')
   const [showActionMenu, setShowActionMenu] = useState(false)
   const [pendingBranch, setPendingBranch] = useState<{ branch: string; parentId: string } | null>(null)
@@ -520,7 +497,6 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
   }, [])
   
   // Helper function to find nearest non-overlapping position
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const findNearestNonOverlappingPosition = useCallback((
     draggedNode: Node,
     otherNodes: Node[],
@@ -586,17 +562,9 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
   }, [nodesOverlap])
   
   // onNodesChange handler - nodes are not draggable, so we just use the base handler
-  const onNodesChange = useCallback((changes: NodeChange[]) => {
-    // Filter out any changes that might remove nodes we just added
-    // Only allow position changes and selection changes, not removals
-    const filteredChanges = changes.filter(change => {
-      if (change.type === 'remove') {
-        console.warn('Blocking node removal via onNodesChange:', change.id)
-        return false
-      }
-      return true
-    })
-    onNodesChangeBase(filteredChanges)
+  const onNodesChange = useCallback((changes: any[]) => {
+    // Nodes can only be moved programmatically through layout rules, not by user dragging
+    onNodesChangeBase(changes)
   }, [onNodesChangeBase])
   const [configureNodeId, setConfigureNodeId] = useState<string | null>(null)
   const [showConfigPanel, setShowConfigPanel] = useState(false)
@@ -653,33 +621,9 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
     }))
   }, [])
 
-  // Initialize with Begin Sequence node if no nodes exist
-  useEffect(() => {
-    if (nodes.length === 0) {
-      setNodes([createBeginSequenceNode()])
-      setEdges([])
-      setActionCount(0)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Only run once on mount
-
   // Load sequence based on selected job
-  // Only run when selectedJobId changes, not when nodes change
-  // Note: nodes is used in the effect but intentionally excluded from deps to prevent resetting user-added nodes
   useEffect(() => {
-    if (!selectedJobId) {
-      // Only reset if we currently have nodes (don't reset if user is building a sequence)
-      // This prevents clearing user-added nodes when no job is selected
-      if (nodes.length > 1 || (nodes.length === 1 && nodes[0].id !== 'begin-sequence')) {
-        // User has added nodes, don't reset
-        return
-      }
-      // Reset to just Begin Sequence when no job is selected and no user nodes exist
-      setNodes([createBeginSequenceNode()])
-      setEdges([])
-      setActionCount(0)
-      return
-    }
+    if (!selectedJobId) return
 
     // Different sequences for different job types
     if (selectedJobId === 1) {
@@ -688,6 +632,7 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
       let yPos = START_Y
       
       // Begin Sequence (always first)
+      const posBegin = yPos
       yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
       
       const pos0 = yPos
@@ -775,6 +720,7 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
       let yPos = START_Y
       
       // Begin Sequence (always first)
+      const posBegin = yPos
       yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
       
       const pos0 = yPos
@@ -898,7 +844,6 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
         reactFlowInstance.fitView({ padding: 0.2, duration: 300 })
       }, 50)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedJobId, setNodes, setEdges, markNodesWithChildren, reactFlowInstance, createBeginSequenceNode])
 
   // History management for undo/redo
@@ -934,7 +879,6 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
         setHistory(newHistory)
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes, edges, actionCount])
 
   const handleUndo = useCallback(() => {
@@ -1031,7 +975,7 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
       (node.type === 'actionNode' || node.type === 'conditionalNode') && 
       node.data.actionType === actionTypeId
     )
-  }, [nodes, findAncestors, hasActionType])
+  }, [nodes, edges, findAncestors, hasActionType])
 
   // Helper to determine which branch path (yes/no) we came through from a conditional node
   const getBranchPathFromConditional = useCallback((conditionalActionType: string, startNodeId?: string): 'yes' | 'no' | null => {
@@ -1223,7 +1167,7 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
     }
 
     return true
-  }, [hasActionType, hasActionTypeInPath, nodes, pendingBranch, pendingParent, getBranchPathFromConditional])
+  }, [hasActionType, hasActionTypeInPath, nodes, pendingBranch, pendingParent, getBranchPathFromConditional, findAncestors, edges])
 
   // Recursive function to find all descendant nodes
   const findAllDescendants = useCallback((nodeId: string, currentEdges: Edge[]): string[] => {
@@ -1320,6 +1264,7 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
     
     // Find edges connected to this node
     const incomingEdges = edges.filter((edge) => edge.target === nodeId)
+    const outgoingEdges = edges.filter((edge) => edge.source === nodeId)
     
     const nodesToDelete = new Set<string>([nodeId])
     
@@ -1470,9 +1415,7 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
     console.log('handleAddAction called:', { 
       actionType: actionType.id, 
       pendingBranch,
-      pendingParent,
-      nodesCount: nodes.length,
-      nodes: nodes.map(n => ({ id: n.id, type: n.type }))
+      nodesCount: nodes.length 
     })
     
     const isConditional = actionType.id === 'if-connection-accepted' || actionType.id === 'if-message-responded'
@@ -1658,21 +1601,13 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
     
     if (pendingParent) {
       // Use the specific parent node that was clicked
-      console.log('Looking for parent with ID:', pendingParent, 'in nodes:', nodes.map(n => n.id))
       parentNode = nodes.find(n => n.id === pendingParent)
       console.log('Using specific parent:', pendingParent, parentNode)
-      if (!parentNode) {
-        console.error('Parent node not found! Available nodes:', nodes.map(n => ({ id: n.id, type: n.type })))
-      }
     } else {
-      // Find the last node that can have children (beginSequenceNode, actionNode, or conditionalNode)
-      const nodesWithChildren = nodes.filter(n => 
-        n.type === 'beginSequenceNode' || 
-        n.type === 'actionNode' || 
-        n.type === 'conditionalNode'
-      )
-      parentNode = nodesWithChildren[nodesWithChildren.length - 1]
-      console.log('Using last node as parent:', parentNode?.id, parentNode?.type)
+      // Find the last action or conditional node in main sequence
+      const actionNodes = nodes.filter(n => n.type === 'actionNode' || n.type === 'conditionalNode')
+      parentNode = actionNodes[actionNodes.length - 1]
+      console.log('Using last action node as parent')
     }
     
     if (!parentNode) {
@@ -1689,21 +1624,13 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
     const parentX = parentNode.position.x
     
     // Calculate dynamic positions based on actual node heights
-    // IMPORTANT: Use the UPDATED height after hasChildren is set to true
-    // When a node gets children, it loses its button and becomes shorter
-    const parentHeightBeforeUpdate = getNodeHeight(parentNode)
-    const parentHeightAfterUpdate = parentNode.type === 'beginSequenceNode' 
-      ? NODE_HEIGHTS.actionWithoutButton  // After update, no button = 64px
-      : parentNode.type === 'actionNode' && !parentNode.data.actionType?.includes('end-sequence')
-        ? NODE_HEIGHTS.actionWithoutButton  // After update, no button = 64px
-        : parentHeightBeforeUpdate
-    
+    const parentHeight = getNodeHeight(parentNode)
     const waitNodeHeight = NODE_HEIGHTS.wait
     
-    // Calculate positions using the UPDATED parent height (after it loses its button)
-    // Parent bottom is at: parentNode.position.y + parentHeightAfterUpdate
+    // Calculate positions to ensure equal gaps
+    // Parent bottom is at: parentNode.position.y + parentHeight
     // Wait node should start at: parent bottom + DESIRED_GAP
-    const waitY = parentNode.position.y + parentHeightAfterUpdate + DESIRED_GAP
+    const waitY = parentNode.position.y + parentHeight + DESIRED_GAP
     const [waitX, snappedWaitY] = snapToGrid(parentX, waitY)
 
     // Position action node: wait node bottom + DESIRED_GAP
@@ -1719,8 +1646,7 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
         waitValue: 2,
         waitUnit: 'days'
       },
-      draggable: false,
-      selected: false
+      draggable: false
     }
 
     const newActionNode: Node = {
@@ -1732,12 +1658,10 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
         label: actionType.label,
         actionType: actionType.id
       },
-      draggable: false,
-      selected: false
+      draggable: false
     }
 
-    // Create edges - explicitly connect parent -> wait -> action
-    // Parent node (source: bottom handle) -> Wait node (target: top handle)
+    // Create edges
     const edgeToWait: Edge = {
       id: `${parentNodeId}-${waitNodeId}`,
       source: parentNodeId,
@@ -1748,7 +1672,6 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
       markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }
     }
 
-    // Wait node (source: bottom handle) -> Action node (target: top handle)
     const edgeToAction: Edge = {
       id: `${waitNodeId}-${newActionId}`,
       source: waitNodeId,
@@ -1759,64 +1682,21 @@ function OutreachTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox 
       markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }
     }
 
-    // Mark parent node as having children and add new nodes AND edges together
-    // This ensures ReactFlow sees all changes in sync
-    setNodes((nds) => {
-      // First update the parent node
-      const updatedParentNodes = nds.map(n => {
-        if (n.id === parentNodeId) {
-          return {
-            ...n,
-            data: {
-              ...n.data,
-              hasChildren: true
-            }
+    // Mark parent node as having children
+    setNodes((nds) => nds.map(n => {
+      if (n.id === parentNodeId) {
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            hasChildren: true
           }
         }
-        return n
-      })
-      
-      // Then add the new nodes
-      const updatedNodes = [...updatedParentNodes, waitNode, newActionNode]
-      
-      console.log('Adding nodes and edges:', { 
-        parentNodeId, 
-        waitNodeId, 
-        newActionId, 
-        totalNodes: updatedNodes.length,
-        edgeToWait: `${parentNodeId} -> ${waitNodeId}`,
-        edgeToAction: `${waitNodeId} -> ${newActionId}`,
-        waitNodePosition: waitNode.position,
-        actionNodePosition: newActionNode.position
-      })
-      
-      return updatedNodes
-    })
+      }
+      return n
+    }).concat([waitNode, newActionNode]))
     
-    // Add edges immediately after nodes to ensure they connect properly
-    setEdges((eds) => {
-      // Check if edges already exist to avoid duplicates
-      const existingEdgeIds = new Set(eds.map(e => e.id))
-      const edgesToAdd: Edge[] = []
-      
-      if (!existingEdgeIds.has(edgeToWait.id)) {
-        edgesToAdd.push(edgeToWait)
-      }
-      if (!existingEdgeIds.has(edgeToAction.id)) {
-        edgesToAdd.push(edgeToAction)
-      }
-      
-      if (edgesToAdd.length > 0) {
-        const newEdges = [...eds, ...edgesToAdd]
-        console.log('Added edges:', {
-          added: edgesToAdd.map(e => `${e.source} -> ${e.target}`),
-          totalEdges: newEdges.length
-        })
-        return newEdges
-      }
-      
-      return eds
-    })
+    setEdges((eds) => [...eds, edgeToWait, edgeToAction])
     setActionCount(actionCount + 1)
     setShowActionMenu(false)
     console.log('Clearing pendingBranch and pendingParent after adding to main sequence')
@@ -1958,7 +1838,7 @@ Example response: Based on your instructions, the responder will handle incoming
       {selectedJobId && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">{approvedCount} Approved Candidates</CardTitle>
+            <CardTitle className="text-lg">Approved Candidates</CardTitle>
           </CardHeader>
         </Card>
       )}
@@ -2062,7 +1942,7 @@ Example response: Based on your instructions, the responder will handle incoming
           )}
 
           {/* React Flow Canvas */}
-          <div style={{ height: '600px', minHeight: '400px' }} className="border-t [&_a[href*='reactflow.dev']]:hidden">
+          <div style={{ height: '800px' }} className="border-t">
             <ReactFlow
               nodes={nodes}
               edges={edges}
@@ -2079,7 +1959,6 @@ Example response: Based on your instructions, the responder will handle incoming
               preventScrolling={false}
               zoomOnScroll={true}
               panOnScroll={false}
-              proOptions={{ hideAttribution: true }}
               defaultEdgeOptions={{
                 type: 'smoothstep',
                 animated: false,
@@ -2576,10 +2455,10 @@ Example response: Based on your instructions, the responder will handle incoming
   )
 }
 
-export function OutreachTab(props: OutreachTabProps = {}) {
+export function SequencerTab(props: SequencerTabProps) {
   return (
     <ReactFlowProvider>
-      <OutreachTabInner {...props} />
+      <SequencerTabInner {...props} />
     </ReactFlowProvider>
   )
 }
