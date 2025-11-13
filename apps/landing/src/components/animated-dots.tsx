@@ -14,7 +14,7 @@ interface Dot {
 export function AnimatedDots () {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const dotsRef = useRef<Dot[]>([])
-  const animationFrameRef = useRef<number>()
+  const animationFrameRef = useRef<number>(0)
 
   useEffect(() => {
     const canvas = canvasRef.current

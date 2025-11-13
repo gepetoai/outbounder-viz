@@ -7,12 +7,12 @@ import { Button } from './ui/button'
 import { Card, CardContent } from './ui/card'
 import { supabase } from '@/lib/supabase'
 
-const customerLogos = [
-  { name: 'Cvent', src: '/customer-logos/cvent.png', width: 150 },
-  { name: 'Realtor.com', src: '/customer-logos/realtor.png', width: 175 },
-  { name: 'Provi', src: '/customer-logos/provi.png', width: 125 },
-  { name: 'SpotOn', src: '/customer-logos/spoton.png', width: 150 }
-]
+// const customerLogos = [
+//   { name: 'Cvent', src: '/customer-logos/cvent.png', width: 150 },
+//   { name: 'Realtor.com', src: '/customer-logos/realtor.png', width: 175 },
+//   { name: 'Provi', src: '/customer-logos/provi.png', width: 125 },
+//   { name: 'SpotOn', src: '/customer-logos/spoton.png', width: 150 }
+// ]
 
 const applications = [
   {
@@ -154,7 +154,7 @@ export function HeroSection () {
               {/* Success Message */}
               {submitStatus === 'success' && (
                 <div className="p-4 bg-[#F5F5F5] border border-[#EEEEEE] rounded-md">
-                  <p className="text-sm text-[#1C1B20]">Thank you! We'll be in touch soon.</p>
+                  <p className="text-sm text-[#1C1B20]">Thank you! We&apos;ll be in touch soon.</p>
                 </div>
               )}
 
