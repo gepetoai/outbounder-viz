@@ -27,6 +27,7 @@ import { JobPostingManager } from '@/components/recruiter/JobPostingManager'
 import { SearchTab, type SearchParams } from '@/components/recruiter/SearchTab'
 import { CandidateTab } from '@/components/recruiter/CandidateTab'
 import { SequencerTab } from '@/components/recruiter/SequencerTab'
+import { OutreachTab } from '@/components/recruiter/OutreachTab'
 import { AnalyticsTab } from '@/components/recruiter/AnalyticsTab'
 import { ApprovedRejectedCarousel } from '@/components/recruiter/ApprovedRejectedCarousel'
 import { SettingsTab } from '@/components/recruiter/SettingsTab'
@@ -275,15 +276,7 @@ export default function HomePage() {
     { id: 'job-setup', label: 'Jobs', icon: Briefcase, subItems: [] },
     { id: 'search', label: 'Search', icon: Search, subItems: [] },
     { id: 'candidates', label: 'Candidates', icon: Users, subItems: [] },
-    {
-      id: 'outreach',
-      label: 'Outreach',
-      icon: MessageSquare,
-      subItems: [
-        { id: 'candidates', label: 'List', icon: Users },
-        // { id: 'sequencer', label: 'Sequencer', icon: Play },
-        // { id: 'analytics', label: 'Analytics', icon: BarChart3 }
-      ]
+    { id: 'outreach', label: 'Outreach', icon: MessageSquare, subItems: []
     },
     { id: 'sandbox', label: 'SandBox', icon: Zap, subItems: [] },
     { id: 'linkedin_accounts', label: 'Accounts', icon: Linkedin, subItems: [] },
@@ -393,23 +386,7 @@ export default function HomePage() {
           />
         )
       case 'outreach':
-        switch (recruiterSubTab) {
-          case 'candidates':
-            return (
-              <ApprovedRejectedCarousel
-                approvedCandidatesData={approvedCandidatesData.map(candidate => ({ ...candidate, status: 'approved' as const }))}
-                rejectedCandidatesData={rejectedCandidatesData.map(candidate => ({ ...candidate, status: 'rejected' as const }))}
-                setApprovedCandidatesData={(candidates) => setApprovedCandidatesData(candidates.map(candidate => ({ ...candidate, status: undefined })))}
-                setRejectedCandidatesData={(candidates) => setRejectedCandidatesData(candidates.map(candidate => ({ ...candidate, status: undefined })))}
-              />
-            )
-          case 'analytics':
-            return <AnalyticsTab />
-          case 'sequencer':
-            return <SequencerTab />
-          default:
-            return null
-        }
+        return <OutreachTab jobDescriptionId={currentJobDescriptionId} />
       case 'analytics':
         return (
           <div className="space-y-6">
