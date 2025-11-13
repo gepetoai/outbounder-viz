@@ -8,12 +8,14 @@ import { SequencerD3 } from '@/components/sequencer/SequencerD3'
 import { SandboxOffline } from '@/components/sandbox'
 import { InboxPlaceholder } from '@/components/inbox'
 import { SidePanelPlaceholder } from '@/components/side-panel'
-import { TablePlaceholder } from '@/components/table'
-import { SearchPlaceholder } from '@/components/search'
+import { TableView } from '@/components/table'
+import { SearchView } from '@/components/search'
 import { SettingsPlaceholder } from '@/components/settings'
+import { CardsPlaceholder } from '@/components/cards'
+import { LayoutPlaceholder } from '@/components/layout'
 import Image from 'next/image'
 
-type Tab = 'inbox' | 'search' | 'side-panel' | 'table' | 'sequencer' | 'sequencer-d3' | 'sandbox' | 'settings'
+type Tab = 'inbox' | 'search' | 'side-panel' | 'table' | 'cards' | 'layout' | 'sequencer' | 'sequencer-d3' | 'sandbox' | 'settings'
 
 export default function LaboratoryPage () {
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -25,6 +27,8 @@ export default function LaboratoryPage () {
     { id: 'search' as const, label: 'Search', iconPath: '/icons/magnifying-glass-dark.svg' },
     { id: 'side-panel' as const, label: 'Side Panel', iconPath: '/icons/sliders-dark.svg' },
     { id: 'table' as const, label: 'Table', iconPath: '/icons/bars-dark.svg' },
+    { id: 'cards' as const, label: 'Cards', iconPath: '/icons/grid-dark.svg' },
+    { id: 'layout' as const, label: 'Layout', iconPath: '/icons/list-dark.svg' },
     { id: 'sequencer' as const, label: 'Sequencer', iconPath: '/icons/sparkles-dark.svg' },
     { id: 'sandbox' as const, label: 'Sandbox', iconPath: '/icons/bolt-dark.svg' },
     { id: 'settings' as const, label: 'Settings', iconPath: '/icons/gear-dark.svg' }
@@ -35,11 +39,15 @@ export default function LaboratoryPage () {
       case 'inbox':
         return <InboxPlaceholder />
       case 'search':
-        return <SearchPlaceholder />
+        return <SearchView />
       case 'side-panel':
         return <SidePanelPlaceholder />
       case 'table':
-        return <TablePlaceholder />
+        return <TableView />
+      case 'cards':
+        return <CardsPlaceholder />
+      case 'layout':
+        return <LayoutPlaceholder />
       case 'sequencer':
         return <Sequencer />
       case 'sequencer-d3':

@@ -1,2 +1,6 @@
 export { TablePlaceholder } from './TablePlaceholder'
-
+export { TableView } from './TableView'
+export { DataTable } from './DataTable'
+export { CandidateTable } from './CandidateTable'
+export type { TableColumn, TableAction, DataTableProps } from './DataTable'
+export type { Candidate } from './CandidateTable'
