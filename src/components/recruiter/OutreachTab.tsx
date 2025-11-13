@@ -44,6 +44,7 @@ import {
   Play
 } from 'lucide-react'
 import { useJobPostings } from '@/hooks/useJobPostings'
+import { useCandidates } from '@/hooks/useCandidates'
 
 interface SequencerTabProps {
   jobDescriptionId?: number | null
@@ -129,7 +130,7 @@ function getBranchXPosition(
   
   // Keep checking and adjusting until no collision is found
   let currentMultiplier = isParentInBranch ? 2 : 1
-  const maxAttempts = 5 // Prevent infinite loop
+  let maxAttempts = 5 // Prevent infinite loop
   let attempts = 0
   
   while (attempts < maxAttempts) {
@@ -459,6 +460,8 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   const reactFlowInstance = useReactFlow()
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId || null)
   const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
+  const { data: candidatesData } = useCandidates(selectedJobId || 0)
+  const approvedCount = candidatesData?.approved_candidates?.length || 0
   const [campaignStatus, setCampaignStatus] = useState<'active' | 'paused'>('paused')
   const [showActionMenu, setShowActionMenu] = useState(false)
   const [pendingBranch, setPendingBranch] = useState<{ branch: string; parentId: string } | null>(null)
@@ -504,8 +507,8 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     snapToGridFn: (x: number, y: number) => [number, number]
   ): { x: number; y: number } => {
     const draggedHeight = nodeHeights.get(draggedNode.id) || getNodeHeight(draggedNode)
-    const newX = draggedNode.position.x
-    const newY = draggedNode.position.y
+    let newX = draggedNode.position.x
+    let newY = draggedNode.position.y
     
     // Try sliding horizontally first (left and right)
     const slideOffsets = [
@@ -1838,7 +1841,7 @@ Example response: Based on your instructions, the responder will handle incoming
       {selectedJobId && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Approved Candidates</CardTitle>
+            <CardTitle className="text-lg">{approvedCount} Approved Candidates</CardTitle>
           </CardHeader>
         </Card>
       )}
@@ -2209,7 +2212,7 @@ Example response: Based on your instructions, the responder will handle incoming
                             </SelectContent>
                           </Select>
                           <p className="text-xs text-gray-500">
-                            Choose which post to like from the candidate&apos;s profile
+                            Choose which post to like from the candidate's profile
                           </p>
                         </div>
                         

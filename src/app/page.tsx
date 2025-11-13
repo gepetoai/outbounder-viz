@@ -26,13 +26,16 @@ import {
 import { JobPostingManager } from '@/components/recruiter/JobPostingManager'
 import { SearchTab, type SearchParams } from '@/components/recruiter/SearchTab'
 import { CandidateTab } from '@/components/recruiter/CandidateTab'
+import { SequencerTab } from '@/components/recruiter/SequencerTab'
+import { OutreachTab } from '@/components/recruiter/OutreachTab'
+import { AnalyticsTab } from '@/components/recruiter/AnalyticsTab'
+import { ApprovedRejectedCarousel } from '@/components/recruiter/ApprovedRejectedCarousel'
 import { SettingsTab } from '@/components/recruiter/SettingsTab'
 import { JobPostingRequiredModal } from '@/components/recruiter/JobPostingRequiredModal'
 import { LinkedInAccountsTab } from '@/components/recruiter/LinkedInAccountsTab'
 import { SandBoxTab } from '@/components/recruiter/sandbox/SandBoxTab'
 import { AuthWrapper } from '@/components/auth/auth-wrapper';
 import { UserButton } from '@clerk/nextjs';
-import { SequencerTab } from '@/components/recruiter/OutreachTab'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useSavedSearches } from '@/hooks/useSearch'
 import { mapSavedSearchToParams } from '@/lib/search-api'
@@ -383,7 +386,7 @@ export default function HomePage() {
           />
         )
       case 'outreach':
-        return <SequencerTab jobDescriptionId={currentJobDescriptionId} />
+        return <OutreachTab jobDescriptionId={currentJobDescriptionId} />
       case 'analytics':
         return (
           <div className="space-y-6">
