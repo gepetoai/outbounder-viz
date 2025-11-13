@@ -14,8 +14,10 @@ import ReactFlow, {
   ReactFlowProvider,
   useReactFlow,
   Handle,
-  Position
+  Position,
+  NodeChange
 } from 'reactflow'
+import 'reactflow/dist/style.css'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -44,7 +46,7 @@ import {
   Play
 } from 'lucide-react'
 import { useJobPostings } from '@/hooks/useJobPostings'
-import { useCandidates } from '@/hooks/useCandidates'
+import { getMockCandidatesForJob, getMockShortlistedCandidates } from '@/lib/mock-data'
 
 interface SequencerTabProps {
   jobDescriptionId?: number | null
@@ -130,7 +132,7 @@ function getBranchXPosition(
   
   // Keep checking and adjusting until no collision is found
   let currentMultiplier = isParentInBranch ? 2 : 1
-  let maxAttempts = 5 // Prevent infinite loop
+  const maxAttempts = 5 // Prevent infinite loop
   let attempts = 0
   
   while (attempts < maxAttempts) {
@@ -460,7 +462,13 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   const reactFlowInstance = useReactFlow()
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId || null)
   const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
-  const { data: candidatesData } = useCandidates(selectedJobId || 0)
+  
+  // Mock data for candidates
+  const mockCandidates = selectedJobId ? getMockCandidatesForJob(selectedJobId) : []
+  const mockShortlistedIds = getMockShortlistedCandidates()
+  const mockApprovedCandidates = mockCandidates.filter(candidate => mockShortlistedIds.includes(candidate.id))
+  const candidatesData = { approved_candidates: mockApprovedCandidates }
+  
   const approvedCount = candidatesData?.approved_candidates?.length || 0
   const [campaignStatus, setCampaignStatus] = useState<'active' | 'paused'>('paused')
   const [showActionMenu, setShowActionMenu] = useState(false)
@@ -507,8 +515,8 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     snapToGridFn: (x: number, y: number) => [number, number]
   ): { x: number; y: number } => {
     const draggedHeight = nodeHeights.get(draggedNode.id) || getNodeHeight(draggedNode)
-    let newX = draggedNode.position.x
-    let newY = draggedNode.position.y
+    const newX = draggedNode.position.x
+    const newY = draggedNode.position.y
     
     // Try sliding horizontally first (left and right)
     const slideOffsets = [
@@ -565,7 +573,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   }, [nodesOverlap])
   
   // onNodesChange handler - nodes are not draggable, so we just use the base handler
-  const onNodesChange = useCallback((changes: any[]) => {
+  const onNodesChange = useCallback((changes: NodeChange[]) => {
     // Nodes can only be moved programmatically through layout rules, not by user dragging
     onNodesChangeBase(changes)
   }, [onNodesChangeBase])
@@ -635,7 +643,6 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
       let yPos = START_Y
       
       // Begin Sequence (always first)
-      const posBegin = yPos
       yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
       
       const pos0 = yPos
@@ -723,7 +730,6 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
       let yPos = START_Y
       
       // Begin Sequence (always first)
-      const posBegin = yPos
       yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
       
       const pos0 = yPos
@@ -1267,7 +1273,6 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     
     // Find edges connected to this node
     const incomingEdges = edges.filter((edge) => edge.target === nodeId)
-    const outgoingEdges = edges.filter((edge) => edge.source === nodeId)
     
     const nodesToDelete = new Set<string>([nodeId])
     
@@ -2212,7 +2217,7 @@ Example response: Based on your instructions, the responder will handle incoming
                             </SelectContent>
                           </Select>
                           <p className="text-xs text-gray-500">
-                            Choose which post to like from the candidate's profile
+                            Choose which post to like from the candidate&apos;s profile
                           </p>
                         </div>
                         
