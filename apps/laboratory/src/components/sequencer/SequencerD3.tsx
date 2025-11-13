@@ -11,22 +11,26 @@ import ReactFlow, {
   BackgroundVariant,
   ReactFlowProvider,
   Handle,
-  Position
+  Position,
+  useReactFlow
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { Plus } from 'lucide-react'
 
+const NODE_WIDTH = 240
+
 // Simple Test Node Component
 function TestNode ({ data }: { data: any }) {
   return (
-    <div className="bg-white border-2 border-gray-900 rounded-lg p-4 w-[240px] relative">
+    <div className="bg-white rounded-lg w-full relative">
       <Handle 
         type="target" 
         position={Position.Top}
-        style={{ left: '50%', transform: 'translateX(-50%)' }}
-        className="w-3 h-3 bg-gray-400 border-2 border-white"
+        id="target"
+        style={{ left: '50%', transform: 'translate(-50%, -50%)' }}
+        className="w-3 h-3 bg-gray-400"
       />
-      <div className="flex flex-col items-center justify-center">
+      <div className="flex flex-col items-center justify-center p-4">
         <div className="font-semibold text-sm">Test Action</div>
         <div className="text-xs text-gray-600">Node #{data.number}</div>
         {data.onAddNext && (
@@ -41,8 +45,9 @@ function TestNode ({ data }: { data: any }) {
       <Handle 
         type="source" 
         position={Position.Bottom}
-        style={{ left: '50%', transform: 'translateX(-50%)' }}
-        className="w-3 h-3 bg-gray-400 border-2 border-white"
+        id="source"
+        style={{ left: '50%', transform: 'translate(-50%, 50%)' }}
+        className="w-3 h-3 bg-gray-400"
       />
     </div>
   )
@@ -56,6 +61,7 @@ function SequencerD3Component () {
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
   const [nodeCounter, setNodeCounter] = useState(1)
+  const { fitView } = useReactFlow()
 
   // Initialize with first node
   useEffect(() => {
@@ -63,7 +69,7 @@ function SequencerD3Component () {
       id: '1',
       type: 'test',
       position: { x: 0, y: 50 },
-      style: { width: 240, boxSizing: 'border-box' },
+      width: NODE_WIDTH,
       data: {
         number: 1,
         onAddNext: () => handleAddNext('1')
@@ -83,8 +89,7 @@ function SequencerD3Component () {
       position: {
         x: startX,
         y: startY + (index * verticalSpacing)
-      },
-      style: { width: 240, boxSizing: 'border-box' }
+      }
     }))
   }, [])
 
@@ -98,7 +103,7 @@ function SequencerD3Component () {
       id: newNodeId,
       type: 'test',
       position: { x: 0, y: 200 }, // Temporary position
-      style: { width: 240, boxSizing: 'border-box' },
+      width: NODE_WIDTH,
       data: {
         number: nodeCounter + 1,
         onAddNext: () => handleAddNext(newNodeId)
@@ -109,7 +114,9 @@ function SequencerD3Component () {
     const newEdge: Edge = {
       id: `e${parentId}-${newNodeId}`,
       source: parentId,
+      sourceHandle: 'source',
       target: newNodeId,
+      targetHandle: 'target',
       type: 'straight',
       animated: false,
       style: { stroke: '#9ca3af', strokeWidth: 2 }
@@ -127,13 +134,20 @@ function SequencerD3Component () {
       const allNodes = [...updatedNodes, newNode]
       
       // Apply vertical layout
-      const layoutedNodes = applyVerticalLayout(allNodes)
-      
-      return layoutedNodes
+      return applyVerticalLayout(allNodes)
     })
 
     setEdges(currentEdges => [...currentEdges, newEdge])
-  }, [nodeCounter, edges, applyVerticalLayout])
+  }, [nodeCounter, applyVerticalLayout])
+
+  // Fit view once after initial mount
+  useEffect(() => {
+    if (!nodes.length) return
+
+    requestAnimationFrame(() => {
+      fitView({ padding: 0.2, includeHiddenNodes: true })
+    })
+  }, [nodes.length, fitView])
 
   // Update node data callbacks when dependencies change
   useEffect(() => {
@@ -149,7 +163,17 @@ function SequencerD3Component () {
         }
       })
     )
-  }, [edges.length])
+  }, [edges, handleAddNext])
+
+  // Debug: log node positions to verify alignment
+  useEffect(() => {
+    console.log('Node positions:', nodes.map(n => ({ id: n.id, x: n.position.x, y: n.position.y })))
+  }, [nodes])
+
+  // Debug: log edges
+  useEffect(() => {
+    console.log('Edges:', edges)
+  }, [edges])
 
   return (
     <div className="w-full h-[calc(100vh-180px)] border border-gray-300 rounded-2xl overflow-hidden shadow-sm">
@@ -159,8 +183,7 @@ function SequencerD3Component () {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
-        fitView
-        minZoom={0.1}
+        minZoom={0.5}
         maxZoom={2}
       >
         <Background variant={BackgroundVariant.Dots} />
