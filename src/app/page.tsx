@@ -26,10 +26,7 @@ import {
 import { JobPostingManager } from '@/components/recruiter/JobPostingManager'
 import { SearchTab, type SearchParams } from '@/components/recruiter/SearchTab'
 import { CandidateTab } from '@/components/recruiter/CandidateTab'
-import { SequencerTab } from '@/components/recruiter/SequencerTab'
-import { OutreachTab } from '@/components/recruiter/OutreachTab'
-import { AnalyticsTab } from '@/components/recruiter/AnalyticsTab'
-import { ApprovedRejectedCarousel } from '@/components/recruiter/ApprovedRejectedCarousel'
+import { SequencerTab } from '@/components/recruiter/OutreachTab'
 import { SettingsTab } from '@/components/recruiter/SettingsTab'
 import { JobPostingRequiredModal } from '@/components/recruiter/JobPostingRequiredModal'
 import { LinkedInAccountsTab } from '@/components/recruiter/LinkedInAccountsTab'
@@ -386,7 +383,7 @@ export default function HomePage() {
           />
         )
       case 'outreach':
-        return <OutreachTab jobDescriptionId={currentJobDescriptionId} />
+        return <SequencerTab jobDescriptionId={currentJobDescriptionId} />
       case 'analytics':
         return (
           <div className="space-y-6">
