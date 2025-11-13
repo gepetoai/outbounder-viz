@@ -1,5 +1,9 @@
 // Export all UI components
 export * from './alert'
+export * from './app-header'
+export * from './app-layout'
+export * from './app-sidebar'
+export * from './app-title'
 export * from './badge'
 export * from './button'
 export * from './card'
@@ -7,14 +11,15 @@ export * from './checkbox'
 export * from './dialog'
 export * from './input'
 export * from './label'
-export * from './modal'
+// export * from './modal' // OLD component with app-specific imports
 export * from './navigation-menu'
 export * from './popover'
 export * from './select'
 export * from './separator'
-export * from './settings'
+// export * from './settings' // OLD component with app-specific imports
 export * from './sheet'
-export * from './sidebar'
+// export * from './sidebar' // OLD component with app-specific imports - use app-sidebar instead
+export * from './sidebar-nav-item'
 export * from './skeleton'
 export * from './switch'
 export * from './table'
