@@ -24,8 +24,8 @@ export function SandboxTableView({
   const selectedCellRef = useRef<HTMLDivElement>(null)
 
   // Get the maximum number of messages across all candidates to determine column count
-  // Default to 2 columns if no messages exist yet
-  const maxMessages = Math.max(...Object.values(messages).map(msgs => msgs.length), 2)
+  // Default to 1 column if no messages exist yet
+  const maxMessages = Math.max(...Object.values(messages).map(msgs => msgs.length), 1)
 
   // Auto-scroll to selected cell when selection changes
   useEffect(() => {
@@ -44,8 +44,7 @@ export function SandboxTableView({
         <Table className="table-fixed">
           <TableHeader className="sticky top-0 z-20 bg-white border-b shadow-sm">
             <TableRow className="h-12">
-              <TableHead className="w-[60px] pl-4 bg-white"></TableHead>
-              <TableHead className="w-[200px] sticky left-0 bg-white z-30 border-r">Candidate</TableHead>
+              <TableHead className="w-[100px] sticky left-0 bg-white z-30 border-r pl-4">Candidate</TableHead>
               {Array.from({ length: maxMessages }, (_, i) => (
                 <TableHead key={i} className="w-[300px] bg-white">Message {i + 1}</TableHead>
               ))}
@@ -61,19 +60,19 @@ export function SandboxTableView({
                     className="hover:bg-gray-50 cursor-pointer h-16"
                     onClick={() => onCandidateClick(candidate)}
                   >
-                    <TableCell className="align-middle pl-4 whitespace-nowrap">
-                      <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 hover:border-gray-400 transition-colors">
-                        <img
-                          src={candidate.photo}
-                          alt={candidate.name}
-                          className="w-full h-full object-cover grayscale"
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell className="align-middle font-medium sticky left-0 bg-white z-10 whitespace-nowrap border-r">
-                      <div className="flex flex-col">
-                        <span className="truncate" title={candidate.name}>{candidate.name}</span>
-                        <span className="text-xs text-gray-500 truncate" title={candidate.title}>{candidate.title}</span>
+                    <TableCell className="align-middle font-medium sticky left-0 bg-white z-10 border-r pl-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 hover:border-gray-400 transition-colors flex-shrink-0">
+                          <img
+                            src={candidate.photo}
+                            alt={candidate.name}
+                            className="w-full h-full object-cover grayscale"
+                          />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="truncate" title={candidate.name}>{candidate.name}</span>
+                          <span className="text-xs text-gray-500 truncate" title={candidate.title}>{candidate.title}</span>
+                        </div>
                       </div>
                     </TableCell>
                     {Array.from({ length: maxMessages }, (_, i) => {

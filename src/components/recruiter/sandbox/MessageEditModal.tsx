@@ -68,6 +68,12 @@ export function MessageEditModal({
 
   const handleSave = () => {
     onSave(editedMessage)
+    onClearSelection?.()
+    onClose()
+  }
+
+  const handleCancel = () => {
+    onClearSelection?.()
     onClose()
   }
 
@@ -79,7 +85,6 @@ export function MessageEditModal({
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (!hasInteracted) {
       setHasInteracted(true)
-      onClearSelection?.()
     }
     setEditedMessage(e.target.value)
   }
@@ -87,7 +92,6 @@ export function MessageEditModal({
   const handleTextareaClick = () => {
     if (!hasInteracted) {
       setHasInteracted(true)
-      onClearSelection?.()
     }
   }
 
@@ -120,7 +124,7 @@ export function MessageEditModal({
               </Button>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleClose}>
+              <Button variant="outline" onClick={handleCancel}>
                 Cancel
               </Button>
               <Button onClick={handleSave}>
