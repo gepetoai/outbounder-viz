@@ -10,8 +10,10 @@ export function FeedbackButton({ text, onClick, selected = false }: FeedbackButt
   return (
     <button
       className={cn(
-        "w-full text-left py-2.5 px-4 rounded-lg text-sm transition-colors",
-        selected ? "bg-blue-500 text-white" : "bg-blue-400 text-white"
+        "w-full text-left py-2.5 px-4 rounded-lg text-sm transition-colors border",
+        selected
+          ? "bg-gray-900 text-white border-gray-900"
+          : "bg-gray-100 text-gray-900 border-gray-200 hover:bg-gray-200"
       )}
       onClick={onClick}
     >
