@@ -50,7 +50,7 @@ import {
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useShortlistedCandidates } from '@/hooks/useCandidates'
 import { useLinkedInAccounts } from '@/hooks/useLinkedInAccounts'
-import { createCampaign, getCampaignByJobDescription, CampaignWithDetails } from '@/lib/search-api'
+import { createCampaign, getCampaignByJobDescription, startCampaign, pauseCampaign, CampaignWithDetails } from '@/lib/search-api'
 
 interface SequencerTabProps {
   jobDescriptionId?: number | null
@@ -475,9 +475,10 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     error: candidatesError 
   } = useShortlistedCandidates(selectedJobId)
   const approvedCount = approvedCandidatesData?.length || 0
-  const [campaignStatus, setCampaignStatus] = useState<'active' | 'paused'>('paused')
+  const [campaignStatus, setCampaignStatus] = useState<'draft' | 'paused' | 'running' | null>(null)
   const [selectedLinkedInAccountId, setSelectedLinkedInAccountId] = useState<number | null>(null)
   const [isSavingCampaign, setIsSavingCampaign] = useState(false)
+  const [currentCampaignId, setCurrentCampaignId] = useState<number | null>(null)
   const [showActionMenu, setShowActionMenu] = useState(false)
   const [pendingBranch, setPendingBranch] = useState<{ branch: string; parentId: string } | null>(null)
   const [pendingParent, setPendingParent] = useState<string | null>(null)
@@ -908,6 +909,10 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     // Update LinkedIn account
     setSelectedLinkedInAccountId(campaign.fk_linkedin_account_id)
 
+    // Store campaign ID and status
+    setCurrentCampaignId(campaign.id)
+    setCampaignStatus((campaign.status as 'draft' | 'paused' | 'running') || null)
+
     // Fit view
     setTimeout(() => {
       reactFlowInstance.fitView({ padding: 0.2, duration: 300 })
@@ -921,6 +926,8 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
       setNodes([])
       setEdges([])
       setActionCount(0)
+      setCurrentCampaignId(null)
+      setCampaignStatus(null)
       return
     }
 
@@ -931,10 +938,12 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
           // Rebuild flow from campaign
           rebuildFlowFromCampaign(campaign)
         } else {
-          // 404 - just show begin sequence
+          // 404 - just show begin sequence, no campaign exists
           setNodes([createBeginSequenceNode()])
           setEdges([])
           setActionCount(0)
+          setCurrentCampaignId(null)
+          setCampaignStatus(null)
         }
       })
       .catch(error => {
@@ -943,6 +952,8 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
         setNodes([createBeginSequenceNode()])
         setEdges([])
         setActionCount(0)
+        setCurrentCampaignId(null)
+        setCampaignStatus(null)
       })
   }, [selectedJobId, rebuildFlowFromCampaign, createBeginSequenceNode, setNodes, setEdges])
 
@@ -2361,7 +2372,7 @@ Example response: Based on your instructions, the responder will handle incoming
     // Prepare campaign payload
     const campaignPayload = {
       name: campaignName,
-      status: 'draft' as const,
+      status: (campaignStatus || 'draft') as 'draft' | 'paused' | 'running',
       fk_linkedin_account_id: linkedInAccountId,
       fk_job_description_id: selectedJobId,
       daily_volume: dailyVolume,
@@ -2375,6 +2386,7 @@ Example response: Based on your instructions, the responder will handle incoming
   }, [
     selectedJobId,
     selectedLinkedInAccountId,
+    campaignStatus,
     linkedInAccounts,
     jobPostings,
     dailyVolume,
@@ -2398,6 +2410,9 @@ Example response: Based on your instructions, the responder will handle incoming
     try {
       const response = await createCampaign(payload)
       console.log('Campaign saved successfully:', response)
+      // Update campaign ID and status after successful save
+      setCurrentCampaignId(response.id)
+      setCampaignStatus((response.status as 'draft' | 'paused' | 'running') || 'draft')
       // You can add a success toast/notification here if needed
     } catch (error) {
       console.error('Failed to save campaign:', error)
@@ -2542,7 +2557,7 @@ Example response: Based on your instructions, the responder will handle incoming
               </Button>
               <Button
                 onClick={handleSaveCampaign}
-                disabled={isSavingCampaign}
+                disabled={isSavingCampaign || currentCampaignId !== null}
                 variant="outline"
                 className="bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -2560,11 +2575,39 @@ Example response: Based on your instructions, the responder will handle incoming
               </Button>
               <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-300">
                 <span className="text-sm font-semibold text-gray-900">
-                  {campaignStatus === 'active' ? 'Active' : 'Paused'}
+                  {campaignStatus === 'running' ? 'Running' : campaignStatus === 'paused' ? 'Paused' : campaignStatus === 'draft' ? 'Draft' : 'Draft'}
                 </span>
                 <Switch
-                  checked={campaignStatus === 'active'}
-                  onCheckedChange={(checked) => setCampaignStatus(checked ? 'active' : 'paused')}
+                  checked={campaignStatus === 'running'}
+                  onCheckedChange={async (checked) => {
+                    // Only call API if campaign exists
+                    if (currentCampaignId) {
+                      const previousStatus = campaignStatus
+                      const newStatus = checked ? 'running' : 'paused'
+                      
+                      try {
+                        if (checked && (previousStatus === 'draft' || previousStatus === 'paused')) {
+                          // Starting campaign: draft/paused -> running
+                          await startCampaign(currentCampaignId)
+                          setCampaignStatus('running')
+                        } else if (!checked && previousStatus === 'running') {
+                          // Pausing campaign: running -> paused
+                          await pauseCampaign(currentCampaignId)
+                          setCampaignStatus('paused')
+                        } else {
+                          // Just update local state if no API call needed
+                          setCampaignStatus(newStatus)
+                        }
+                      } catch (error) {
+                        console.error('Failed to update campaign status:', error)
+                        // Revert to previous status on error
+                        setCampaignStatus(previousStatus || 'draft')
+                      }
+                    } else {
+                      // No campaign exists, just update local state
+                      setCampaignStatus(checked ? 'running' : 'draft')
+                    }
+                  }}
                   className="scale-110"
                 />
               </div>

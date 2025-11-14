@@ -474,7 +474,7 @@ export async function bulkDeleteRejectedCandidates(data: BulkCandidateRequest): 
 
 export interface CampaignPayload {
   name: string
-  status: 'draft' | 'active' | 'paused'
+  status: 'draft' | 'paused' | 'running'
   fk_linkedin_account_id: number
   fk_job_description_id: number
   daily_volume: number
@@ -514,6 +514,20 @@ export async function createCampaign(data: CampaignPayload): Promise<CampaignRes
   return fetchJson<CampaignResponse>(`${API_BASE_URL}/campaigns/`, {
     method: 'POST',
     body: JSON.stringify(data)
+  })
+}
+
+export async function startCampaign(campaignId: number): Promise<CampaignResponse> {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+  return fetchJson<CampaignResponse>(`${API_BASE_URL}/campaigns/${campaignId}/start`, {
+    method: 'POST'
+  })
+}
+
+export async function pauseCampaign(campaignId: number): Promise<CampaignResponse> {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+  return fetchJson<CampaignResponse>(`${API_BASE_URL}/campaigns/${campaignId}/pause`, {
+    method: 'POST'
   })
 }
 
