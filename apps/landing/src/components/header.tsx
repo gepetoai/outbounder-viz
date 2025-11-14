@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import { Button } from './ui/button'
+// import { Button } from './ui/button'
 
 export function Header () {
   return (
@@ -18,14 +18,14 @@ export function Header () {
           </div>
 
           {/* Login Button */}
-          <div>
+          {/* <div>
             <Button
               variant="outline"
               className="border-[#1C1B20] text-[#1C1B20] hover:bg-[#F5F5F5]"
             >
               Login
             </Button>
-          </div>
+          </div> */}
         </div>
       </div>
     </header>
