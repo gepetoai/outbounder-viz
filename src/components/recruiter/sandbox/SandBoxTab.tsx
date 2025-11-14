@@ -10,8 +10,15 @@ import { AgentPanel } from './AgentPanel'
 import { CandidateDetailPanel } from '../CandidateDetailPanel'
 import { ChatMessageProps } from './ChatMessage'
 import { useJobPostings } from '@/hooks/useJobPostings'
-import { useCandidatesByJobDescription } from '@/hooks/useSearch'
-import { mapEnrichedCandidateToCandidate, type Candidate } from '@/lib/utils'
+import { useCampaignCandidates } from '@/hooks/useCampaigns'
+import {
+  useCandidatesWithMessages,
+  useAddFeedbackAndRegenerate,
+  useUpdateCustomMessage,
+  type CampaignCandidateWithCustomMessage
+} from '@/hooks/useCustomMessages'
+import { type CampaignCandidateWithDetails } from '@/hooks/useCampaigns'
+import { type Candidate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { MessageSquare, Table as TableIcon } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -44,16 +51,44 @@ https://drive.google.com/file/d/1pS9em57PibTRTDB86tPq_BSgxvRvhlGC/view?usp=drive
   }
 ]
 
+// Helper function to map campaign candidate data to Candidate type
+const mapCampaignCandidateToCandidate = (
+  cc: CampaignCandidateWithDetails | CampaignCandidateWithCustomMessage
+): Candidate => {
+  const candidate = cc.candidate
+  const rawData = candidate.raw_data || {}
+
+  return {
+    id: cc.id.toString(), // Use campaign_candidate_id
+    name: `${candidate.first_name} ${candidate.last_name}`,
+    title: candidate.job_title,
+    company: candidate.company_name,
+    location: `${candidate.city}, ${candidate.state}`,
+    photo: rawData.picture_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(candidate.first_name + ' ' + candidate.last_name)}&background=random`,
+    education: rawData.education?.[0]?.school_name || 'N/A',
+    experience: (rawData.experience || []).slice(0, 3).map((exp: { title?: string; company_name?: string; duration?: string }) => ({
+      title: exp.title || '',
+      company: exp.company_name || '',
+      duration: exp.duration || ''
+    })),
+    linkedinUrl: `https://linkedin.com/in/${candidate.linkedin_shorthand_slug}`,
+    summary: rawData.headline || candidate.job_title,
+  }
+}
+
 export function SandBoxTab() {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(3) // Show first 3 messages initially
   const [messages, setMessages] = useState<ChatMessageProps[]>(MOCK_ALL_MESSAGES.slice(0, 3))
-  const [selectedOpenRoleId, setSelectedOpenRoleId] = useState<string>('')
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>('')
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [selectedFeedbackId, setSelectedFeedbackId] = useState<string | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [isAgentPanelOpen, setIsAgentPanelOpen] = useState(false)
   const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([])
   const [viewType, setViewType] = useState<'chat' | 'table'>('chat')
+  const [isRegenerating, setIsRegenerating] = useState(false)
+  const [currentMessageId, setCurrentMessageId] = useState<number | null>(null)
+  const [agentPanelCandidateId, setAgentPanelCandidateId] = useState<string | null>(null)
 
   // Message edit modal state
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false)
@@ -62,55 +97,94 @@ export function SandBoxTab() {
   const [currentEditingMessage, setCurrentEditingMessage] = useState<string>('')
   const [editedMessages, setEditedMessages] = useState<{ [candidateId: string]: string[] }>({})
 
-  // Fetch open roles (job postings) from API
-  const { data: jobPostings = [] } = useJobPostings()
+  // Feedback type selection state
+  const [activeFeedbackMessageIndex, setActiveFeedbackMessageIndex] = useState<number>(0)
 
-  // Fetch candidates from API based on selected role
-  const jobDescriptionId = selectedOpenRoleId ? parseInt(selectedOpenRoleId) : null
-  const { data: candidatesByJobResponse } = useCandidatesByJobDescription(jobDescriptionId)
-
-  // Map enriched candidates to Candidate type
-  const candidatesData = useMemo(
-    () => (candidatesByJobResponse?.candidates || []).map(mapEnrichedCandidateToCandidate),
-    [candidatesByJobResponse]
+  // Fetch open roles (job postings) from API - filter only those with campaign_id
+  const { data: allJobPostings = [] } = useJobPostings()
+  const jobPostings = useMemo(
+    () => allJobPostings.filter(job => job.campaign_id),
+    [allJobPostings]
   )
 
-  // Generate mock messages for each candidate (use edited messages if they exist)
+  // Fetch candidates from campaign using campaign_id (for chat view)
+  const campaignId = selectedCampaignId ? parseInt(selectedCampaignId) : null
+  const { data: campaignCandidates = [] } = useCampaignCandidates(campaignId)
+
+  // Fetch candidates with their custom messages from campaign (for table view)
+  const { data: candidatesWithMessages = [], refetch: refetchCandidatesWithMessages } = useCandidatesWithMessages(campaignId)
+
+  // Mutation hook for regenerating with feedback
+  const { mutate: regenerateWithFeedback, isPending: isRegeneratingMutation } = useAddFeedbackAndRegenerate()
+
+  // Mutation hook for updating custom messages
+  const { mutate: updateCustomMessage } = useUpdateCustomMessage()
+
+  // Map campaign candidates to Candidate type (for chat view selection)
+  const candidatesData = useMemo(() => {
+    return campaignCandidates.map(mapCampaignCandidateToCandidate)
+  }, [campaignCandidates])
+
+  // Map candidates with messages to Candidate type (for table view)
+  const tableViewCandidates = useMemo(() => {
+    return candidatesWithMessages.map(mapCampaignCandidateToCandidate)
+  }, [candidatesWithMessages])
+
+  // Map custom messages from API to candidateMessages structure
   const candidateMessages = useMemo(() => {
     const messages: { [candidateId: string]: string[] } = {}
-    candidatesData.forEach((candidate) => {
-      // Default messages
-      const defaultMessages = [
-        `Hi ${candidate.name.split(' ')[0]}, I'm reaching out because I'm impressed with your experience at ${candidate.company}. Would love to connect!`,
-        `Thanks for connecting! I wanted to share an opportunity that might interest you based on your background in ${candidate.title}.`
-      ]
 
-      // Merge edited messages with defaults
-      if (editedMessages[candidate.id]) {
-        messages[candidate.id] = editedMessages[candidate.id].map((msg, idx) =>
-          msg || defaultMessages[idx] || ''
-        )
-        // Ensure we have at least the default messages length
-        while (messages[candidate.id].length < defaultMessages.length) {
-          messages[candidate.id].push(defaultMessages[messages[candidate.id].length])
-        }
-      } else {
-        messages[candidate.id] = defaultMessages
+    // Initialize with API messages from the new endpoint
+    candidatesWithMessages.forEach((cc) => {
+      const candidateId = cc.id.toString()
+      if (!messages[candidateId]) {
+        messages[candidateId] = []
+      }
+      // Add the latest custom message if it exists
+      if (cc.latest_custom_message) {
+        messages[candidateId].push(cc.latest_custom_message)
       }
     })
+
+    // Apply edited messages on top of API messages
+    // Get all unique candidate IDs from both chat view and table view
+    const allCandidateIds = new Set([
+      ...candidatesData.map(c => c.id),
+      ...tableViewCandidates.map(c => c.id)
+    ])
+
+    allCandidateIds.forEach((candidateId) => {
+      if (!messages[candidateId]) {
+        messages[candidateId] = []
+      }
+
+      // If there are edited messages for this candidate, use them
+      if (editedMessages[candidateId]) {
+        messages[candidateId] = editedMessages[candidateId].map((msg, idx) =>
+          msg || messages[candidateId]?.[idx] || ''
+        )
+      }
+    })
+
     return messages
-  }, [candidatesData, editedMessages])
+  }, [candidatesWithMessages, candidatesData, tableViewCandidates, editedMessages])
 
   const handleSendMessage = (message: string) => {
     // Add user message
-    setMessages((prev) => [...prev, { message, type: 'user' }])
+    setMessages((prev) => [...prev, { message, type: 'user' as const }])
 
     // Mock AI response after a short delay
     setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        { message: 'This is a mock response. Connect to your AI service for real responses.', type: 'assistant' }
-      ])
+      setMessages((prev) => {
+        const newMessages: ChatMessageProps[] = [
+          ...prev,
+          { message: 'This is a mock response. Connect to your AI service for real responses.', type: 'assistant' as const }
+        ]
+        // Switch to responder feedback for the newly added assistant message
+        // Since there are now multiple messages, default to responder (last message)
+        setActiveFeedbackMessageIndex(newMessages.length - 1)
+        return newMessages
+      })
     }, 1000)
   }
 
@@ -138,6 +212,32 @@ export function SandBoxTab() {
   const handleCandidateChange = (candidateId: string) => {
     const candidate = candidatesData.find((c: Candidate) => c.id === candidateId)
     setSelectedCandidate(candidate || null)
+
+    // Reset feedback items when changing candidates
+    setFeedbackItems([])
+
+    // If candidate has messages, replace the mock messages with real ones
+    if (candidate && candidateMessages[candidate.id] && candidateMessages[candidate.id].length > 0) {
+      // Start by showing just the first message
+      const firstMessage: ChatMessageProps = {
+        message: candidateMessages[candidate.id][0],
+        type: 'assistant' as const
+      }
+      setMessages([firstMessage])
+      setCurrentMessageIndex(1)
+      // Default to initial message feedback when only one message is shown
+      setActiveFeedbackMessageIndex(0)
+
+      // Find the custom message ID for this candidate
+      const candidateData = candidatesWithMessages.find(cc => cc.id.toString() === candidate.id)
+      setCurrentMessageId(candidateData?.custom_message_id || null)
+    } else {
+      // Reset to initial mock messages if no real messages
+      setMessages(MOCK_ALL_MESSAGES.slice(0, 3))
+      setCurrentMessageIndex(3)
+      setActiveFeedbackMessageIndex(0)
+      setCurrentMessageId(null)
+    }
   }
 
   const handleCandidatePhotoClick = (candidate: Candidate) => {
@@ -145,17 +245,51 @@ export function SandBoxTab() {
     setIsPanelOpen(true)
   }
 
-  const handleOpenRoleChange = (roleId: string) => {
-    setSelectedOpenRoleId(roleId)
-    // Reset selected candidate when role changes
+  const handleCampaignChange = (campaignId: string) => {
+    setSelectedCampaignId(campaignId)
+    // Reset selected candidate when campaign changes
     setSelectedCandidate(null)
+    // Reset chat to initial mock messages
+    setMessages(MOCK_ALL_MESSAGES.slice(0, 3))
+    setCurrentMessageIndex(3)
+    // Reset feedback items
+    setFeedbackItems([])
+    setCurrentMessageId(null)
   }
 
   const handleNext = () => {
-    if (currentMessageIndex < MOCK_ALL_MESSAGES.length) {
-      setMessages(MOCK_ALL_MESSAGES.slice(0, currentMessageIndex + 1))
-      setCurrentMessageIndex(currentMessageIndex + 1)
+    // If showing real messages from a selected candidate
+    if (selectedCandidate && candidateMessages[selectedCandidate.id]?.length > 0) {
+      const candidateMsgs = candidateMessages[selectedCandidate.id]
+      if (currentMessageIndex < candidateMsgs.length) {
+        const realMessages: ChatMessageProps[] = candidateMsgs.slice(0, currentMessageIndex + 1).map((msg) => ({
+          message: msg,
+          type: 'assistant' as const
+        }))
+        setMessages(realMessages)
+        setCurrentMessageIndex(currentMessageIndex + 1)
+        // When showing more than one message, default to responder feedback
+        if (currentMessageIndex + 1 > 1) {
+          setActiveFeedbackMessageIndex(currentMessageIndex)
+        }
+      }
+    } else {
+      // Showing mock messages
+      if (currentMessageIndex < MOCK_ALL_MESSAGES.length) {
+        setMessages(MOCK_ALL_MESSAGES.slice(0, currentMessageIndex + 1))
+        setCurrentMessageIndex(currentMessageIndex + 1)
+        // When showing more than one message, default to responder feedback
+        if (currentMessageIndex + 1 > 1) {
+          setActiveFeedbackMessageIndex(currentMessageIndex)
+        }
+      }
     }
+  }
+
+  const handleFeedbackTargetSelect = (messageIndex: number) => {
+    setActiveFeedbackMessageIndex(messageIndex)
+    // Clear feedback items when switching between initial and responder messages
+    setFeedbackItems([])
   }
 
   const handleMessageClick = (candidateId: string, messageIndex: number) => {
@@ -169,6 +303,12 @@ export function SandBoxTab() {
   const handleMessageSave = (newMessage: string) => {
     if (!selectedMessageCandidateId) return
 
+    // Find the candidate data to get custom message ID
+    const candidateData = candidatesWithMessages.find(
+      cc => cc.id.toString() === selectedMessageCandidateId
+    )
+
+    // Update local state immediately for optimistic UI
     setEditedMessages((prev) => {
       const currentMessages = prev[selectedMessageCandidateId] || []
       const updated = [...currentMessages]
@@ -184,23 +324,48 @@ export function SandBoxTab() {
         [selectedMessageCandidateId]: updated
       }
     })
+
+    // If we have a custom message ID, call the API to persist the change
+    if (candidateData?.custom_message_id && candidateData?.custom_message_instruction_id) {
+      updateCustomMessage(
+        {
+          customMessageId: candidateData.custom_message_id,
+          data: {
+            id: candidateData.custom_message_id,
+            fk_custom_messages_instruction_id: candidateData.custom_message_instruction_id,
+            fk_campaign_candidate_id: candidateData.id,
+            generated_message: newMessage
+          }
+        },
+        {
+          onSuccess: () => {
+            console.log('Custom message updated successfully')
+            // Refetch to get the latest data from the server
+            refetchCandidatesWithMessages()
+          },
+          onError: (error) => {
+            console.error('Failed to update custom message:', error)
+          }
+        }
+      )
+    }
   }
 
   const handleMessageNavigate = (direction: 'up' | 'down') => {
     if (!selectedMessageCandidateId) return
 
-    const currentCandidateIndex = candidatesData.findIndex(c => c.id === selectedMessageCandidateId)
+    const currentCandidateIndex = tableViewCandidates.findIndex(c => c.id === selectedMessageCandidateId)
     if (currentCandidateIndex === -1) return
 
     let newCandidateIndex = currentCandidateIndex
     if (direction === 'up' && currentCandidateIndex > 0) {
       newCandidateIndex = currentCandidateIndex - 1
-    } else if (direction === 'down' && currentCandidateIndex < candidatesData.length - 1) {
+    } else if (direction === 'down' && currentCandidateIndex < tableViewCandidates.length - 1) {
       newCandidateIndex = currentCandidateIndex + 1
     }
 
     if (newCandidateIndex !== currentCandidateIndex) {
-      const newCandidate = candidatesData[newCandidateIndex]
+      const newCandidate = tableViewCandidates[newCandidateIndex]
       const newMessage = candidateMessages[newCandidate.id]?.[selectedMessageIndex] || ''
       setSelectedMessageCandidateId(newCandidate.id)
       setCurrentEditingMessage(newMessage)
@@ -208,26 +373,81 @@ export function SandBoxTab() {
     }
   }
 
-  const handleClearSelection = () => {
-    setSelectedMessageCandidateId(null)
+  const handleRegenerate = () => {
+    if (!currentMessageId || feedbackItems.length === 0) {
+      console.warn('Cannot regenerate: missing message ID or no feedback items')
+      return
+    }
+
+    setIsRegenerating(true)
+
+    regenerateWithFeedback(
+      {
+        custom_messages_candidate_id: currentMessageId,
+        feedbacks: feedbackItems.map(item => ({
+          content: item.text,
+          feedback_type: 'initial_message' as const
+        }))
+      },
+      {
+        onSuccess: (data) => {
+          console.log('Message regenerated successfully:', data)
+
+          // Update the current message ID to the new one
+          setCurrentMessageId(data.id)
+
+          // Update the displayed message with the new generated message
+          setMessages([
+            {
+              message: data.generated_message,
+              type: 'assistant' as const
+            }
+          ])
+
+          // Clear feedback items after successful regeneration
+          setFeedbackItems([])
+
+          // Refetch candidates with messages to get the latest data
+          refetchCandidatesWithMessages()
+
+          setIsRegenerating(false)
+        },
+        onError: (error) => {
+          console.error('Failed to regenerate message:', error)
+          setIsRegenerating(false)
+        }
+      }
+    )
   }
 
-  const hasMoreMessages = currentMessageIndex < MOCK_ALL_MESSAGES.length
+  const handleClearSelection = () => {
+    setSelectedMessageCandidateId(null)
+    setSelectedMessageIndex(0)
+  }
+
+  // Determine if there are more messages to show
+  // If we have a selected candidate with real messages, use their message count
+  // Otherwise, use the mock messages count
+  const totalAvailableMessages = selectedCandidate && candidateMessages[selectedCandidate.id]?.length > 0
+    ? candidateMessages[selectedCandidate.id].length
+    : MOCK_ALL_MESSAGES.length
+
+  const hasMoreMessages = currentMessageIndex < totalAvailableMessages
 
   return (
     <div className="h-[calc(100vh-150px)] max-h-[calc(100vh-150px)] overflow-hidden flex flex-col gap-6">
-      {/* Top Bar: Select Open Role + View Toggle */}
+      {/* Top Bar: Select Job Posting + View Toggle */}
       <div className="flex justify-between items-center">
-        {/* Left: Select Open Role */}
+        {/* Left: Select Job Posting */}
         <div className="w-64">
-          <Select value={selectedOpenRoleId} onValueChange={handleOpenRoleChange}>
+          <Select value={selectedCampaignId} onValueChange={handleCampaignChange}>
             <SelectTrigger>
-              <SelectValue placeholder="Select an open role..." />
+              <SelectValue placeholder="Select a job posting..." />
             </SelectTrigger>
             <SelectContent>
               {jobPostings && jobPostings.length > 0 ? (
                 jobPostings.map((job) => (
-                  <SelectItem key={job.id} value={job.id.toString()}>
+                  <SelectItem key={job.campaign_id} value={job.campaign_id!.toString()}>
                     {job.title}
                   </SelectItem>
                 ))
@@ -271,6 +491,8 @@ export function SandBoxTab() {
             placeholder="Type your message..."
             onNext={handleNext}
             hasMoreMessages={hasMoreMessages}
+            activeFeedbackMessageIndex={activeFeedbackMessageIndex}
+            onFeedbackTargetSelect={handleFeedbackTargetSelect}
           />
         </div>
 
@@ -279,8 +501,8 @@ export function SandBoxTab() {
           {/* Selection Panel */}
           <SelectionPanel
             openRoles={jobPostings}
-            selectedOpenRole={selectedOpenRoleId}
-            onOpenRoleChange={handleOpenRoleChange}
+            selectedOpenRole={selectedCampaignId}
+            onOpenRoleChange={handleCampaignChange}
             candidates={candidatesData}
             selectedCandidate={selectedCandidate}
             onCandidateChange={handleCandidateChange}
@@ -295,6 +517,14 @@ export function SandBoxTab() {
               selectedFeedbackId={selectedFeedbackId}
               onAddFeedback={handleAddFeedback}
               onRemoveFeedback={handleRemoveFeedback}
+              feedbackType={activeFeedbackMessageIndex === 0 ? 'initial_message' : 'responder_message'}
+              onRegenerate={handleRegenerate}
+              isRegenerating={isRegenerating || isRegeneratingMutation}
+              showRegenerateButton={
+                activeFeedbackMessageIndex === 0 &&
+                feedbackItems.length > 0 &&
+                !!currentMessageId
+              }
             />
           </div>
         </div>
@@ -302,9 +532,9 @@ export function SandBoxTab() {
       ) : (
         /* Table View */
         <div className="flex-1 min-h-0">
-          {candidatesData.length > 0 ? (
+          {tableViewCandidates.length > 0 ? (
             <SandboxTableView
-              candidates={candidatesData}
+              candidates={tableViewCandidates}
               messages={candidateMessages}
               onCandidateClick={handleCandidatePhotoClick}
               onMessageClick={handleMessageClick}
@@ -315,7 +545,7 @@ export function SandBoxTab() {
             <div className="flex items-center justify-center h-full">
               <div className="text-center text-gray-500">
                 <p className="text-lg font-semibold mb-2">No candidates available</p>
-                <p className="text-sm">Select an Open Role to view candidates and their messages</p>
+                <p className="text-sm">Select a Job Posting to view candidates and their messages</p>
               </div>
             </div>
           )}
@@ -338,23 +568,47 @@ export function SandBoxTab() {
         onSave={handleMessageSave}
         candidateName={
           selectedMessageCandidateId
-            ? candidatesData.find(c => c.id === selectedMessageCandidateId)?.name
+            ? tableViewCandidates.find(c => c.id === selectedMessageCandidateId)?.name
             : undefined
         }
         messageNumber={selectedMessageIndex + 1}
         onNavigate={handleMessageNavigate}
         onClearSelection={handleClearSelection}
-        onOpenAgentPanel={() => setIsAgentPanelOpen(true)}
+        onOpenAgentPanel={() => {
+          setAgentPanelCandidateId(selectedMessageCandidateId)
+          setIsAgentPanelOpen(true)
+        }}
       />
 
       {/* Agent Panel Sheet */}
-      <Sheet open={isAgentPanelOpen} onOpenChange={setIsAgentPanelOpen}>
-        <SheetContent side="right" className="w-[400px] sm:w-[540px]">
+      <Sheet open={isAgentPanelOpen} onOpenChange={(open) => {
+        setIsAgentPanelOpen(open)
+        if (!open) {
+          setAgentPanelCandidateId(null)
+        }
+      }}>
+        <SheetContent side="right" className="w-[400px] sm:w-[540px] flex flex-col">
           <SheetHeader>
             <SheetTitle>AI Message Generator</SheetTitle>
           </SheetHeader>
-          <div className="mt-6">
-            <AgentPanel initialMessage={currentEditingMessage} />
+          <div className="flex-1 min-h-0 mt-6">
+            {agentPanelCandidateId ? (
+              <AgentPanel
+                initialMessage={currentEditingMessage}
+                campaignCandidateId={agentPanelCandidateId}
+                onMessageGenerated={(message) => {
+                  setCurrentEditingMessage(message)
+                  // Also save to edited messages
+                  if (selectedMessageCandidateId) {
+                    handleMessageSave(message)
+                  }
+                }}
+              />
+            ) : (
+              <div className="p-4 text-center text-gray-500">
+                No candidate selected. Please select a message from the table first.
+              </div>
+            )}
           </div>
         </SheetContent>
       </Sheet>
