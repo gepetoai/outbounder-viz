@@ -32,6 +32,7 @@ import { ApprovedRejectedCarousel } from '@/components/recruiter/ApprovedRejecte
 import { SettingsTab } from '@/components/recruiter/SettingsTab'
 import { JobPostingRequiredModal } from '@/components/recruiter/JobPostingRequiredModal'
 import { LinkedInAccountsTab } from '@/components/recruiter/LinkedInAccountsTab'
+import { SandBoxTab } from '@/components/recruiter/sandbox/SandBoxTab'
 import { AuthWrapper } from '@/components/auth/auth-wrapper';
 import { UserButton } from '@clerk/nextjs';
 import { useJobPostings } from '@/hooks/useJobPostings'
@@ -270,16 +271,17 @@ export default function HomePage() {
     { id: 'job-setup', label: 'Jobs', icon: Briefcase, subItems: [] },
     { id: 'search', label: 'Search', icon: Search, subItems: [] },
     { id: 'candidates', label: 'Candidates', icon: Users, subItems: [] },
-    { 
-      id: 'outreach', 
-      label: 'Outreach', 
-      icon: MessageSquare, 
+    {
+      id: 'outreach',
+      label: 'Outreach',
+      icon: MessageSquare,
       subItems: [
         { id: 'candidates', label: 'List', icon: Users },
         // { id: 'sequencer', label: 'Sequencer', icon: Play },
         // { id: 'analytics', label: 'Analytics', icon: BarChart3 }
       ]
     },
+    { id: 'sandbox', label: 'SandBox', icon: Zap, subItems: [] },
     { id: 'linkedin_accounts', label: 'Accounts', icon: Linkedin, subItems: [] },
     { id: 'settings', label: 'Settings', icon: Settings, subItems: [] }
   ]
@@ -419,6 +421,8 @@ export default function HomePage() {
         )
       case 'sequencer':
         return <SequencerTab />
+      case 'sandbox':
+        return <SandBoxTab />
       case 'linkedin_accounts':
         return <LinkedInAccountsTab />
       case 'settings':
