@@ -599,6 +599,23 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   const [messageInstructions, setMessageInstructions] = useState('')
   const [generatedMessage, setGeneratedMessage] = useState('')
   
+  // Handler to update message text directly in node data
+  const handleMessageTextUpdate = useCallback((nodeId: string, text: string) => {
+    setNodes((nds) =>
+      nds.map((node) =>
+        node.id === nodeId
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                messageText: text
+              }
+            }
+          : node
+      )
+    )
+  }, [setNodes])
+  
   // Activate Responder settings
   const [responderInstructions, setResponderInstructions] = useState('')
   const [responderExample, setResponderExample] = useState('')
@@ -1748,7 +1765,15 @@ Looking forward to connecting!
 Best regards`
     
     setGeneratedMessage(generatedText)
-  }, [messageInstructions])
+    
+    // If there's a configured node for send-message or send-inmail, save the generated message to it
+    if (configureNodeId) {
+      const currentNode = nodes.find(n => n.id === configureNodeId)
+      if (currentNode && (currentNode.data.actionType === 'send-message' || currentNode.data.actionType === 'send-inmail')) {
+        handleMessageTextUpdate(configureNodeId, generatedText)
+      }
+    }
+  }, [messageInstructions, configureNodeId, nodes, handleMessageTextUpdate])
 
   const handleGenerateResponderExample = useCallback(() => {
     if (!responderInstructions.trim()) {
@@ -2050,6 +2075,14 @@ Example response: Based on your instructions, the responder will handle incoming
           // Regular action node
           const mappedActionType = mapActionType(actionType)
           if (mappedActionType) {
+            // Build json_metadata for send_message and send_inmail actions
+            let jsonMetadata: Record<string, unknown> | null = null
+            if ((mappedActionType === 'send_message' || mappedActionType === 'send_inmail') && currentNode.data.messageText) {
+              jsonMetadata = {
+                text: currentNode.data.messageText
+              }
+            }
+            
             const actionDef = {
               action_type: mappedActionType,
               condition_type: null,
@@ -2057,7 +2090,7 @@ Example response: Based on your instructions, the responder will handle incoming
               next_step_if_false: null,
               delay_value: delay.value,
               delay_unit: delay.unit,
-              json_metadata: null,
+              json_metadata: jsonMetadata,
               nodeId: nodeId,
               index: actionDefinitions.length
             }
@@ -2586,6 +2619,9 @@ Example response: Based on your instructions, the responder will handle incoming
                     const icon = actionType === 'send-message' ? <MessageSquare className="h-5 w-5" /> : <Send className="h-5 w-5" />
                     const label = actionType === 'send-message' ? 'Send Message' : 'Send InMail'
                     
+                    // Get current message text from node data (reactive to nodes changes)
+                    const currentMessageText = currentNode?.data.messageText || ''
+                    
                     return (
                       <>
                         <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-200">
@@ -2619,20 +2655,24 @@ Example response: Based on your instructions, the responder will handle incoming
                         </div>
                         
                         {/* Generated Output */}
-                        {generatedMessage && (
-                          <div className="space-y-2">
-                            <Label htmlFor="generated-output">Generated Output (Preview)</Label>
-                            <Textarea
-                              id="generated-output"
-                              value={generatedMessage}
-                              readOnly
-                              className="min-h-[180px] bg-gray-50 border-gray-300 cursor-text font-mono text-sm"
-                            />
-                            <p className="text-xs text-gray-500">
-                              This is a preview. You can select and copy this text to refine your instructions.
-                            </p>
-                          </div>
-                        )}
+                        <div className="space-y-2">
+                          <Label htmlFor="generated-output">Message Text</Label>
+                          <Textarea
+                            id="generated-output"
+                            value={currentMessageText}
+                            onChange={(e) => {
+                              const newValue = e.target.value
+                              if (configureNodeId) {
+                                handleMessageTextUpdate(configureNodeId, newValue)
+                              }
+                            }}
+                            placeholder="Enter or generate the message text here"
+                            className="min-h-[180px] bg-gray-50 border-gray-300 cursor-text font-mono text-sm"
+                          />
+                          <p className="text-xs text-gray-500">
+                            This message will be sent. You can edit it directly or generate from instructions above.
+                          </p>
+                        </div>
                       </>
                     )
                   }
