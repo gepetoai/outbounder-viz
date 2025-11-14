@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils"
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   const handleWheel = (e: React.WheelEvent<HTMLInputElement>) => {
-    if (type === 'number') {
-      e.currentTarget.blur()
+    if (type === 'number' && document.activeElement === e.currentTarget) {
+      e.preventDefault()
     }
   }
 
