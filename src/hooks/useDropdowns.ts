@@ -24,6 +24,13 @@ export interface IndustriesResponse {
   industries: string[]
 }
 
+export interface Country {
+  name: string
+  code: string
+}
+
+export type CountriesResponse = Country[]
+
 // Departments hook
 export function useDepartments() {
   return useQuery<DepartmentsResponse>({
@@ -60,5 +67,13 @@ export function useIndustries() {
   return useQuery<IndustriesResponse>({
     queryKey: ['industries'],
     queryFn: () => fetchJson<IndustriesResponse>(`${API_BASE_URL}/job-description-searches/linkedin-terms/industries`),
+  })
+}
+
+// Countries hook
+export function useCountries() {
+  return useQuery<CountriesResponse>({
+    queryKey: ['countries'],
+    queryFn: () => fetchJson<CountriesResponse>(`${API_BASE_URL}/job-description-searches-locations/location/countries`),
   })
 }
