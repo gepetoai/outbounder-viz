@@ -1,10 +1,14 @@
 import { cn } from '@/lib/utils'
-import { Eye, Heart, UserPlus } from 'lucide-react'
+import { Eye, Heart, UserPlus, MessageSquare } from 'lucide-react'
 
 export interface ChatMessageProps {
   message: string
   type: 'user' | 'assistant' | 'system'
   timestamp?: string
+  messageIndex?: number
+  isInitialMessage?: boolean
+  isActiveFeedbackTarget?: boolean
+  onFeedbackTargetSelect?: (messageIndex: number) => void
 }
 
 const getSystemIcon = (message: string) => {
@@ -21,7 +25,15 @@ const getSystemIcon = (message: string) => {
   return null
 }
 
-export function ChatMessage({ message, type, timestamp }: ChatMessageProps) {
+export function ChatMessage({
+  message,
+  type,
+  timestamp,
+  messageIndex,
+  isInitialMessage = false,
+  isActiveFeedbackTarget = false,
+  onFeedbackTargetSelect
+}: ChatMessageProps) {
   // System messages are just plain text with icon
   if (type === 'system') {
     const icon = getSystemIcon(message)
@@ -78,16 +90,37 @@ export function ChatMessage({ message, type, timestamp }: ChatMessageProps) {
       "flex mb-3",
       type === 'user' ? 'justify-end' : 'justify-start'
     )}>
-      <div className={cn(
-        "max-w-[70%] px-4 py-2 rounded-lg",
-        type === 'user' && 'bg-gray-100 text-gray-900 border border-gray-200',
-        type === 'assistant' && 'bg-blue-50 text-gray-900 border border-blue-100'
-      )}>
-        <div className="text-sm whitespace-pre-wrap break-words overflow-wrap-anywhere">
-          {renderMessage(message)}
+      <div className="flex flex-col gap-1">
+        <div className={cn(
+          "max-w-[70%] px-4 py-2 rounded-lg",
+          type === 'user' && 'bg-gray-100 text-gray-900 border border-gray-200',
+          type === 'assistant' && 'bg-blue-50 text-gray-900 border border-blue-100'
+        )}>
+          <div className="text-sm whitespace-pre-wrap break-words overflow-wrap-anywhere">
+            {renderMessage(message)}
+          </div>
+          {timestamp && (
+            <span className="text-xs opacity-70 mt-1 block">{timestamp}</span>
+          )}
         </div>
-        {timestamp && (
-          <span className="text-xs opacity-70 mt-1 block">{timestamp}</span>
+
+        {/* Feedback type indicator for assistant messages */}
+        {type === 'assistant' && onFeedbackTargetSelect !== undefined && messageIndex !== undefined && (
+          <button
+            onClick={() => onFeedbackTargetSelect(messageIndex)}
+            className={cn(
+              "flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors self-start",
+              isActiveFeedbackTarget
+                ? "bg-blue-100 text-blue-700 border border-blue-300"
+                : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            )}
+            title={isInitialMessage ? "Feedback for initial message" : "Feedback for responder"}
+          >
+            <MessageSquare className="h-3 w-3" />
+            <span className="font-medium">
+              {isInitialMessage ? "Initial" : "Responder"}
+            </span>
+          </button>
         )}
       </div>
     </div>

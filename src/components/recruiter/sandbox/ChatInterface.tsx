@@ -13,6 +13,8 @@ interface ChatInterfaceProps {
   disabled?: boolean
   onNext?: () => void
   hasMoreMessages?: boolean
+  activeFeedbackMessageIndex?: number
+  onFeedbackTargetSelect?: (messageIndex: number) => void
 }
 
 export function ChatInterface({
@@ -21,7 +23,9 @@ export function ChatInterface({
   placeholder = "Type a message...",
   disabled = false,
   onNext,
-  hasMoreMessages = false
+  hasMoreMessages = false,
+  activeFeedbackMessageIndex,
+  onFeedbackTargetSelect
 }: ChatInterfaceProps) {
   const [inputValue, setInputValue] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -53,7 +57,14 @@ export function ChatInterface({
       {/* Messages Area */}
       <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
         {messages.map((msg, index) => (
-          <ChatMessage key={index} {...msg} />
+          <ChatMessage
+            key={index}
+            {...msg}
+            messageIndex={index}
+            isInitialMessage={index === 0}
+            isActiveFeedbackTarget={activeFeedbackMessageIndex === index}
+            onFeedbackTargetSelect={onFeedbackTargetSelect}
+          />
         ))}
         {hasMoreMessages && onNext && (
           <div className="flex justify-center mt-4">
