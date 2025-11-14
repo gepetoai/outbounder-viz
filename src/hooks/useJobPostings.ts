@@ -11,6 +11,7 @@ export interface JobPosting {
   raw_text?: string
   target_candidates_count: number
   fk_organization_id: number
+  campaign_id?: number
   created_at?: string
 }
 
