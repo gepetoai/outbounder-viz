@@ -471,3 +471,97 @@ export async function bulkDeleteRejectedCandidates(data: BulkCandidateRequest): 
     throw new Error(`Failed to send rejected candidates to review: ${response.status} ${response.statusText}`)
   }
 }
+
+export interface CampaignPayload {
+  name: string
+  status: 'draft' | 'active' | 'paused'
+  fk_linkedin_account_id: number
+  fk_job_description_id: number
+  daily_volume: number
+  min_gap_between_scheduling: number
+  max_gap_between_scheduling: number
+  campaign_sending_windows: Array<{
+    window_start_time: string
+    window_end_time: string
+  }>
+  action_definitions: Array<{
+    id: number
+    action_type: string | null
+    condition_type?: string | null
+    next_step_if_true?: number | null
+    next_step_if_false?: number | null
+    delay_value: number
+    delay_unit: string
+    json_metadata?: Record<string, unknown> | null
+  }>
+}
+
+export interface CampaignResponse {
+  id: number
+  name: string
+  status: string
+  fk_linkedin_account_id: number
+  fk_job_description_id: number
+  daily_volume: number
+  min_gap_between_scheduling: number
+  max_gap_between_scheduling: number
+  created_at: string
+  updated_at: string
+}
+
+export async function createCampaign(data: CampaignPayload): Promise<CampaignResponse> {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+  return fetchJson<CampaignResponse>(`${API_BASE_URL}/campaigns/`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+}
+
+export interface CampaignWithDetails extends CampaignResponse {
+  campaign_sending_windows: Array<{
+    window_start_time: string
+    window_end_time: string
+    fk_campaign_id: number
+    id: number
+    created_at: string
+    updated_at: string
+  }>
+  action_definitions: Array<{
+    action_type: string | null
+    condition_type: string | null
+    delay_value: number
+    delay_unit: string
+    json_metadata: Record<string, unknown> | null
+    fk_campaign_id: number
+    fk_parent_step_id: number | null
+    next_step_if_true: number | null
+    next_step_if_false: number | null
+    id: number
+    created_at: string
+    updated_at: string
+  }>
+}
+
+export async function getCampaignByJobDescription(jobDescriptionId: number): Promise<CampaignWithDetails | null> {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+  try {
+    const response = await fetchWithAuth(`${API_BASE_URL}/campaigns/job_descriptions/${jobDescriptionId}`, {
+      method: 'GET'
+    })
+    
+    if (response.status === 404) {
+      return null
+    }
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch campaign: ${response.status} ${response.statusText}`)
+    }
+    
+    return response.json()
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('404')) {
+      return null
+    }
+    throw error
+  }
+}
