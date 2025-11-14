@@ -44,7 +44,7 @@ export function ChatMessage({ message, type, timestamp }: ChatMessageProps) {
       const parts = line.split(urlRegex)
 
       const formattedLine = parts.map((part, partIndex) => {
-        if (urlRegex.test(part)) {
+        if (/https?:\/\/[^\s]+/.test(part)) {
           return (
             <a
               key={partIndex}
