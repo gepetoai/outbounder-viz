@@ -14,7 +14,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { RemovableBadge } from '@/components/ui/removable-badge'
 import { Briefcase, MapPin, GraduationCap, X, Search, Target, RefreshCw, Send, Save, Sparkles, ChevronDown } from 'lucide-react'
 import { useStates, useCities, useIndustries, useDepartments } from '@/hooks/useDropdowns'
-import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useUpdateQuery, useEnrichCandidates } from '@/hooks/useSearch'
+import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useEnrichCandidates } from '@/hooks/useSearch'
 import { useApproveCandidate, useRejectCandidate } from '@/hooks/useCandidates'
 import { useQueryClient } from '@tanstack/react-query'
 import { mapSearchParamsToRequest, SearchResponse } from '@/lib/search-api'
@@ -132,6 +132,8 @@ export function SearchTab({
   const [isSaveNewDialogOpen, setIsSaveNewDialogOpen] = useState(false)
   const [pendingLocationCity, setPendingLocationCity] = useState<string>('')
   const [enrichLimit, setEnrichLimit] = useState<number>(10)
+  const [tamOnly, setTamOnly] = useState<boolean>(false)
+
   // Convert parent's array state to Set for easier lookups
   const approvedCandidateIds = useMemo(
     () => new Set(approvedCandidateIdsFromParent),
@@ -165,7 +167,6 @@ export function SearchTab({
   const createSearch = useCreateSearch()
   const updateSearchName = useUpdateSearchName()
   const updateSearchMutation = useUpdateSearch()
-  const updateQueryMutation = useUpdateQuery()
   const enrichCandidatesMutation = useEnrichCandidates()
   
   // Candidate approval/rejection
@@ -548,7 +549,7 @@ export function SearchTab({
         // Always create a new search when clicking "Search Candidates"
         console.log('[HandleSearch] Creating new search without title')
         console.log('[HandleSearch] Create payload:', searchRequest)
-        const response = await createSearch.mutateAsync(searchRequest)
+        const response = await createSearch.mutateAsync({ data: searchRequest, tamOnly })
         console.log('[HandleSearch] Create response:', response)
 
         // Store the search ID for later use
@@ -595,7 +596,8 @@ export function SearchTab({
         data: {
           ...searchRequest,
           search_id: savedSearchIdForUpdate
-        }
+        },
+        tamOnly
       })
       setIsSearchModified(false)
       console.log('Search updated successfully')
@@ -624,7 +626,8 @@ export function SearchTab({
         const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle.trim(), jobIdToUse)
         await updateSearchMutation.mutateAsync({
           searchId: currentSearchId,
-          data: searchRequest
+          data: searchRequest,
+          tamOnly
         })
         setIsSearchModified(false)
       }
@@ -714,7 +717,7 @@ export function SearchTab({
         try {
           console.log('[SaveNewSearch] Creating new search with title included')
           const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle.trim(), jobDescriptionId)
-          const response = await createSearch.mutateAsync(searchRequest)
+          const response = await createSearch.mutateAsync({ data: searchRequest, tamOnly })
 
           // Validate response contains valid search_id
           if (!response || typeof response.search_id !== 'number') {
@@ -767,17 +770,8 @@ export function SearchTab({
     }
 
     try {
-      console.log('[EnrichCandidates] Updating query for search ID:', currentSearchId)
-      // First, update the query with current search parameters
-      const jobIdToUse = jobDescriptionId
-      const searchRequest = mapSearchParamsToRequest(searchParams, searchTitle || 'Candidate Search', jobIdToUse)
-      await updateQueryMutation.mutateAsync({
-        searchId: currentSearchId,
-        data: searchRequest
-      })
-      
       console.log('[EnrichCandidates] Enriching with search ID:', currentSearchId, 'limit:', enrichLimit)
-      // Then enrich candidates
+      // Enrich candidates
       const enrichedResponse = await enrichCandidatesMutation.mutateAsync({
         searchId: currentSearchId,
         limit: enrichLimit
@@ -916,12 +910,13 @@ export function SearchTab({
           console.log('[HandleSearch] Updating existing search:', currentSearchId)
           response = await updateSearchMutation.mutateAsync({
             searchId: currentSearchId,
-            data: searchRequest
+            data: searchRequest,
+            tamOnly
           })
           setIsSearchModified(false)
         } else {
           console.log('[HandleSearch] Creating new search')
-          response = await createSearch.mutateAsync(searchRequest)
+          response = await createSearch.mutateAsync({ data: searchRequest, tamOnly })
           setCurrentSearchId(response.search_id)
           setIsSearchModified(false)
         }
@@ -1351,6 +1346,13 @@ export function SearchTab({
                 </div>
 
                 <div className="flex items-center gap-3">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={tamOnly}
+                      onCheckedChange={setTamOnly}
+                    />
+                    <Label className="text-sm">TAM Only</Label>
+                  </div>
                   <Button
                     className="flex items-center gap-2"
                     onClick={handleSearch}
@@ -1434,6 +1436,13 @@ export function SearchTab({
                       </div>
                     </PopoverContent>
                   </Popover>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={tamOnly}
+                      onCheckedChange={setTamOnly}
+                    />
+                    <Label className="text-sm">TAM Only</Label>
+                  </div>
                   <Button
                     className="flex items-center gap-2"
                     onClick={handleSearch}
