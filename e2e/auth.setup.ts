@@ -130,8 +130,8 @@ setup('authenticate', async ({ page }) => {
     await page.screenshot({ path: 'test-results/auth-no-search-tab.png', fullPage: true });
   }
 
-  // Wait for search form to be visible (use EXACT placeholder text)
-  const jobTitleInput = page.locator('input[placeholder="Add job title (comma-separated for multiple)..."]');
+  // Wait for search form to be visible
+  const jobTitleInput = page.getByTestId('job-title-input');
   const hasSearchForm = await jobTitleInput.isVisible({ timeout: 5000 }).catch(() => false);
 
   if (!hasSearchForm) {
