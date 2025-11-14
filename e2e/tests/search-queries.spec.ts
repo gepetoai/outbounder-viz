@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { mockSearchAPIs } from '../helpers/api-mocks';
-import { selectJobPosting } from '../helpers/test-helpers';
+import { selectJobPosting, setupSearchPage } from '../helpers/test-helpers';
 
 // Note: Authentication is handled by the 'setup' project in playwright.config.ts
 // All tests will run with authenticated state from e2e/auth.setup.ts
@@ -10,48 +10,8 @@ test.describe('Search Query Management', () => {
     // Set up API mocks
     await mockSearchAPIs(page);
 
-    // Navigate to the app
-    await page.goto('/');
-
-    // Wait for the app to load
-    await page.waitForLoadState('networkidle');
-
-    // Verify we're not on the landing page (should be authenticated)
-    const onLandingPage = await page.locator('button:has-text("Sign In")').isVisible().catch(() => false);
-    if (onLandingPage) {
-      throw new Error('Test started on landing page - authentication may have failed');
-    }
-
-    // First level navigation: Click Recruiter icon (4th button in left sidebar, icon-only no text)
-    const recruiterButton = page.locator('.w-12.bg-card.border-r button').nth(3);
-    const isRecruiterVisible = await recruiterButton.isVisible({ timeout: 3000 }).catch(() => false);
-
-    if (isRecruiterVisible) {
-      console.log('Clicking Recruiter icon (4th button)');
-      await recruiterButton.click();
-      await page.waitForTimeout(500);
-    }
-
-    // Second level navigation: Click Search tab within Recruiter
-    const searchTab = page.locator('button:has-text("Search")').first();
-    const isSearchTabVisible = await searchTab.isVisible({ timeout: 3000 }).catch(() => false);
-
-    if (isSearchTabVisible) {
-      console.log('Clicking Search tab');
-      await searchTab.click();
-      await page.waitForTimeout(500);
-    }
-
-    // Wait for search form to be visible (exact placeholder text)
-    await page.waitForSelector('input[placeholder="Add job title (comma-separated for multiple)..."]', {
-      timeout: 10000,
-      state: 'visible'
-    }).catch(() => {
-      console.warn('Could not find search form input');
-    });
-
-    // Wait a bit more for the app to fully initialize
-    await page.waitForTimeout(1000);
+    // Set up the search page
+    await setupSearchPage(page);
   });
 
   test('should run a search query successfully', async ({ page }) => {
@@ -243,45 +203,8 @@ test.describe('Search Parameter Validation', () => {
     // Set up API mocks
     await mockSearchAPIs(page);
 
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
-
-    // Verify we're not on the landing page (should be authenticated)
-    const onLandingPage = await page.locator('button:has-text("Sign In")').isVisible().catch(() => false);
-    if (onLandingPage) {
-      throw new Error('Test started on landing page - authentication may have failed');
-    }
-
-    // First level navigation: Click Recruiter icon (4th button in left sidebar, icon-only no text)
-    const recruiterButton = page.locator('.w-12.bg-card.border-r button').nth(3);
-    const isRecruiterVisible = await recruiterButton.isVisible({ timeout: 3000 }).catch(() => false);
-
-    if (isRecruiterVisible) {
-      console.log('Clicking Recruiter icon (4th button)');
-      await recruiterButton.click();
-      await page.waitForTimeout(500);
-    }
-
-    // Second level navigation: Click Search tab within Recruiter
-    const searchTab = page.locator('button:has-text("Search")').first();
-    const isSearchTabVisible = await searchTab.isVisible({ timeout: 3000 }).catch(() => false);
-
-    if (isSearchTabVisible) {
-      console.log('Clicking Search tab');
-      await searchTab.click();
-      await page.waitForTimeout(500);
-    }
-
-    // Wait for search form to be visible (exact placeholder text)
-    await page.waitForSelector('input[placeholder="Add job title (comma-separated for multiple)..."]', {
-      timeout: 10000,
-      state: 'visible'
-    }).catch(() => {
-      console.warn('Could not find search form input');
-    });
-
-    // Wait a bit more for the app to fully initialize
-    await page.waitForTimeout(1000);
+    // Set up the search page
+    await setupSearchPage(page);
   });
 
   test('should add and remove job titles', async ({ page }) => {
@@ -307,7 +230,7 @@ test.describe('Search Parameter Validation', () => {
 
   test('should toggle TAM Only switch', async ({ page }) => {
     // Find the TAM Only switch
-    const tamSwitch = page.locator('text=TAM Only').locator('..').locator('button');
+    const tamSwitch = page.locator('[data-testid="tam-only-switch"]');
 
     // Click to toggle
     await tamSwitch.click();

@@ -133,22 +133,62 @@ export async function selectJobPosting(page: Page) {
       await page.waitForTimeout(500);
 
       // Press down arrow multiple times to skip "Create Job Posting" and "Clear selection"
-      await page.keyboard.press('ArrowDown');
-      await page.keyboard.press('ArrowDown');
-      await page.keyboard.press('Enter');
       await page.waitForTimeout(1500);
-
-      // Re-query again after keyboard selection
-      const finalCombobox = page.getByRole('combobox')
-        .filter({ hasText: /Select job posting|Senior Software Engineer|Product Manager|All Candidates/ })
-        .first();
-      const finalText = await finalCombobox.textContent({ timeout: 10000 }).catch(() => 'Unknown');
-      console.log('[Helper] Final combobox text after keyboard selection:', finalText);
+      throw new Error('Failed to select job posting after click attempt');
     } else {
       console.log('[Helper] Job posting selected successfully');
     }
   }
 
   // Wait a moment for the selection to fully register and propagate
+  await page.waitForTimeout(1000);
+}
+
+/**
+ * Sets up the search page by navigating and initializing the search form
+ * This helper handles all the common setup logic used across search test suites
+ */
+export async function setupSearchPage(page: Page) {
+  // Navigate to the app
+  await page.goto('/');
+
+  // Wait for the app to load
+  await page.waitForLoadState('networkidle');
+
+  // Verify we're not on the landing page (should be authenticated)
+  const onLandingPage = await page.locator('button:has-text("Sign In")').isVisible().catch(() => false);
+  if (onLandingPage) {
+    throw new Error('Test started on landing page - authentication may have failed');
+  }
+
+  // First level navigation: Click Recruiter icon (4th button in left sidebar, icon-only no text)
+  const recruiterButton = page.locator('[data-testid="recruiter-nav-button"]');
+  const isRecruiterVisible = await recruiterButton.isVisible({ timeout: 3000 }).catch(() => false);
+
+  if (isRecruiterVisible) {
+    console.log('Clicking Recruiter icon (4th button)');
+    await recruiterButton.click();
+    await page.waitForTimeout(500);
+  }
+
+  // Second level navigation: Click Search tab within Recruiter
+  const searchTab = page.locator('button:has-text("Search")').first();
+  const isSearchTabVisible = await searchTab.isVisible({ timeout: 3000 }).catch(() => false);
+
+  if (isSearchTabVisible) {
+    console.log('Clicking Search tab');
+    await searchTab.click();
+    await page.waitForTimeout(500);
+  }
+
+  // Wait for search form to be visible (exact placeholder text)
+  await page.waitForSelector('input[placeholder="Add job title (comma-separated for multiple)..."]', {
+    timeout: 10000,
+    state: 'visible'
+  }).catch(() => {
+    console.warn('Could not find search form input');
+  });
+
+  // Wait a bit more for the app to fully initialize
   await page.waitForTimeout(1000);
 }
