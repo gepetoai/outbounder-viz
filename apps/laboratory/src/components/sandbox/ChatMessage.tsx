@@ -10,13 +10,13 @@ export interface ChatMessageProps {
 const getSystemIcon = (message: string) => {
   const lowerMessage = message.toLowerCase()
   if (lowerMessage.includes('viewed profile')) {
-    return <Eye className="h-4 w-4 text-gray-500" />
+    return <Eye className="h-4 w-4 text-[#777D8D]" />
   }
   if (lowerMessage.includes('liked post')) {
-    return <Heart className="h-4 w-4 text-gray-500" />
+    return <Heart className="h-4 w-4 text-[#777D8D]" />
   }
   if (lowerMessage.includes('connection request')) {
-    return <UserPlus className="h-4 w-4 text-gray-500" />
+    return <UserPlus className="h-4 w-4 text-[#777D8D]" />
   }
   return null
 }
@@ -29,7 +29,7 @@ export function ChatMessage ({ message, type, timestamp }: ChatMessageProps) {
       <div className="flex justify-center mb-3">
         <div className="flex items-center gap-2">
           {icon}
-          <p className="text-sm text-gray-500 italic">{message}</p>
+          <p className="text-sm text-[#777D8D] italic">{message}</p>
         </div>
       </div>
     )
@@ -80,8 +80,8 @@ export function ChatMessage ({ message, type, timestamp }: ChatMessageProps) {
     )}>
       <div className={cn(
         "max-w-[70%] px-4 py-2 rounded-lg",
-        type === 'user' && 'bg-gray-100 text-gray-900 border border-gray-200',
-        type === 'assistant' && 'bg-blue-50 text-gray-900 border border-blue-100'
+        type === 'user' && 'bg-[#EEEEEE] text-[#1C1B20] border border-[#B9B8C0]',
+        type === 'assistant' && 'bg-[#F5F5F5] text-[#1C1B20] border border-[#B9B8C0]'
       )}>
         <div className="text-sm whitespace-pre-wrap break-words overflow-wrap-anywhere">
           {renderMessage(message)}

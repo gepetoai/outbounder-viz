@@ -56,15 +56,15 @@ export function ChatInterface ({
           <ChatMessage key={index} {...msg} />
         ))}
         {hasMoreMessages && onNext && (
-          <div className="flex justify-center mt-4">
+          <div className="flex justify-center mt-6">
             <Button
               onClick={onNext}
-              variant="ghost"
-              size="sm"
-              className="gap-2 text-gray-600 hover:text-gray-900"
+              variant="outline"
+              size="lg"
+              className="gap-2 border-2 border-[#777D8D] text-[#40404C] hover:border-[#40404C] hover:text-[#1C1B20] font-semibold px-8 py-6 text-base transition-colors"
             >
               Next
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-5 w-5" />
             </Button>
           </div>
         )}

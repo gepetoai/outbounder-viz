@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { DataTable, TableColumn } from './DataTable'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
+import { BRAND_COLORS } from '@/lib/brand-colors'
+import styles from './TableView.module.css'
 
 // Define the data type
 interface Candidate {
@@ -210,11 +212,10 @@ export function TableView() {
       width: '60px',
       className: 'pl-2',
       render: (candidate) => (
-        <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 hover:border-gray-400 transition-colors">
+        <div className={styles.photoCell}>
           <img
             src={candidate.photo}
             alt={candidate.name}
-            className="w-full h-full object-cover grayscale"
           />
         </div>
       )
@@ -223,7 +224,7 @@ export function TableView() {
       key: 'name',
       label: 'Name',
       render: (candidate) => (
-        <span className="font-medium" style={{ color: '#1C1B20' }}>
+        <span className={styles.nameCell}>
           {candidate.name}
         </span>
       )
@@ -232,27 +233,26 @@ export function TableView() {
       key: 'title',
       label: 'Title',
       render: (candidate) => (
-        <span style={{ color: '#40404C' }}>{candidate.title}</span>
+        <span className={styles.textCell}>{candidate.title}</span>
       )
     },
     {
       key: 'company',
       label: 'Company',
       render: (candidate) => (
-        <span style={{ color: '#40404C' }}>{candidate.company}</span>
+        <span className={styles.textCell}>{candidate.company}</span>
       )
     },
     {
       key: 'location',
       label: 'Location',
       render: (candidate) => (
-        <div className="flex items-center gap-1.5 text-sm" style={{ color: '#777D8D' }}>
+        <div className={styles.iconText}>
           <Image
             src="/icons/circle-light.svg"
             alt="Location"
             width={12}
             height={12}
-            className="flex-shrink-0"
           />
           <span>{candidate.location}</span>
         </div>
@@ -262,13 +262,12 @@ export function TableView() {
       key: 'education',
       label: 'Education',
       render: (candidate) => (
-        <div className="flex items-center gap-1.5 text-sm" style={{ color: '#777D8D' }}>
+        <div className={styles.iconText}>
           <Image
             src="/icons/book-light.svg"
             alt="Education"
             width={12}
             height={12}
-            className="flex-shrink-0"
           />
           <span className="truncate max-w-[200px]">{candidate.education}</span>
         </div>
@@ -279,10 +278,7 @@ export function TableView() {
       label: 'Status 1',
       width: '120px',
       render: (candidate) => (
-        <span
-          className="px-2 py-1 rounded text-xs font-medium"
-          style={{ backgroundColor: '#F5F5F5', color: '#40404C' }}
-        >
+        <span className={`${styles.statusBadge} ${styles.statusPrimary}`}>
           {candidate.status1}
         </span>
       )
@@ -292,10 +288,7 @@ export function TableView() {
       label: 'Status 2',
       width: '120px',
       render: (candidate) => (
-        <span
-          className="px-2 py-1 rounded text-xs font-medium"
-          style={{ backgroundColor: '#EEEEEE', color: '#777D8D' }}
-        >
+        <span className={`${styles.statusBadge} ${styles.statusSecondary}`}>
           {candidate.status2}
         </span>
       )
@@ -310,7 +303,7 @@ export function TableView() {
     editable: true,
     onRename: handleRenameColumn,
     render: (candidate) => (
-      <span style={{ color: '#B9B8C0' }} className="text-sm">
+      <span className="text-sm" style={{ color: BRAND_COLORS.sheen }}>
         -
       </span>
     )
@@ -340,8 +333,7 @@ export function TableView() {
           <Button
             variant="outline"
             onClick={handleViewMore}
-            className="min-w-[200px]"
-            style={{ color: '#40404C', borderColor: '#E5E5E5' }}
+            className={styles.viewMoreButton}
           >
             View More Rows ({allMockCandidates.length - visibleCount} remaining)
           </Button>
@@ -350,7 +342,7 @@ export function TableView() {
 
       {!hasMore && visibleCandidates.length > 8 && (
         <div className="flex justify-center pt-2">
-          <p className="text-sm" style={{ color: '#777D8D' }}>
+          <p className={styles.allLoadedText}>
             All {allMockCandidates.length} rows loaded
           </p>
         </div>

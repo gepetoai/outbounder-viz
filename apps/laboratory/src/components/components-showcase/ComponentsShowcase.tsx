@@ -1,6 +1,11 @@
 'use client'
 
+import { useState } from 'react'
+import { Button } from '@248/ui'
+import { SidePanelPlaceholder } from '@/components/side-panel'
+
 export function ComponentsShowcase () {
+  const [sidePanelOpen, setSidePanelOpen] = useState(false)
   const cardStyle = {
     backgroundColor: '#FFFFFF',
     borderRadius: '12px',
@@ -39,16 +44,6 @@ export function ComponentsShowcase () {
   }
   return (
     <div style={{ maxWidth: '900px' }}>
-      {/* Introduction */}
-      <div style={{ marginBottom: '32px' }}>
-        <h2 style={{ color: '#1C1B20', fontSize: '28px', fontWeight: 'bold', marginBottom: '8px' }}>
-          248.AI Application Components
-        </h2>
-        <p style={{ color: '#777D8D', fontSize: '16px' }}>
-          Generalized, reusable components for building consistent 248.AI applications.
-        </p>
-      </div>
-
       {/* AppLayout & AppMain */}
       <div style={cardStyle}>
         <h3 style={titleStyle}>AppLayout & AppMain</h3>
@@ -354,6 +349,67 @@ export function ComponentsShowcase () {
               Active state uses Midnight background
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Button Section */}
+      <div style={cardStyle}>
+        <h3 style={titleStyle}>Button</h3>
+        <p style={descriptionStyle}>
+          Primary and secondary button variants following 248.AI branding
+        </p>
+        <div style={{ marginTop: '16px' }}>
+          <h4 style={{ color: '#1C1B20', fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>Usage</h4>
+          <pre style={codeBlockStyle}>
+{`import { Button } from '@248/ui'
+
+<Button>Primary Button</Button>
+<Button variant="outline">Secondary Button</Button>
+<Button size="sm">Small Button</Button>
+<Button disabled>Disabled Button</Button>`}
+          </pre>
+        </div>
+        <div style={{ marginTop: '20px' }}>
+          <h4 style={{ color: '#1C1B20', fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>Examples</h4>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+            <Button>Primary Button</Button>
+            <Button variant="outline">Outline Button</Button>
+            <Button size="sm">Small Button</Button>
+            <Button disabled>Disabled</Button>
+          </div>
+        </div>
+      </div>
+
+      {/* SidePanel Section */}
+      <div style={cardStyle}>
+        <h3 style={titleStyle}>Side Panel</h3>
+        <p style={descriptionStyle}>
+          Slide-in panel from the right for additional content or forms
+        </p>
+        <div style={{ marginTop: '16px' }}>
+          <h4 style={{ color: '#1C1B20', fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>Usage</h4>
+          <pre style={codeBlockStyle}>
+{`import { SidePanelPlaceholder } from '@/components/side-panel'
+
+<Button onClick={() => setIsOpen(true)}>
+  Open Panel
+</Button>
+
+<SidePanelPlaceholder 
+  isOpen={isOpen}
+  onClose={() => setIsOpen(false)}
+/>`}
+          </pre>
+        </div>
+        <div style={{ marginTop: '20px' }}>
+          <h4 style={{ color: '#1C1B20', fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>Demo</h4>
+          <Button onClick={() => setSidePanelOpen(true)}>
+            Open Side Panel
+          </Button>
+          <SidePanelPlaceholder 
+            isOpen={sidePanelOpen}
+            onClose={() => setSidePanelOpen(false)}
+          />
         </div>
       </div>
 

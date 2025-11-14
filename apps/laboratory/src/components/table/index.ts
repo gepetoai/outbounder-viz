@@ -1,4 +1,3 @@
-export { TablePlaceholder } from './TablePlaceholder'
 export { TableView } from './TableView'
 export { DataTable } from './DataTable'
 export { CandidateTable } from './CandidateTable'

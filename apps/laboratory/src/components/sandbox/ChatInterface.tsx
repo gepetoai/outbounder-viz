@@ -61,7 +61,7 @@ export function ChatInterface ({
               onClick={onNext}
               variant="ghost"
               size="sm"
-              className="gap-2 text-gray-600 hover:text-gray-900"
+              className="gap-2 text-[#40404C] hover:text-[#1C1B20] hover:bg-[#EEEEEE]"
             >
               Next
               <ArrowRight className="h-4 w-4" />

@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { StatCard } from './StatCard'
-import { ContentCard } from './ContentCard'
-import { MetricGrid } from './MetricGrid'
+import { StatCard } from '../cards/StatCard'
+import { ContentCard } from '../cards/ContentCard'
+import { MetricGrid } from '../cards/MetricGrid'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 
-export function CardsPlaceholder () {
+export function CardsDemo () {
   const [activeMetric, setActiveMetric] = useState<string | null>('metric1')
 
   return (

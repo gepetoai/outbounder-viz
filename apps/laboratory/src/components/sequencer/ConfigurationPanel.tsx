@@ -44,7 +44,7 @@ export function ConfigurationPanel ({ nodeId, node, onClose, onSave }: Configura
   }
 
   const renderConfigForm = () => {
-    const actionType = node?.data?.actionType
+    const actionType = node?.data?.actionType || node?.type
 
     switch (actionType) {
       case 'connection-request':
@@ -73,6 +73,18 @@ export function ConfigurationPanel ({ nodeId, node, onClose, onSave }: Configura
       
       case 'rescind-connection':
         return <RescindConnectionConfig config={config} onChange={handleChange} />
+      
+      case 'action':
+        return <GenericActionConfig config={config} onChange={handleChange} />
+      
+      case 'conditional':
+        return <GenericConditionalConfig config={config} onChange={handleChange} />
+      
+      case 'test':
+        return <TestNodeConfig config={config} onChange={handleChange} />
+      
+      case 'wait':
+        return <WaitConfig config={config} onChange={handleChange} />
       
       default:
         return (
@@ -420,6 +432,157 @@ function RescindConnectionConfig ({ config, onChange }: any) {
   return (
     <div className="text-center py-8 text-gray-600">
       No configuration needed. This action will rescind the connection request.
+    </div>
+  )
+}
+
+function GenericActionConfig ({ config, onChange }: any) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Action Name</Label>
+        <Input
+          value={config.name || ''}
+          onChange={(e) => onChange('name', e.target.value)}
+          placeholder="e.g., Send email, Update database..."
+        />
+      </div>
+      <div>
+        <Label>Description</Label>
+        <Textarea
+          value={config.description || ''}
+          onChange={(e) => onChange('description', e.target.value)}
+          placeholder="Describe what this action does..."
+          className="h-24"
+        />
+      </div>
+      <div>
+        <Label>Parameters</Label>
+        <Textarea
+          value={config.parameters || ''}
+          onChange={(e) => onChange('parameters', e.target.value)}
+          placeholder="Enter parameters (JSON format)..."
+          className="h-32"
+        />
+      </div>
+      <div>
+        <Label>Timeout (seconds)</Label>
+        <Input
+          type="number"
+          min="1"
+          max="300"
+          value={config.timeout || 30}
+          onChange={(e) => onChange('timeout', parseInt(e.target.value))}
+        />
+      </div>
+    </div>
+  )
+}
+
+function GenericConditionalConfig ({ config, onChange }: any) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Condition Name</Label>
+        <Input
+          value={config.name || ''}
+          onChange={(e) => onChange('name', e.target.value)}
+          placeholder="e.g., Check response status..."
+        />
+      </div>
+      <div>
+        <Label>Condition Type</Label>
+        <Select value={config.conditionType || 'equals'} onValueChange={(v) => onChange('conditionType', v)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="equals">Equals</SelectItem>
+            <SelectItem value="not-equals">Not Equals</SelectItem>
+            <SelectItem value="contains">Contains</SelectItem>
+            <SelectItem value="greater-than">Greater Than</SelectItem>
+            <SelectItem value="less-than">Less Than</SelectItem>
+            <SelectItem value="exists">Exists</SelectItem>
+            <SelectItem value="not-exists">Does Not Exist</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label>Field to Check</Label>
+        <Input
+          value={config.field || ''}
+          onChange={(e) => onChange('field', e.target.value)}
+          placeholder="e.g., response.status, user.age..."
+        />
+      </div>
+      <div>
+        <Label>Value to Compare</Label>
+        <Input
+          value={config.value || ''}
+          onChange={(e) => onChange('value', e.target.value)}
+          placeholder="Enter comparison value..."
+        />
+      </div>
+      <div>
+        <Label>Description</Label>
+        <Textarea
+          value={config.description || ''}
+          onChange={(e) => onChange('description', e.target.value)}
+          placeholder="Describe this condition..."
+          className="h-20"
+        />
+      </div>
+    </div>
+  )
+}
+
+function TestNodeConfig ({ config, onChange }: any) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Test Action Name</Label>
+        <Input
+          value={config.name || ''}
+          onChange={(e) => onChange('name', e.target.value)}
+          placeholder="e.g., API Call, Database Query..."
+        />
+      </div>
+      <div>
+        <Label>Description</Label>
+        <Textarea
+          value={config.description || ''}
+          onChange={(e) => onChange('description', e.target.value)}
+          placeholder="Describe what this test action does..."
+          className="h-24"
+        />
+      </div>
+      <div>
+        <Label>Test Parameters</Label>
+        <Textarea
+          value={config.parameters || ''}
+          onChange={(e) => onChange('parameters', e.target.value)}
+          placeholder="Enter test parameters (JSON format)..."
+          className="h-32"
+        />
+      </div>
+      <div>
+        <Label>Expected Outcome</Label>
+        <Input
+          value={config.expectedOutcome || ''}
+          onChange={(e) => onChange('expectedOutcome', e.target.value)}
+          placeholder="What should happen?"
+        />
+      </div>
+      <div>
+        <Label>Timeout (seconds)</Label>
+        <Input
+          type="number"
+          min="1"
+          max="300"
+          value={config.timeout || 30}
+          onChange={(e) => onChange('timeout', parseInt(e.target.value))}
+        />
+      </div>
     </div>
   )
 }

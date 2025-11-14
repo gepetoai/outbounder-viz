@@ -1,0 +1,90 @@
+/* LineChart CSS Module */
+/* 248.AI Brand-Compliant Styles */
+
+.container {
+  width: 100%;
+  position: relative;
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.gridLine {
+  stroke: #EEEEEE;
+  stroke-width: 1;
+  stroke-dasharray: 4, 4;
+}
+
+.axis {
+  stroke: #B9B8C0;
+  stroke-width: 1;
+}
+
+.line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke-dashoffset 1s ease-out;
+}
+
+.dataPoint {
+  transition: all 0.2s ease;
+}
+
+.dataPoint:hover {
+  r: 6;
+  opacity: 1;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 500;
+  fill: #777D8D;
+  text-anchor: middle;
+}
+
+.valueLabel {
+  font-size: 11px;
+  font-weight: 600;
+  fill: #40404C;
+  text-anchor: middle;
+}
+
+.legend {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legendColor {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.legendLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: #777D8D;
+}
+
+@keyframes drawLine {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+

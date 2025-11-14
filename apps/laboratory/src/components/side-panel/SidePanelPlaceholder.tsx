@@ -9,57 +9,74 @@ import { Textarea } from '@/components/ui/textarea'
 import Image from 'next/image'
 import { SidePanel } from './SidePanel'
 
-export function SidePanelPlaceholder () {
-  const [isPanelOpen, setIsPanelOpen] = useState(false)
+interface SidePanelPlaceholderProps {
+  isOpen?: boolean
+  onClose?: () => void
+}
+
+export function SidePanelPlaceholder ({ isOpen: externalIsOpen, onClose: externalOnClose }: SidePanelPlaceholderProps = {}) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false)
+  
+  // Use external props if provided, otherwise use internal state
+  const isPanelOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen
+  const handleClose = externalOnClose || (() => setInternalIsOpen(false))
+  const handleOpen = () => {
+    if (externalIsOpen === undefined) {
+      setInternalIsOpen(true)
+    }
+  }
 
   return (
     <>
-      <div className="flex items-center justify-center h-full">
-        <Card className="p-12 max-w-md text-center bg-white shadow-sm">
-          <div className="flex flex-col items-center gap-6">
-            {/* Custom 248.AI Sliders Icon */}
-            <div className="relative w-24 h-24 opacity-40">
-              <Image
-                src="/icons/sliders-dark.svg"
-                alt="Side Panel"
-                width={96}
-                height={96}
-                className="w-full h-full"
-              />
+      {/* Only show the placeholder card if using internal state */}
+      {externalIsOpen === undefined && (
+        <div className="flex items-center justify-center h-full">
+          <Card className="p-12 max-w-md text-center bg-white shadow-sm">
+            <div className="flex flex-col items-center gap-6">
+              {/* Custom 248.AI Sliders Icon */}
+              <div className="relative w-24 h-24 opacity-40">
+                <Image
+                  src="/icons/sliders-dark.svg"
+                  alt="Side Panel"
+                  width={96}
+                  height={96}
+                  className="w-full h-full"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold" style={{ color: '#1C1B20' }}>
+                  Side Panel
+                </h2>
+                <p className="text-base" style={{ color: '#777D8D' }}>
+                  Reusable Component Demo
+                </p>
+              </div>
+              
+              {/* Grayscale separator */}
+              <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
+              
+              <Button
+                onClick={handleOpen}
+                className="px-8 py-2 bg-[#1C1B20] hover:bg-[#40404C] text-white"
+              >
+                Activate
+              </Button>
             </div>
-            
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold" style={{ color: '#1C1B20' }}>
-                Side Panel
-              </h2>
-              <p className="text-base" style={{ color: '#777D8D' }}>
-                Reusable Component Demo
-              </p>
-            </div>
-            
-            {/* Grayscale separator */}
-            <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
-            
-            <Button
-              onClick={() => setIsPanelOpen(true)}
-              className="px-8 py-2 bg-[#1C1B20] hover:bg-[#40404C] text-white"
-            >
-              Activate
-            </Button>
-          </div>
-        </Card>
-      </div>
+          </Card>
+        </div>
+      )}
 
       {/* Side Panel */}
       <SidePanel
         isOpen={isPanelOpen}
-        onClose={() => setIsPanelOpen(false)}
+        onClose={handleClose}
         title="Side Panel"
         footer={
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() => setIsPanelOpen(false)}
+              onClick={handleClose}
               className="flex-1"
             >
               Cancel
@@ -67,7 +84,7 @@ export function SidePanelPlaceholder () {
             <Button
               onClick={() => {
                 console.log('Action confirmed')
-                setIsPanelOpen(false)
+                handleClose()
               }}
               className="flex-1 bg-[#1C1B20] hover:bg-[#40404C] text-white"
             >

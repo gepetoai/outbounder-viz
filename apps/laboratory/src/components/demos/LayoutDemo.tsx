@@ -1,16 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { AppHeader } from './AppHeader'
-import { PageTitle } from './PageTitle'
-import { Sidebar } from './Sidebar'
-import { SidebarItem } from './SidebarItem'
-import { SidebarGroup } from './SidebarGroup'
-import { SidebarUser } from './SidebarUser'
+import { AppHeader } from '../layout/AppHeader'
+import { PageTitle } from '../layout/PageTitle'
+import { Sidebar } from '../layout/Sidebar'
+import { SidebarItem } from '../layout/SidebarItem'
+import { SidebarGroup } from '../layout/SidebarGroup'
+import { SidebarUser } from '../layout/SidebarUser'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 
-export function LayoutPlaceholder () {
+export function LayoutDemo () {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activeNav, setActiveNav] = useState('home')
 

@@ -15,7 +15,9 @@ import ReactFlow, {
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { Button } from '@/components/ui/button'
-import { Plus, Save, FolderOpen, Trash2 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Plus, Minus, Save, FolderOpen } from 'lucide-react'
+import Image from 'next/image'
 import { ActionNode } from './nodes/ActionNode'
 import { StartNode } from './nodes/StartNode'
 import { ConditionalNode } from './nodes/ConditionalNode'
@@ -26,6 +28,14 @@ import { TemplateManager } from './TemplateManager'
 import { applyColaLayout } from './layout/colaLayout'
 import { actionTypes, type ActionType } from './actionTypes'
 import { initializeTestData } from './Sequencer.test-data'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 
 const nodeTypes = {
   start: StartNode,
@@ -101,6 +111,20 @@ function SequencerFlow () {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null) // Track selected node
   const layoutTimeoutRef = useRef<NodeJS.Timeout>()
   const reactFlowInstance = useRef<any>(null)
+  
+  // Dialog states
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [nodeToDelete, setNodeToDelete] = useState<string | null>(null)
+  const [deleteMessage, setDeleteMessage] = useState('')
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [saveDialogName, setSaveDialogName] = useState('')
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
+  
+  // History for undo/redo
+  const [history, setHistory] = useState<Array<{ nodes: Node[]; edges: Edge[] }>>([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
 
   // Initialize test data and start node
   useEffect(() => {
@@ -226,8 +250,22 @@ function SequencerFlow () {
     setIsActionModalOpen(true)
   }, [])
 
+  // Save to history - must be defined before handleActionSelect
+  const saveToHistory = useCallback(() => {
+    const currentState = { nodes, edges }
+    setHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1)
+      newHistory.push(currentState)
+      if (newHistory.length > 50) newHistory.shift()
+      return newHistory
+    })
+    setHistoryIndex(prev => Math.min(prev + 1, 49))
+  }, [nodes, edges, historyIndex])
+
   const handleActionSelect = useCallback((actionType: ActionType) => {
     if (!insertPosition) return
+
+    saveToHistory()
 
     const newNodeId = `node-${Date.now()}`
     const parentNode = nodes.find(n => n.id === insertPosition.parentId)
@@ -289,7 +327,7 @@ function SequencerFlow () {
     })
     setIsActionModalOpen(false)
     setInsertPosition(null)
-  }, [insertPosition, nodes, handleAddActionClick, updateHasChildren])
+  }, [insertPosition, nodes, handleAddActionClick, updateHasChildren, saveToHistory])
 
   const handleDeleteNode = useCallback((nodeId: string) => {
     // Find all descendant nodes
@@ -299,26 +337,63 @@ function SequencerFlow () {
     }
 
     const nodesToDelete = findDescendants(nodeId)
+    const message = `Delete this node${nodesToDelete.length > 1 ? ` and ${nodesToDelete.length - 1} child node(s)` : ''}?`
     
-    // Show confirmation
-    if (window.confirm(`Delete this node${nodesToDelete.length > 1 ? ` and ${nodesToDelete.length - 1} child node(s)` : ''}?`)) {
-      setNodes(prev => prev.filter(n => !nodesToDelete.includes(n.id)))
-      setEdges(prev => {
-        const newEdges = prev.filter(e => !nodesToDelete.includes(e.source) && !nodesToDelete.includes(e.target))
-        // Update hasChildren immediately after deleting edges
-        updateHasChildren(newEdges)
-        return newEdges
-      })
+    setNodeToDelete(nodeId)
+    setDeleteMessage(message)
+    setShowDeleteConfirm(true)
+  }, [edges])
+
+  const confirmDelete = useCallback(() => {
+    if (!nodeToDelete) return
+
+    saveToHistory()
+
+    // Find all descendant nodes
+    const findDescendants = (id: string): string[] => {
+      const children = edges.filter(e => e.source === id).map(e => e.target)
+      return [id, ...children.flatMap(findDescendants)]
     }
-  }, [edges, setNodes, setEdges, updateHasChildren])
+
+    const nodesToDelete = findDescendants(nodeToDelete)
+    
+    setNodes(prev => prev.filter(n => !nodesToDelete.includes(n.id)))
+    setEdges(prev => {
+      const newEdges = prev.filter(e => !nodesToDelete.includes(e.source) && !nodesToDelete.includes(e.target))
+      // Update hasChildren immediately after deleting edges
+      updateHasChildren(newEdges)
+      return newEdges
+    })
+    
+    setShowDeleteConfirm(false)
+    setNodeToDelete(null)
+  }, [nodeToDelete, edges, setNodes, setEdges, updateHasChildren, saveToHistory])
+
+  const handleDeleteLastNode = useCallback(() => {
+    // Find the last action or conditional node (excluding start and end nodes)
+    const deletableNodes = nodes.filter(n => n.type === 'action' || n.type === 'conditional')
+    
+    if (deletableNodes.length === 0) return
+    
+    // Get the most recently added deletable node (highest position in array)
+    const lastNode = deletableNodes[deletableNodes.length - 1]
+    
+    if (lastNode) {
+      handleDeleteNode(lastNode.id)
+    }
+  }, [nodes, handleDeleteNode])
 
   const handleSaveSequence = useCallback(() => {
-    const name = prompt('Enter sequence name:')
-    if (!name) return
+    setSaveDialogName('')
+    setShowSaveDialog(true)
+  }, [])
+
+  const confirmSave = useCallback(() => {
+    if (!saveDialogName.trim()) return
 
     // Save as logic (node types and connections), NOT coordinates
     const sequenceLogic = {
-      name,
+      name: saveDialogName.trim(),
       nodes: nodes.map(n => ({
         id: n.id,
         type: n.type,
@@ -343,8 +418,11 @@ function SequencerFlow () {
     saved.push(sequenceLogic)
     localStorage.setItem('sequencer-templates', JSON.stringify(saved))
 
-    alert(`Sequence "${name}" saved successfully!`)
-  }, [nodes, edges])
+    setShowSaveDialog(false)
+    setSaveDialogName('')
+    setSuccessMessage(`Sequence "${saveDialogName.trim()}" saved successfully!`)
+    setShowSuccessMessage(true)
+  }, [saveDialogName, nodes, edges])
 
   const handleLoadTemplate = useCallback((template: any) => {
     // CRITICAL: Clear existing nodes and edges first
@@ -455,82 +533,148 @@ function SequencerFlow () {
     }, 0)
   }, [onEdgesChange, setEdges, updateHasChildren])
 
-  const handleClearSequence = useCallback(() => {
-    // Show confirmation dialog
-    const confirmed = window.confirm(
-      'Are you sure you want to clear the entire sequence? This action cannot be undone.'
-    )
-    
-    if (confirmed) {
-      // Clear all edges
-      setEdges([])
-      
-      // Reset to just the Start node
-      const startNode: Node = {
-        id: 'start-node',
-        type: 'start',
-        position: { x: 600, y: 100 },
-        data: { 
-          label: 'Start',
-          onAddAction: handleAddActionClick,
-          hasChildren: false,
-          isSelected: false
-        }
-      }
-      setNodes([startNode])
-      setSelectedNodeId(null)
-      
-      // Update hasChildren with empty edges
-      updateHasChildren([])
-      
-      // Close any open panels
-      setSelectedNodeForConfig(null)
-      setIsActionModalOpen(false)
-      setIsTemplateManagerOpen(false)
+  // Undo
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      const prevState = history[historyIndex - 1]
+      setNodes(prevState.nodes)
+      setEdges(prevState.edges)
+      setHistoryIndex(historyIndex - 1)
     }
+  }, [historyIndex, history, setNodes, setEdges])
+
+  // Redo
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const nextState = history[historyIndex + 1]
+      setNodes(nextState.nodes)
+      setEdges(nextState.edges)
+      setHistoryIndex(historyIndex + 1)
+    }
+  }, [historyIndex, history, setNodes, setEdges])
+
+  const handleClearSequence = useCallback(() => {
+    setShowClearConfirm(true)
+  }, [])
+
+  const confirmClear = useCallback(() => {
+    // Clear all edges
+    setEdges([])
+    
+    // Reset to just the Start node
+    const startNode: Node = {
+      id: 'start-node',
+      type: 'start',
+      position: { x: 600, y: 100 },
+      data: { 
+        label: 'Start',
+        onAddAction: handleAddActionClick,
+        hasChildren: false,
+        isSelected: false
+      }
+    }
+    setNodes([startNode])
+    setSelectedNodeId(null)
+    
+    // Update hasChildren with empty edges
+    updateHasChildren([])
+    
+    // Close any open panels
+    setSelectedNodeForConfig(null)
+    setIsActionModalOpen(false)
+    setIsTemplateManagerOpen(false)
+    setShowClearConfirm(false)
   }, [setNodes, setEdges, handleAddActionClick, updateHasChildren])
+
+  const canUndo = historyIndex > 0
+  const canRedo = historyIndex < history.length - 1
+  const hasNodesToDelete = nodes.filter(n => n.type === 'action' || n.type === 'conditional').length > 0
 
   return (
     <div className="h-full w-full flex flex-col">
-      {/* Top Action Bar */}
-      <div className="border-b border-gray-300 bg-white p-4 flex items-center gap-3">
-        <Button
-          onClick={() => {
-            setInsertPosition({ parentId: 'start-node' })
-            setIsActionModalOpen(true)
-          }}
-          className="flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Add Action
-        </Button>
-        
-        <Button
-          onClick={handleSaveSequence}
-          variant="outline"
-          className="flex items-center gap-2"
-        >
-          <Save className="h-4 w-4" />
-          Save Sequence
-        </Button>
-
-        <Button
-          onClick={() => setIsTemplateManagerOpen(true)}
-          variant="outline"
-          className="flex items-center gap-2"
-        >
-          <FolderOpen className="h-4 w-4" />
-          Load Template
-        </Button>
-
-        <Button
-          onClick={handleClearSequence}
-          variant="outline"
-          className="flex items-center gap-2 ml-auto hover:bg-red-50 hover:border-red-300"
-        >
-          <Trash2 className="h-4 w-4" />
-          Clear Sequence
-        </Button>
+      {/* Header with Action Buttons */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-300 bg-white h-[60px]">
+        <h3 className="text-lg font-semibold text-[#1C1B20]">Sequence Flow</h3>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setInsertPosition({ parentId: 'start-node' })
+              setIsActionModalOpen(true)
+            }}
+            className="w-9 h-9 flex items-center justify-center text-[#1C1B20] bg-white border border-[#1C1B20] rounded-lg hover:bg-gray-50 transition-colors"
+            title="Add Action"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+          <button
+            onClick={handleSaveSequence}
+            className="w-9 h-9 flex items-center justify-center text-[#1C1B20] bg-white border border-[#1C1B20] rounded-lg hover:bg-gray-50 transition-colors"
+            title="Save Sequence"
+          >
+            <Save className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setIsTemplateManagerOpen(true)}
+            className="w-9 h-9 flex items-center justify-center text-[#1C1B20] bg-white border border-[#1C1B20] rounded-lg hover:bg-gray-50 transition-colors"
+            title="Load Template"
+          >
+            <FolderOpen className="h-4 w-4" />
+          </button>
+          <button
+            onClick={handleDeleteLastNode}
+            disabled={!hasNodesToDelete}
+            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+              hasNodesToDelete
+                ? 'text-[#1C1B20] bg-white border border-[#1C1B20] hover:bg-gray-50'
+                : 'text-gray-400 bg-white border border-gray-300 cursor-not-allowed'
+            }`}
+            title="Delete Last Node"
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <button
+            onClick={handleUndo}
+            disabled={!canUndo}
+            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+              canUndo
+                ? 'text-[#1C1B20] bg-white border border-[#1C1B20] hover:bg-gray-50'
+                : 'text-gray-400 bg-white border border-gray-300 cursor-not-allowed'
+            }`}
+            title="Undo"
+          >
+            <Image
+              src="/icons/arrow-left-dark.svg"
+              alt="Undo"
+              width={16}
+              height={16}
+              className={!canUndo ? 'opacity-40' : ''}
+            />
+          </button>
+          <button
+            onClick={handleRedo}
+            disabled={!canRedo}
+            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+              canRedo
+                ? 'text-[#1C1B20] bg-white border border-[#1C1B20] hover:bg-gray-50'
+                : 'text-gray-400 bg-white border border-gray-300 cursor-not-allowed'
+            }`}
+            title="Redo"
+          >
+            <Image
+              src="/icons/arrow-right-dark.svg"
+              alt="Redo"
+              width={16}
+              height={16}
+              className={!canRedo ? 'opacity-40' : ''}
+            />
+          </button>
+          <button
+            onClick={handleClearSequence}
+            className="px-4 py-2 text-sm font-medium text-[#1C1B20] bg-white border border-[#1C1B20] rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Clear Sequence
+          </button>
+        </div>
       </div>
 
       {/* React Flow Canvas */}
@@ -604,6 +748,128 @@ function SequencerFlow () {
         onClose={() => setIsTemplateManagerOpen(false)}
         onLoad={handleLoadTemplate}
       />
+
+      {/* Delete Node Confirmation Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-[#1C1B20]">Delete Node</DialogTitle>
+            <DialogDescription className="text-[#777D8D]">
+              {deleteMessage}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setShowDeleteConfirm(false)
+                setNodeToDelete(null)
+              }}
+              variant="outline"
+              className="border-[#B9B8C0] text-[#1C1B20] hover:bg-[#F5F5F5]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDelete}
+              className="bg-[#1C1B20] text-white hover:opacity-90"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clear Sequence Confirmation Dialog */}
+      <Dialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-[#1C1B20]">Clear Sequence</DialogTitle>
+            <DialogDescription className="text-[#777D8D]">
+              Are you sure you want to clear the entire sequence? This will remove all nodes and reset the flow. This action can be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={() => setShowClearConfirm(false)}
+              variant="outline"
+              className="border-[#B9B8C0] text-[#1C1B20] hover:bg-[#F5F5F5]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmClear}
+              className="bg-[#1C1B20] text-white hover:opacity-90"
+            >
+              Clear
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Save Sequence Dialog */}
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-[#1C1B20]">Save Sequence</DialogTitle>
+            <DialogDescription className="text-[#777D8D]">
+              Enter a name for your sequence template.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              value={saveDialogName}
+              onChange={(e) => setSaveDialogName(e.target.value)}
+              placeholder="Sequence name..."
+              className="border-[#B9B8C0] text-[#1C1B20]"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && saveDialogName.trim()) {
+                  confirmSave()
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setShowSaveDialog(false)
+                setSaveDialogName('')
+              }}
+              variant="outline"
+              className="border-[#B9B8C0] text-[#1C1B20] hover:bg-[#F5F5F5]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmSave}
+              disabled={!saveDialogName.trim()}
+              className="bg-[#1C1B20] text-white hover:opacity-90 disabled:opacity-50"
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Message Dialog */}
+      <Dialog open={showSuccessMessage} onOpenChange={setShowSuccessMessage}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-[#1C1B20]">Success</DialogTitle>
+            <DialogDescription className="text-[#777D8D]">
+              {successMessage}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={() => setShowSuccessMessage(false)}
+              className="bg-[#1C1B20] text-white hover:opacity-90"
+            >
+              OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -611,7 +877,7 @@ function SequencerFlow () {
 export function Sequencer () {
   return (
     <ReactFlowProvider>
-      <div className="h-[calc(100vh-200px)] w-full border border-gray-300 rounded-2xl overflow-hidden shadow-sm">
+      <div className="h-[calc(100vh-200px)] w-full border border-[#B9B8C0] rounded-2xl overflow-hidden shadow-sm">
         <SequencerFlow />
       </div>
     </ReactFlowProvider>

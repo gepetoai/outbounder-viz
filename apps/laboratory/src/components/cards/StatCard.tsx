@@ -1,7 +1,7 @@
 'use client'
 
 import { ReactNode } from 'react'
-import { Card } from '@/components/ui/card'
+import styles from './StatCard.module.css'
 
 interface StatCardProps {
   value: string | number
@@ -26,57 +26,49 @@ export function StatCard ({
   variant = 'default',
   className = ''
 }: StatCardProps) {
-  const getVariantStyles = () => {
-    if (isActive) {
-      return 'bg-gray-100 border-gray-400'
-    }
+  const getVariantClass = () => {
+    if (isActive) return styles.active
     
     switch (variant) {
       case 'outlined':
-        return 'bg-white border-gray-300 hover:border-gray-400'
+        return styles.outlined
       case 'filled':
-        return 'bg-gray-200 border-gray-300'
-      case 'default':
+        return styles.filled
       default:
-        return 'bg-white border-gray-300 hover:border-gray-400'
+        return ''
     }
   }
 
   return (
     <div className="relative">
-      <Card
+      <div
         className={`
-          border p-4 rounded-lg transition-all
-          ${onClick ? 'cursor-pointer hover:shadow-md' : ''}
-          ${getVariantStyles()}
+          ${styles.card}
+          ${onClick ? styles.clickable : ''}
+          ${getVariantClass()}
           ${className}
         `}
         onClick={onClick}
       >
-        <div className="text-center">
+        <div className={styles.content}>
           {icon && (
-            <div className="flex justify-center mb-2 opacity-60">
+            <div className={styles.iconWrapper}>
               {icon}
             </div>
           )}
-          <div className={`text-3xl font-bold mb-1 ${
-            isActive ? 'text-gray-900' : 'text-gray-900'
-          }`}>
+          <div className={styles.value}>
             {value}
           </div>
-          <div className={`text-xs font-medium uppercase tracking-wider ${
-            isActive ? 'text-gray-700' : 'text-gray-600'
-          }`}>
+          <div className={styles.label}>
             {label}
           </div>
         </div>
-      </Card>
+      </div>
 
-      {/* Optional Progress Bar */}
       {showProgressBar && (
-        <div className="absolute bottom-0 left-0 right-0 h-2 bg-gray-300 rounded-b-lg overflow-hidden">
+        <div className={styles.progressBarContainer}>
           <div
-            className="h-full transition-all duration-500 ease-out bg-gray-900"
+            className={styles.progressBar}
             style={{ width: `${Math.min(progressPercent, 100)}%` }}
           />
         </div>

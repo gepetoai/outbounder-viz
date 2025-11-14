@@ -1,7 +1,7 @@
 'use client'
 
 import { ReactNode } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
+import styles from './ContentCard.module.css'
 
 interface ContentCardProps {
   children: ReactNode
@@ -22,58 +22,56 @@ export function ContentCard ({
   padding = 'md',
   className = ''
 }: ContentCardProps) {
-  const getVariantStyles = () => {
+  const getVariantClass = () => {
     switch (variant) {
       case 'elevated':
-        return 'shadow-lg border-gray-200'
+        return styles.elevated
       case 'flat':
-        return 'shadow-none border-gray-300'
-      case 'default':
+        return styles.flat
       default:
-        return 'shadow-sm border-gray-300'
+        return styles.default
     }
   }
 
-  const getPaddingStyles = () => {
+  const getPaddingClass = () => {
     switch (padding) {
       case 'none':
-        return 'p-0'
+        return styles.paddingNone
       case 'sm':
-        return 'p-3'
+        return styles.paddingSm
       case 'lg':
-        return 'p-8'
-      case 'md':
+        return styles.paddingLg
       default:
-        return 'p-6'
+        return styles.paddingMd
     }
   }
 
   return (
-    <Card
+    <div
       className={`
-        bg-white overflow-hidden transition-all
-        ${onClick ? 'cursor-pointer hover:shadow-md' : ''}
-        ${getVariantStyles()}
+        ${styles.card}
+        ${onClick ? styles.clickable : ''}
+        ${getVariantClass()}
         ${className}
       `}
       onClick={onClick}
     >
       {header && (
-        <div className="border-b border-gray-200 px-6 py-4">
+        <div className={styles.header}>
           {header}
         </div>
       )}
       
-      <CardContent className={getPaddingStyles()}>
+      <div className={`${styles.content} ${getPaddingClass()}`}>
         {children}
-      </CardContent>
+      </div>
 
       {footer && (
-        <div className="border-t border-gray-200 px-6 py-4">
+        <div className={styles.footer}>
           {footer}
         </div>
       )}
-    </Card>
+    </div>
   )
 }
 

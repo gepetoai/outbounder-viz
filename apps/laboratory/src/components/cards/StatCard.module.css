@@ -1,0 +1,82 @@
+/* StatCard CSS Module */
+/* 248.AI Brand-Compliant Styles */
+
+.card {
+  border: 1px solid #E5E5E5;
+  padding: 16px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  background-color: #FFFFFF;
+}
+
+.card.clickable {
+  cursor: pointer;
+}
+
+.card.clickable:hover {
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: #B9B8C0;
+}
+
+.outlined {
+  background-color: #FFFFFF;
+  border-color: #E5E5E5;
+}
+
+.outlined:hover {
+  border-color: #B9B8C0;
+}
+
+.filled {
+  background-color: #F5F5F5;
+  border-color: #E5E5E5;
+}
+
+.active {
+  background-color: #EEEEEE;
+  border-color: #B9B8C0;
+}
+
+.content {
+  text-align: center;
+}
+
+.iconWrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+  opacity: 0.6;
+}
+
+.value {
+  font-size: 32px;
+  font-weight: bold;
+  color: #1C1B20;
+  margin-bottom: 4px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #777D8D;
+}
+
+.progressBarContainer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background-color: #EEEEEE;
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  transition: all 0.5s ease-out;
+  background-color: #1C1B20;
+}
+

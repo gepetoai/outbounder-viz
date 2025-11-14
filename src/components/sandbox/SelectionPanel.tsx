@@ -13,6 +13,9 @@ interface SelectionPanelProps {
   selectedCandidate?: Candidate | null
   onCandidateChange?: (candidateId: string) => void
   onCandidatePhotoClick?: (candidate: Candidate) => void
+  responders?: Array<{ id: string, name: string }>
+  selectedResponder?: string
+  onResponderChange?: (responderId: string) => void
 }
 
 export function SelectionPanel ({
@@ -22,7 +25,10 @@ export function SelectionPanel ({
   candidates,
   selectedCandidate,
   onCandidateChange,
-  onCandidatePhotoClick
+  onCandidatePhotoClick,
+  responders = [],
+  selectedResponder,
+  onResponderChange
 }: SelectionPanelProps) {
   return (
     <div className="border rounded-lg p-4 space-y-4 bg-white">
@@ -78,6 +84,23 @@ export function SelectionPanel ({
             </button>
           )}
         </div>
+      </div>
+
+      {/* Select Responder */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Select Responder</Label>
+        <Select value={selectedResponder} onValueChange={onResponderChange}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a responder..." />
+          </SelectTrigger>
+          <SelectContent>
+            {responders.map((responder) => (
+              <SelectItem key={responder.id} value={responder.id}>
+                {responder.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   )

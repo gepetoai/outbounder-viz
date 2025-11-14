@@ -77,9 +77,40 @@ export function SearchForm ({
   const [selectedProfile, setSelectedProfile] = useState<ProspectProfile | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false)
+  const [isLoadDialogOpen, setIsLoadDialogOpen] = useState(false)
   const [enrichLimit, setEnrichLimit] = useState<number>(10)
   const [isSearching, setIsSearching] = useState(false)
   const [isEnriching, setIsEnriching] = useState(false)
+
+  // Mock saved searches
+  const mockSavedSearches = [
+    { id: 1, title: 'Tech Sales Reps - Bay Area', date: '2024-11-10', count: 245 },
+    { id: 2, title: 'Marketing Directors - NY', date: '2024-11-08', count: 127 },
+    { id: 3, title: 'Software Engineers - Remote', date: '2024-11-05', count: 892 },
+    { id: 4, title: 'Product Managers - Seattle', date: '2024-11-01', count: 156 },
+    { id: 5, title: 'Sales Executives - Chicago', date: '2024-10-28', count: 203 },
+    { id: 6, title: 'Data Scientists - Boston', date: '2024-10-25', count: 78 },
+    { id: 7, title: 'UX Designers - Austin', date: '2024-10-22', count: 94 },
+    { id: 8, title: 'DevOps Engineers - Denver', date: '2024-10-18', count: 167 },
+    { id: 9, title: 'Account Executives - LA', date: '2024-10-15', count: 312 },
+    { id: 10, title: 'HR Managers - Miami', date: '2024-10-12', count: 56 },
+    { id: 11, title: 'Financial Analysts - Dallas', date: '2024-10-08', count: 189 },
+    { id: 12, title: 'Content Writers - Portland', date: '2024-10-05', count: 143 },
+    { id: 13, title: 'Customer Success Managers - Phoenix', date: '2024-10-01', count: 221 },
+    { id: 14, title: 'Business Analysts - Atlanta', date: '2024-09-28', count: 98 },
+    { id: 15, title: 'Project Managers - San Diego', date: '2024-09-25', count: 176 }
+  ]
+
+  const handleSave = () => {
+    console.log('Save search:', searchParams)
+    // In a real app, this would save the search
+  }
+
+  const handleLoadSearch = (searchId: number) => {
+    console.log('Load search:', searchId)
+    setIsLoadDialogOpen(false)
+    // In a real app, this would load the search parameters
+  }
 
   const addTitleExclusion = () => {
     if (tempTitleExclusionInput.trim()) {
@@ -188,7 +219,31 @@ export function SearchForm ({
   return (
     <div className="space-y-6">
       <Card>
-        <CardContent className="space-y-8 pt-2">
+        <CardContent className="space-y-8 pt-6">
+          {/* Save/Load Header */}
+          <div className="flex items-center justify-between pb-4 border-b" style={{ borderColor: '#EEEEEE' }}>
+            <h2 className="text-xl font-bold" style={{ color: '#1C1B20' }}>
+              Search Filters
+            </h2>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handleSave}
+                className="flex items-center gap-2"
+              >
+                <Icon src="/icons/arrow-down-to-line-light.svg" alt="Save" size={16} />
+                Save
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsLoadDialogOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <Icon src="/icons/cloud-arrow-up-light.svg" alt="Load" size={16} />
+                Load
+              </Button>
+            </div>
+          </div>
 
           {/* Education Section */}
           <div className="border-b pb-6" style={{ borderColor: '#EEEEEE' }}>
@@ -755,6 +810,41 @@ export function SearchForm ({
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Load Search Modal */}
+      <Modal
+        open={isLoadDialogOpen}
+        onOpenChange={setIsLoadDialogOpen}
+        title="Load Saved Search"
+      >
+        <div className="space-y-4">
+          <p className="text-sm" style={{ color: '#777D8D' }}>
+            Select a saved search to load its filters
+          </p>
+          
+          {/* Scrollable List */}
+          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+            {mockSavedSearches.map((search) => (
+              <div
+                key={search.id}
+                onClick={() => handleLoadSearch(search.id)}
+                className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                style={{ borderColor: '#EEEEEE' }}
+              >
+                <div className="flex-1">
+                  <h4 className="font-semibold text-sm" style={{ color: '#1C1B20' }}>
+                    {search.title}
+                  </h4>
+                  <p className="text-xs" style={{ color: '#777D8D' }}>
+                    {search.date} • {search.count} results
+                  </p>
+                </div>
+                <Icon src="/icons/circle-right-light.svg" alt="Load" size={20} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

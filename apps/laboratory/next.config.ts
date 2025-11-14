@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
         '**/apps/!(laboratory)/**'
       ]
     }
+
     return config
   }
 }

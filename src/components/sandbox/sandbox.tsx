@@ -42,6 +42,7 @@ export function Sandbox () {
   const [messages, setMessages] = useState<ChatMessageProps[]>(MOCK_ALL_MESSAGES.slice(0, 3))
   const [selectedOpenRoleId, setSelectedOpenRoleId] = useState<string>('')
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
+  const [selectedResponderId, setSelectedResponderId] = useState<string>('')
   const [selectedFeedbackId, setSelectedFeedbackId] = useState<string | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([])
@@ -58,6 +59,14 @@ export function Sandbox () {
     () => (candidatesByJobResponse?.candidates || []).map(mapEnrichedCandidateToCandidate),
     [candidatesByJobResponse]
   )
+
+  // Mock responders data (you can replace this with API data later)
+  const respondersData = useMemo(() => [
+    { id: '1', name: 'Sarah Johnson - Recruiter' },
+    { id: '2', name: 'Mike Chen - Senior Recruiter' },
+    { id: '3', name: 'Emily Davis - Talent Manager' },
+    { id: '4', name: 'John Smith - HR Lead' }
+  ], [])
 
   const handleSendMessage = (message: string) => {
     // Add user message
@@ -109,6 +118,10 @@ export function Sandbox () {
     setSelectedCandidate(null)
   }
 
+  const handleResponderChange = (responderId: string) => {
+    setSelectedResponderId(responderId)
+  }
+
   const handleNext = () => {
     if (currentMessageIndex < MOCK_ALL_MESSAGES.length) {
       setMessages(MOCK_ALL_MESSAGES.slice(0, currentMessageIndex + 1))
@@ -143,6 +156,9 @@ export function Sandbox () {
             selectedCandidate={selectedCandidate}
             onCandidateChange={handleCandidateChange}
             onCandidatePhotoClick={handleCandidatePhotoClick}
+            responders={respondersData}
+            selectedResponder={selectedResponderId}
+            onResponderChange={handleResponderChange}
           />
 
           {/* Feedback Section */}

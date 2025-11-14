@@ -8,7 +8,7 @@ interface AppTitleProps {
 
 export function AppTitle ({ title, subtitle, className = '' }: AppTitleProps) {
   return (
-    <div className={`mb-6 ${className}`}>
+    <div className={`mb-4 ${className}`}>
       <h1 
         className="text-2xl font-bold"
         style={{ color: '#1C1B20' }}

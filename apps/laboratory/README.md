@@ -1,10 +1,12 @@
-# Laboratory - Universal Sequencer
+# Laboratory - Universal Component Development
 
 **Port: 3004** | http://localhost:3004
 
 ## Overview
 
-This is the dedicated laboratory workspace for building and testing universal components that will be used across all 248 apps (recruiter, inbounder, outbounder, researcher).
+This is the dedicated laboratory workspace for building, testing, and showcasing universal components that will be used across all 248 apps (recruiter, inbounder, outbounder, researcher).
+
+The laboratory uses a **configuration-driven architecture** that makes it easy to add new components and features without touching the core code.
 
 ## Sequencer Component
 
@@ -78,6 +80,29 @@ Each action type has a custom configuration interface:
 ### Architecture
 
 ```
+src/
+├── app/
+│   └── page.tsx                  # Main lab page (config-driven)
+├── config/
+│   └── lab-sections.tsx          # Section configuration & status
+├── components/
+│   ├── common/
+│   │   └── FeaturePlaceholder.tsx  # Generic placeholder component
+│   ├── demos/
+│   │   ├── CardsDemo.tsx          # Card components showcase
+│   │   └── LayoutDemo.tsx         # Layout components showcase
+│   ├── cards/                     # StatCard, ContentCard, MetricGrid
+│   ├── layout/                    # AppHeader, Sidebar, PageTitle
+│   ├── table/                     # DataTable, TableView
+│   ├── sequencer/                 # Workflow builder (see below)
+│   ├── sandbox/                   # Experimental features
+│   └── components-showcase/       # UI component documentation
+└── lib/                           # Utilities and API clients
+```
+
+### Sequencer Architecture
+
+```
 src/components/sequencer/
 ├── Sequencer.tsx              # Main component with React Flow
 ├── actionTypes.ts             # All 11 action type definitions
@@ -131,7 +156,56 @@ Open http://localhost:3004
 9. Save as template
 10. Load template to verify persistence
 
+## Available Sections
+
+The laboratory is organized into sections, each with a status indicator:
+
+| Section | Status | Description |
+|---------|--------|-------------|
+| Layout | ✓ Ready | |
+| Components | ✓ Ready | Core UI component library showcase |
+| Cards | ✓ Ready | |
+| Table | ✓ Ready | |
+| Sequencer D3 | ✓ Ready | Visual workflow builder with physics-based layout |
+| Settings | ✓ Ready | Application settings and preferences |
+| Search | ⚙ In Progress | |
+| Sequencer | ⚙ In Progress | Alternative sequencer implementation |
+| Sandbox | ⚙ In Progress | |
+| Messages | ⚙ In Progress | Message management interface |
+| Inbox | ✓ Ready | Email review interface with response type and user filters |
+
+## Adding New Sections
+
+To add a new section to the laboratory, edit `src/config/lab-sections.tsx`:
+
+```tsx
+{
+  id: 'new-feature',
+  label: 'New Feature',
+  iconPath: '/icons/icon-dark.svg',
+  component: NewFeatureComponent,
+  status: 'ready' | 'in-progress' | 'planned',
+  description: 'Brief description of the feature'
+}
+```
+
+No changes needed elsewhere - the system automatically:
+- Adds the section to the sidebar
+- Displays the status badge
+- Routes to the component
+- Shows the description
+
+## Refactoring
+
+The laboratory was recently refactored to improve maintainability. See `REFACTORING_SUMMARY.md` for details.
+
+Key improvements:
+- **80% less placeholder code** (generic FeaturePlaceholder component)
+- **Config-driven architecture** (add sections via config, not code)
+- **Status system** (visual indicators for component readiness)
+- **Better organization** (demos/ directory for showcase components)
+
 ---
 
-**Built by Cursor AI** 🚀
+**Built with Cursor AI** 🚀
 
