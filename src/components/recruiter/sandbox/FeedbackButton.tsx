@@ -10,10 +10,10 @@ export function FeedbackButton({ text, onClick, selected = false }: FeedbackButt
   return (
     <button
       className={cn(
-        "w-full text-left py-2.5 px-4 rounded-lg text-sm transition-colors",
-        selected 
-          ? "bg-blue-600 text-white ring-2 ring-blue-300 font-medium" 
-          : "bg-blue-100 text-blue-900 hover:bg-blue-200"
+        "w-full text-left py-2.5 px-4 rounded-lg text-sm transition-colors border",
+        selected
+          ? "bg-gray-900 text-white border-gray-900"
+          : "bg-gray-100 text-gray-900 border-gray-200 hover:bg-gray-200"
       )}
       onClick={onClick}
       aria-pressed={selected}

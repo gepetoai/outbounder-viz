@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { FeedbackButton } from './FeedbackButton'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, RefreshCw } from 'lucide-react'
 
 export interface FeedbackItem {
   id: string
@@ -18,6 +18,10 @@ interface FeedbackSectionProps {
   selectedFeedbackId?: string | null
   onAddFeedback?: (text: string) => void
   onRemoveFeedback?: (id: string) => void
+  feedbackType?: 'initial_message' | 'responder_message'
+  onRegenerate?: () => void
+  isRegenerating?: boolean
+  showRegenerateButton?: boolean
 }
 
 export function FeedbackSection({
@@ -25,7 +29,11 @@ export function FeedbackSection({
   onFeedbackSelect,
   selectedFeedbackId,
   onAddFeedback,
-  onRemoveFeedback
+  onRemoveFeedback,
+  feedbackType = 'initial_message',
+  onRegenerate,
+  isRegenerating = false,
+  showRegenerateButton = false
 }: FeedbackSectionProps) {
   const [customInput, setCustomInput] = useState('')
 
@@ -44,7 +52,12 @@ export function FeedbackSection({
 
   return (
     <div className="border rounded-lg p-4 space-y-3 bg-white h-full flex flex-col">
-      <Label className="text-sm font-medium">Feedback</Label>
+      <div className="flex items-center justify-between">
+        <Label className="text-sm font-medium">Feedback</Label>
+        <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 font-medium">
+          {feedbackType === 'initial_message' ? 'Initial Message' : 'Responder Agent'}
+        </span>
+      </div>
       <div className="flex-1 overflow-auto space-y-2">
         {feedbackItems.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-4">No feedback items yet. Add one below!</p>
@@ -72,7 +85,7 @@ export function FeedbackSection({
           ))
         )}
       </div>
-      <div className="border-t pt-3">
+      <div className="border-t pt-3 space-y-3">
         <div className="flex gap-2">
           <Input
             value={customInput}
@@ -89,6 +102,26 @@ export function FeedbackSection({
             <Plus className="h-4 w-4" />
           </Button>
         </div>
+        {showRegenerateButton && (
+          <Button
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+            className="w-full"
+            variant="default"
+          >
+            {isRegenerating ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Regenerating...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Regenerate
+              </>
+            )}
+          </Button>
+        )}
       </div>
     </div>
   )
