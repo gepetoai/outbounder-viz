@@ -49,6 +49,7 @@ export interface SearchParams {
   graduationYearTo?: number
   maxExperience?: number
   department: string
+  currentJobInDepartment?: boolean
   deptYears?: number
   managementLevelExclusions: string
   recency?: number
@@ -1053,22 +1054,37 @@ export function SearchTab({
               {/* Department Selection */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Department</Label>
-                <Select
-                  value={searchParams.department}
-                  onValueChange={(value) => setSearchParams({ ...searchParams, department: value })}
-                >
-                  <SelectTrigger className="w-full max-w-md">
-                    <SelectValue placeholder="Select department..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {departmentsData?.departments?.map((dept) => (
-                      <SelectItem key={dept} value={dept}>
-                        {dept}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-3">
+                  <Select
+                    value={searchParams.department}
+                    onValueChange={(value) => setSearchParams({ ...searchParams, department: value })}
+                  >
+                    <SelectTrigger className="w-full max-w-md">
+                      <SelectValue placeholder="Select department..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {departmentsData?.departments?.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="current-job-in-department"
+                      checked={searchParams.currentJobInDepartment ?? false}
+                      onCheckedChange={(checked) =>
+                        setSearchParams({ ...searchParams, currentJobInDepartment: checked })
+                      }
+                      disabled={searchParams.department === 'none'}
+                    />
+                    <Label htmlFor="current-job-in-department" className="text-sm whitespace-nowrap">
+                      Current job in department
+                    </Label>
+                  </div>
+                </div>
               </div>
 
               {/* First Row of Experience Fields */}
