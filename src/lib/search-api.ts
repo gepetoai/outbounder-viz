@@ -33,6 +33,7 @@ export interface SearchRequest {
   job_titles_inclusions: string
   profile_keywords_inclusions: string
   industry_inclusions: string
+  language?: string
 }
 
 export interface SearchResponse {
@@ -77,6 +78,7 @@ export interface SavedSearch {
   job_titles_inclusions?: string
   profile_keywords_inclusions?: string
   industry_inclusions?: string
+  language?: string
   total_addressable_market: number
   fk_job_description_id: number | null
   created_at: string
@@ -179,7 +181,8 @@ export function mapSearchParamsToRequest(searchParams: SearchParams, searchTitle
     fk_job_description_id: jobDescriptionId,
     job_titles_inclusions: searchParams.jobTitlesInclusions?.length > 0 ? searchParams.jobTitlesInclusions.join(',') : '',
     profile_keywords_inclusions: searchParams.profileKeywordsInclusions?.length > 0 ? searchParams.profileKeywordsInclusions.join(',') : '',
-    industry_inclusions: searchParams.industryInclusions?.length > 0 ? searchParams.industryInclusions.join(',') : ''
+    industry_inclusions: searchParams.industryInclusions?.length > 0 ? searchParams.industryInclusions.join(',') : '',
+    language: searchParams.language
   }
 }
 
@@ -327,7 +330,9 @@ export function mapSavedSearchToParams(savedSearch: SavedSearch): SearchParams {
     // Inclusions
     jobTitlesInclusions: savedSearch.job_titles_inclusions ? savedSearch.job_titles_inclusions.split(',').map(t => t.trim()) : [],
     profileKeywordsInclusions: savedSearch.profile_keywords_inclusions ? savedSearch.profile_keywords_inclusions.split(',').map(k => k.trim()) : [],
-    industryInclusions: savedSearch.industry_inclusions ? savedSearch.industry_inclusions.split(',').map(i => i.trim()) : []
+    industryInclusions: savedSearch.industry_inclusions ? savedSearch.industry_inclusions.split(',').map(i => i.trim()) : [],
+    // Language
+    language: savedSearch.language
   }
 }
 
