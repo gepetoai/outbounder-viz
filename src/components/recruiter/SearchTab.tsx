@@ -73,6 +73,9 @@ export interface SearchParams {
   jobTitlesInclusions: string[]
   profileKeywordsInclusions: string[]
   industryInclusions: string[]
+
+  // Language
+  language?: string
 }
 
 interface SearchTabProps {
@@ -1157,7 +1160,7 @@ export function SearchTab({
                       />
                     </div>
                     <div className="space-y-1 w-32">
-                      <Label className="text-xs text-gray-600">Radius (miles)</Label>
+                      <Label className="text-xs text-gray-600">Radius (mile)</Label>
                       <Input
                         type="number"
                         value={tempLocationRadius ?? ''}
@@ -1215,7 +1218,7 @@ export function SearchTab({
                             {location.type === 'city' ? (
                               <span>
                                 <strong>{location.city}, {location.state}</strong>
-                                {location.radius !== undefined && <span className="text-gray-600"> - {location.radius} miles radius</span>}
+                                {location.radius !== undefined && <span className="text-gray-600"> - {location.radius} mile radius</span>}
                               </span>
                             ) : (
                               <span>
@@ -1237,6 +1240,44 @@ export function SearchTab({
                   </div>
                 </div>
               )}
+
+              {/* Language Field */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Language</Label>
+                <div className="w-64">
+                  <SearchableSelect
+                    placeholder="Select language..."
+                    options={[
+                      { label: 'English', value: 'English' },
+                      { label: 'Spanish', value: 'Spanish' },
+                      { label: 'French', value: 'French' },
+                      { label: 'German', value: 'German' },
+                      { label: 'Chinese (Mandarin)', value: 'Chinese (Mandarin)' },
+                      { label: 'Chinese (Cantonese)', value: 'Chinese (Cantonese)' },
+                      { label: 'Japanese', value: 'Japanese' },
+                      { label: 'Korean', value: 'Korean' },
+                      { label: 'Portuguese', value: 'Portuguese' },
+                      { label: 'Italian', value: 'Italian' },
+                      { label: 'Dutch', value: 'Dutch' },
+                      { label: 'Russian', value: 'Russian' },
+                      { label: 'Arabic', value: 'Arabic' },
+                      { label: 'Hindi', value: 'Hindi' },
+                      { label: 'Polish', value: 'Polish' },
+                      { label: 'Turkish', value: 'Turkish' },
+                      { label: 'Swedish', value: 'Swedish' },
+                      { label: 'Norwegian', value: 'Norwegian' },
+                      { label: 'Danish', value: 'Danish' },
+                      { label: 'Finnish', value: 'Finnish' },
+                      { label: 'Greek', value: 'Greek' },
+                      { label: 'Hebrew', value: 'Hebrew' },
+                      { label: 'Thai', value: 'Thai' },
+                      { label: 'Vietnamese', value: 'Vietnamese' },
+                    ]}
+                    value={searchParams.language ?? ''}
+                    onValueChange={(value) => setSearchParams({ ...searchParams, language: value || undefined })}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
