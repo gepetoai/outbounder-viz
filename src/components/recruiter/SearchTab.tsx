@@ -123,18 +123,24 @@ export function SearchTab({
   const [isSaveNewDialogOpen, setIsSaveNewDialogOpen] = useState(false)
   const [pendingLocationCity, setPendingLocationCity] = useState<string>('')
   const [enrichLimit, setEnrichLimit] = useState<number>(10)
-
   // Convert parent's array state to Set for easier lookups
-  const approvedCandidateIds = new Set(approvedCandidateIdsFromParent)
-  const rejectedCandidateIds = new Set(rejectedCandidateIdsFromParent)
+  const approvedCandidateIds = useMemo(
+    () => new Set(approvedCandidateIdsFromParent),
+    [approvedCandidateIdsFromParent]
+  )
+  const rejectedCandidateIds = useMemo(
+    () => new Set(rejectedCandidateIdsFromParent),
+    [rejectedCandidateIdsFromParent]
+  )
 
   // Helper functions to update parent state
-  const setApprovedCandidateIds = (ids: Set<string>) => {
+  const setApprovedCandidateIds = useCallback((ids: Set<string>) => {
     setApprovedCandidateIdsInParent(Array.from(ids))
-  }
-  const setRejectedCandidateIds = (ids: Set<string>) => {
+  }, [setApprovedCandidateIdsInParent])
+  
+  const setRejectedCandidateIds = useCallback((ids: Set<string>) => {
     setRejectedCandidateIdsInParent(Array.from(ids))
-  }
+  }, [setRejectedCandidateIdsInParent])
 
   const [processingCandidateId, setProcessingCandidateId] = useState<string | null>(null)
   const [processingAction, setProcessingAction] = useState<'approve' | 'reject' | null>(null)
