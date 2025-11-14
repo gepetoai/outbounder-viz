@@ -246,3 +246,4 @@ When adding new features to the search functionality:
 - The component handles its own internal state but exposes control via props
 - Mock data is used in laboratory for testing without API dependencies
 
+

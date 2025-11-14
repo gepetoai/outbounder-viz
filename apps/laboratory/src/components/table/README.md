@@ -188,3 +188,4 @@ Visit `/table-demo` to see the interactive demo.
 - Generic component works for any use case
 - Easy to customize with render functions
 
+

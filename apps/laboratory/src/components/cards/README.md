@@ -118,3 +118,4 @@ All components are self-contained with no external dependencies beyond:
 - Tailwind CSS
 - Shadcn UI Card component
 
+
