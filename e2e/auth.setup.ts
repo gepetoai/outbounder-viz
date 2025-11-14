@@ -54,8 +54,13 @@ setup('authenticate', async ({ page }) => {
 
   console.log('Clerk signIn completed');
 
-  // Give Clerk a moment to set up the session
-  await page.waitForTimeout(2000);
+  // Wait for Clerk session to be established
+  await page.waitForSelector('[data-clerk-loaded="true"]', { timeout: 5000 });
+  
+  // Verify user is authenticated
+  await page.waitForFunction(() => {
+    return window.Clerk?.user !== null;
+  }, { timeout: 5000 });
 
   // Reload the page to ensure Clerk session is properly loaded
   await page.reload();
