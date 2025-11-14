@@ -88,19 +88,21 @@ setup('authenticate', async ({ page }) => {
 
   // Navigate to Recruiter section (first level navigation)
   // NOTE: The app defaults to "Outbounder", and these buttons are ICON-ONLY (no text!)
-  // The Recruiter button is the 4th button (0-indexed = nth(3))
-  console.log('Looking for Recruiter app icon (4th button in left sidebar)...');
+  console.log('Looking for Recruiter app icon...');
 
-  const recruiterButton = page.locator('.w-12.bg-card.border-r button').nth(3);
+  const recruiterButton = page.getByTestId('recruiter-app-button');
   const isRecruiterButtonVisible = await recruiterButton.isVisible({ timeout: 5000 }).catch(() => false);
 
   if (isRecruiterButtonVisible) {
     console.log('Clicking Recruiter app icon...');
     await recruiterButton.click();
-    await page.waitForTimeout(500);
-
-    // Verify Recruiter sidebar appeared with "Recruiter" header
-    const hasRecruiterHeader = await page.locator('h1:has-text("Recruiter")').isVisible({ timeout: 3000 }).catch(() => false);
+    
+    // Wait for Recruiter header instead of arbitrary timeout
+    const recruiterHeader = page.locator('h1:has-text("Recruiter")');
+    const hasRecruiterHeader = await recruiterHeader.waitFor({ timeout: 3000 })
+      .then(() => true)
+      .catch(() => false);
+      
     if (hasRecruiterHeader) {
       console.log('Recruiter sidebar opened successfully');
     } else {
