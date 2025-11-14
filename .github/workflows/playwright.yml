@@ -1,0 +1,125 @@
+name: Playwright E2E Tests
+
+on:
+  pull_request:
+    # Run on PRs targeting any branch
+  push:
+    branches: [main]
+  # Allow manual workflow runs
+  workflow_dispatch:
+
+jobs:
+  test:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Get Vercel Preview URL
+        if: github.event_name == 'pull_request'
+        id: vercel_preview_url
+        uses: zentered/vercel-preview-url@v1.1.9
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        with:
+          vercel_project_id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel_team_id: ${{ secrets.VERCEL_TEAM_ID }}
+
+      - name: Wait for Vercel Deployment to be Ready
+        if: github.event_name == 'pull_request'
+        uses: UnlyEd/github-action-await-vercel@v2.0.0
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        with:
+          deployment-url: https://${{ steps.vercel_preview_url.outputs.preview_url }}
+          timeout: 600
+          poll-interval: 10
+
+      - name: Run Playwright tests against Vercel Preview
+        if: github.event_name == 'pull_request'
+        env:
+          PLAYWRIGHT_TEST_BASE_URL: https://${{ steps.vercel_preview_url.outputs.preview_url }}
+          E2E_CLERK_USER_USERNAME: ${{ secrets.E2E_CLERK_USER_USERNAME }}
+          E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: npx playwright test
+
+      - name: Run Playwright tests against localhost
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          E2E_CLERK_USER_USERNAME: ${{ secrets.E2E_CLERK_USER_USERNAME }}
+          E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
+        run: npx playwright test
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 30
+
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branchName = process.env.BRANCH_NAME;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ❌ Playwright E2E Tests Failed
+
+            Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+
+            ### Common Issues:
+
+            **Clerk Authentication Timeout**
+            - Verify environment variables are configured in [Vercel Project Settings](https://vercel.com/dashboard) → Environment Variables
+            - Ensure variables are enabled for **Preview** environment (not just Production)
+            - Check Vercel deployment logs for \`[dotenv] injecting env (0)\` which indicates missing environment variables
+            - Required variables: \`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY\`, \`CLERK_SECRET_KEY\`, \`NEXT_PUBLIC_API_BASE_URL\`, \`VERCEL_AUTOMATION_BYPASS_SECRET\`
+
+            **After adding/updating Vercel environment variables:**
+            - Trigger a new deployment by pushing a new commit or manually redeploying from Vercel dashboard
+
+            📖 See [e2e/README.md](https://github.com/${{ github.repository }}/blob/${branchName}/e2e/README.md) for detailed setup instructions.`
+            })
