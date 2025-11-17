@@ -13,7 +13,7 @@ import { SearchableMultiSelect } from '@/components/ui/searchable-multi-select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { RemovableBadge } from '@/components/ui/removable-badge'
 import { Briefcase, MapPin, GraduationCap, X, Search, Target, RefreshCw, Send, Save, Sparkles, ChevronDown, SlidersHorizontal } from 'lucide-react'
-import { useStates, useCities, useIndustries, useDepartments } from '@/hooks/useDropdowns'
+import { useStates, useCities, useIndustries, useDepartments, useCountries } from '@/hooks/useDropdowns'
 import { useCreateSearch, useUpdateSearchName, useUpdateSearch, useEnrichCandidates } from '@/hooks/useSearch'
 import { useApproveCandidate, useRejectCandidate } from '@/hooks/useCandidates'
 import { useQueryClient } from '@tanstack/react-query'
@@ -54,9 +54,13 @@ export interface SearchParams {
   managementLevelExclusions: string
   recency?: number
   timeInRole?: number
-  locationCity: string
-  locationState: string
-  searchRadius?: number
+  locations: Array<{
+    type: 'city' | 'country'
+    city?: string
+    state?: string
+    radius?: number
+    country?: string
+  }>
   includeWorkLocation: boolean
   industryExclusions: string[]
   titleExclusions: string[]
@@ -138,9 +142,15 @@ export function SearchTab({
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false)
   const [isSaveNewDialogOpen, setIsSaveNewDialogOpen] = useState(false)
-  const [pendingLocationCity, setPendingLocationCity] = useState<string>('')
   const [enrichLimit, setEnrichLimit] = useState<number>(10)
   const [tamOnly, setTamOnly] = useState<boolean>(false)
+
+  // Location form state
+  const [tempLocationType, setTempLocationType] = useState<'city' | 'country'>('city')
+  const [tempLocationState, setTempLocationState] = useState<string>('')
+  const [tempLocationCity, setTempLocationCity] = useState<string>('')
+  const [tempLocationRadius, setTempLocationRadius] = useState<number | undefined>(undefined)
+  const [tempLocationCountry, setTempLocationCountry] = useState<string>('')
 
   // Convert parent's array state to Set for easier lookups
   const approvedCandidateIds = useMemo(
@@ -167,9 +177,10 @@ export function SearchTab({
 
   // Dropdown data hooks
   const { data: statesData } = useStates()
-  const { data: citiesData } = useCities(searchParams.locationState, statesData)
+  const { data: tempCitiesData } = useCities(tempLocationState, statesData)
   const { data: industriesData } = useIndustries()
   const { data: departmentsData } = useDepartments()
+  const { data: countriesData } = useCountries()
 
   // Search functionality
   const createSearch = useCreateSearch()
@@ -238,23 +249,6 @@ export function SearchTab({
     }
   }, [searchParams, savedSearchIdForUpdate, isSearchModified, setIsSearchModified])
 
-  // Set city when cities data loads and we have a pending city
-  useEffect(() => {
-    if (pendingLocationCity && citiesData && citiesData.length > 0) {
-      const cityExists = citiesData.find(c => c.city === pendingLocationCity)
-      if (cityExists) {
-        console.log('[CityLoad] Setting pending city:', pendingLocationCity)
-        // This will trigger one more modification check, so skip it
-        skipNextModificationCheck.current++
-        setSearchParams({ ...searchParams, locationCity: pendingLocationCity })
-      }
-      setPendingLocationCity('')
-      isLoadingSavedSearch.current = false
-      console.log('[CityLoad] Loading complete')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [citiesData, pendingLocationCity])
-
   const isValidLinkedInUrl = (url: string): boolean => {
     return url.includes('linkedin.com/company/') || url.includes('linkedin.com/in/')
   }
@@ -299,6 +293,63 @@ export function SearchTab({
     const newTitles = searchParams.jobTitles.filter((_, i) => i !== index)
     console.log('New jobTitles:', newTitles)
     setSearchParams({ ...searchParams, jobTitles: newTitles })
+  }
+
+  const addLocation = () => {
+    if (tempLocationType === 'city') {
+      // Validate city/state location
+      if (!tempLocationState) {
+        showToast('Please select a state', 'error')
+        return
+      }
+      if (!tempLocationCity) {
+        showToast('Please select a city', 'error')
+        return
+      }
+
+      setSearchParams({
+        ...searchParams,
+        locations: [
+          ...searchParams.locations,
+          {
+            type: 'city',
+            city: tempLocationCity,
+            state: tempLocationState,
+            radius: tempLocationRadius ?? 25
+          }
+        ]
+      })
+
+      // Reset temp state
+      setTempLocationState('')
+      setTempLocationCity('')
+      setTempLocationRadius(undefined)
+    } else {
+      // Validate country location
+      if (!tempLocationCountry) {
+        showToast('Please select a country', 'error')
+        return
+      }
+
+      setSearchParams({
+        ...searchParams,
+        locations: [
+          ...searchParams.locations,
+          {
+            type: 'country',
+            country: tempLocationCountry
+          }
+        ]
+      })
+
+      // Reset temp state
+      setTempLocationCountry('')
+    }
+  }
+
+  const removeLocation = (index: number) => {
+    const newLocations = searchParams.locations.filter((_, i) => i !== index)
+    setSearchParams({ ...searchParams, locations: newLocations })
   }
 
   const addTitleExclusion = () => {
@@ -727,7 +778,7 @@ export function SearchTab({
       // FIX #5: Validate that user has set at least some search criteria
       const hasSearchCriteria =
         searchParams.jobTitles.length > 0 ||
-        searchParams.locationCity ||
+        searchParams.locations.length > 0 ||
         searchParams.department !== 'none' ||
         searchParams.skills.length > 0 ||
         searchParams.industryExclusions.length > 0 ||
@@ -1051,48 +1102,141 @@ export function SearchTab({
               <MapPin className="h-5 w-5" />
               <h3 className="text-lg font-semibold">Location</h3>
             </div>
-            <div className="space-y-4"> 
-              {/* Location Details */}
+            <div className="space-y-4">
+              {/* Location Type Selector */}
               <div className="space-y-2">
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-gray-600">State</Label>
-                    <SearchableSelect
-                      placeholder="Select state..."
-                      options={statesData?.map(state => ({
-                        label: state.state_name,
-                        value: state.state_abbrev
-                      })) || []}
-                      value={searchParams.locationState}
-                      onValueChange={(value) => setSearchParams({ ...searchParams, locationState: value, locationCity: '' })}
-                    />
+                <Label className="text-sm font-medium">Add Location (you can add multiple US cities and/or countries)</Label>
+                <div className="flex gap-2 mb-2">
+                  <Button
+                    type="button"
+                    variant={tempLocationType === 'city' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setTempLocationType('city')}
+                  >
+                    City/State (US)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={tempLocationType === 'country' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setTempLocationType('country')}
+                  >
+                    Country (Non-US)
+                  </Button>
+                </div>
+
+                {/* City/State Form */}
+                {tempLocationType === 'city' && (
+                  <div className="flex gap-3 items-end max-w-3xl">
+                    <div className="space-y-1 w-48">
+                      <Label className="text-xs text-gray-600">State</Label>
+                      <SearchableSelect
+                        placeholder="Select state..."
+                        options={statesData?.map(state => ({
+                          label: state.state_name,
+                          value: state.state_abbrev
+                        })) || []}
+                        value={tempLocationState}
+                        onValueChange={(value) => {
+                          setTempLocationState(value)
+                          setTempLocationCity('') // Clear city when state changes
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-1 w-48">
+                      <Label className="text-xs text-gray-600">City</Label>
+                      <SearchableSelect
+                        placeholder="Select city..."
+                        options={tempCitiesData?.map((city) => ({
+                          label: city.city,
+                          value: city.city
+                        })) || []}
+                        value={tempLocationCity}
+                        onValueChange={(value) => setTempLocationCity(value)}
+                        disabled={!tempLocationState}
+                      />
+                    </div>
+                    <div className="space-y-1 w-32">
+                      <Label className="text-xs text-gray-600">Radius (miles)</Label>
+                      <Input
+                        type="number"
+                        value={tempLocationRadius ?? ''}
+                        onChange={(e) => setTempLocationRadius(e.target.value === '' ? undefined : parseInt(e.target.value))}
+                        min="0"
+                        max="500"
+                        placeholder="25"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={addLocation}
+                      variant="outline"
+                    >
+                      Add
+                    </Button>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-gray-600">City</Label>
-                    <SearchableSelect
-                      placeholder="Select city..."
-                      options={citiesData?.map((city) => ({
-                        label: city.city,
-                        value: city.city
-                      })) || []}
-                      value={searchParams.locationCity}
-                      onValueChange={(value) => setSearchParams({ ...searchParams, locationCity: value })}
-                      disabled={!searchParams.locationState}
-                    />
+                )}
+
+                {/* Country Form */}
+                {tempLocationType === 'country' && (
+                  <div className="flex gap-3 items-end max-w-2xl">
+                    <div className="space-y-1 w-64">
+                      <Label className="text-xs text-gray-600">Country</Label>
+                      <SearchableSelect
+                        placeholder="Select country..."
+                        options={countriesData?.map(country => ({
+                          label: country.name,
+                          value: country.name
+                        })) || []}
+                        value={tempLocationCountry}
+                        onValueChange={(value) => setTempLocationCountry(value)}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={addLocation}
+                      variant="outline"
+                    >
+                      Add
+                    </Button>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-gray-600">Radius (miles)</Label>
-                    <Input
-                      type="number"
-                      value={searchParams.searchRadius ?? ''}
-                      onChange={(e) => setSearchParams({ ...searchParams, searchRadius: e.target.value === '' ? undefined : parseInt(e.target.value) })}
-                      min="0"
-                      max="500"
-                      placeholder="25"
-                    />
+                )}
+              </div>
+
+              {/* Display Added Locations */}
+              {searchParams.locations.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Selected Locations</Label>
+                  <div className="space-y-2">
+                    {searchParams.locations.map((location, index) => (
+                      <Card key={index} className="p-3">
+                        <div className="flex justify-between items-center">
+                          <div className="text-sm">
+                            {location.type === 'city' ? (
+                              <span>
+                                <strong>{location.city}, {location.state}</strong>
+                                {location.radius && <span className="text-gray-600"> - {location.radius} miles radius</span>}
+                              </span>
+                            ) : (
+                              <span>
+                                <strong>{location.country}</strong>
+                              </span>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeLocation(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
