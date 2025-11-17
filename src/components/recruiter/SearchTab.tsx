@@ -82,6 +82,10 @@ interface SearchTabProps {
   setSearchTitle: (title: string) => void
   isSearchModified: boolean
   setIsSearchModified: (modified: boolean) => void
+  approvedCandidateIds: string[]
+  setApprovedCandidateIds: (ids: string[]) => void
+  rejectedCandidateIds: string[]
+  setRejectedCandidateIds: (ids: string[]) => void
 }
 
 export function SearchTab({
@@ -101,7 +105,11 @@ export function SearchTab({
   searchTitle,
   setSearchTitle,
   isSearchModified,
-  setIsSearchModified
+  setIsSearchModified,
+  approvedCandidateIds: approvedCandidateIdsFromParent,
+  setApprovedCandidateIds: setApprovedCandidateIdsInParent,
+  rejectedCandidateIds: rejectedCandidateIdsFromParent,
+  setRejectedCandidateIds: setRejectedCandidateIdsInParent
 }: SearchTabProps) {
   const [tempJobTitleInput, setTempJobTitleInput] = useState('')
   const [tempSkillInput, setTempSkillInput] = useState('')
@@ -115,8 +123,25 @@ export function SearchTab({
   const [isSaveNewDialogOpen, setIsSaveNewDialogOpen] = useState(false)
   const [pendingLocationCity, setPendingLocationCity] = useState<string>('')
   const [enrichLimit, setEnrichLimit] = useState<number>(10)
-  const [approvedCandidateIds, setApprovedCandidateIds] = useState<Set<string>>(new Set())
-  const [rejectedCandidateIds, setRejectedCandidateIds] = useState<Set<string>>(new Set())
+  // Convert parent's array state to Set for easier lookups
+  const approvedCandidateIds = useMemo(
+    () => new Set(approvedCandidateIdsFromParent),
+    [approvedCandidateIdsFromParent]
+  )
+  const rejectedCandidateIds = useMemo(
+    () => new Set(rejectedCandidateIdsFromParent),
+    [rejectedCandidateIdsFromParent]
+  )
+
+  // Helper functions to update parent state
+  const setApprovedCandidateIds = useCallback((ids: Set<string>) => {
+    setApprovedCandidateIdsInParent(Array.from(ids))
+  }, [setApprovedCandidateIdsInParent])
+  
+  const setRejectedCandidateIds = useCallback((ids: Set<string>) => {
+    setRejectedCandidateIdsInParent(Array.from(ids))
+  }, [setRejectedCandidateIdsInParent])
+
   const [processingCandidateId, setProcessingCandidateId] = useState<string | null>(null)
   const [processingAction, setProcessingAction] = useState<'approve' | 'reject' | null>(null)
   const [isJobPostingModalOpen, setIsJobPostingModalOpen] = useState(false)
