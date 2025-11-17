@@ -12,6 +12,10 @@ export async function selectJobPosting(page: Page) {
     .filter({ hasText: /Select job posting|Senior Software Engineer|Product Manager/ })
     .first();
 
+  // Wait for the combobox to be visible first
+  await jobPostingCombobox.waitFor({ state: 'visible', timeout: 10000 });
+  console.log('[Helper] Job posting combobox found');
+
   // Check if a job posting is already selected
   const currentText = await jobPostingCombobox.textContent();
   console.log('[Helper] Current combobox text:', currentText);
@@ -162,33 +166,27 @@ export async function setupSearchPage(page: Page) {
   }
 
   // First level navigation: Click Recruiter icon (4th button in left sidebar, icon-only no text)
-  const recruiterButton = page.locator('[data-testid="recruiter-nav-button"]');
-  const isRecruiterVisible = await recruiterButton.isVisible({ timeout: 3000 }).catch(() => false);
+  const recruiterButton = page.getByTestId('recruiter-app-button');
+  await recruiterButton.waitFor({ state: 'visible', timeout: 10000 });
+  console.log('Clicking Recruiter icon');
+  await recruiterButton.click();
 
-  if (isRecruiterVisible) {
-    console.log('Clicking Recruiter icon (4th button)');
-    await recruiterButton.click();
-    await page.waitForTimeout(500);
-  }
+  // Wait for Recruiter header to appear
+  const recruiterHeader = page.locator('h1:has-text("Recruiter")');
+  await recruiterHeader.waitFor({ state: 'visible', timeout: 5000 });
 
   // Second level navigation: Click Search tab within Recruiter
   const searchTab = page.locator('button:has-text("Search")').first();
-  const isSearchTabVisible = await searchTab.isVisible({ timeout: 3000 }).catch(() => false);
+  await searchTab.waitFor({ state: 'visible', timeout: 5000 });
+  console.log('Clicking Search tab');
+  await searchTab.click();
 
-  if (isSearchTabVisible) {
-    console.log('Clicking Search tab');
-    await searchTab.click();
-    await page.waitForTimeout(500);
-  }
-
-  // Wait for search form to be visible (exact placeholder text)
-  await page.waitForSelector('input[placeholder="Add job title (comma-separated for multiple)..."]', {
-    timeout: 10000,
-    state: 'visible'
-  }).catch(() => {
-    console.warn('Could not find search form input');
-  });
-
-  // Wait a bit more for the app to fully initialize
+  // Wait for the tab content to load and stabilize
+  await page.waitForLoadState('networkidle');
   await page.waitForTimeout(1000);
+
+  // Wait for search form to be visible using testid
+  const jobTitleInput = page.getByTestId('job-title-input');
+  await jobTitleInput.waitFor({ state: 'visible', timeout: 10000 });
+  console.log('Search form loaded successfully');
 }
