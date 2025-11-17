@@ -3,6 +3,12 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+  const handleWheel = (e: React.WheelEvent<HTMLInputElement>) => {
+    if (type === 'number' && document.activeElement === e.currentTarget) {
+      e.preventDefault()
+    }
+  }
+
   return (
     <input
       type={type}
@@ -14,6 +20,10 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
         className
       )}
       {...props}
+      onWheel={(e) => {
+        handleWheel(e)
+        props.onWheel?.(e)
+      }}
     />
   )
 }
