@@ -38,8 +38,9 @@ export function AgentPanel({ initialMessage, campaignCandidateId, onMessageGener
   // Set the generated output to the initial message when the panel opens
   useEffect(() => {
     if (initialMessage) {
-      setGeneratedOutput(initialMessage)
+      setGeneratedOutput(initialMessage);
     }
+  }, [initialMessage]);
   }, [initialMessage])
 
   const handleVariableToggle = (variableKey: string) => {
