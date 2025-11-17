@@ -51,36 +51,6 @@ export function AgentPanel({ initialMessage, campaignCandidateId, onMessageGener
   }
 
   const handleGenerate = () => {
-    if (!campaignCandidateId || !instructions.trim() || selectedVariables.length === 0) {
-      return
-    }
-
-    // Build context_variables object with true for selected, false for unselected
-    const contextVariables: Record<string, boolean> = {}
-    VARIABLE_OPTIONS.forEach((variable) => {
-      contextVariables[variable.key] = selectedVariables.includes(variable.key)
-    })
-
-    generateMessage(
-      {
-        user_instructions: instructions,
-        const parsedId = parseInt(campaignCandidateId);
-        if (isNaN(parsedId)) {
-          setError("Invalid candidate ID format");
-          return;
-        }
-        campaign_candidate_id: parsedId,
-        context_variables: contextVariables,
-      },
-      {
-        onSuccess: (data) => {
-          setGeneratedOutput(data.generated_message)
-          onMessageGenerated?.(data.generated_message)
-        },
-      }
-    )
-
-  const handleGenerate = () => {
     const candidateId = campaignCandidateId ? parseInt(campaignCandidateId, 10) : NaN
     if (!campaignCandidateId || isNaN(candidateId) || !instructions.trim() || selectedVariables.length === 0) {
       return
