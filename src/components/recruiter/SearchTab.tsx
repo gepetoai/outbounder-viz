@@ -1215,7 +1215,7 @@ export function SearchTab({
                             {location.type === 'city' ? (
                               <span>
                                 <strong>{location.city}, {location.state}</strong>
-                                {location.radius && <span className="text-gray-600"> - {location.radius} miles radius</span>}
+                                {location.radius !== undefined && <span className="text-gray-600"> - {location.radius} miles radius</span>}
                               </span>
                             ) : (
                               <span>
