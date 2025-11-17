@@ -43,10 +43,14 @@ import {
   Undo,
   Redo,
   RefreshCcw,
-  Play
+  Play,
+  Loader2,
+  Save
 } from 'lucide-react'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useShortlistedCandidates } from '@/hooks/useCandidates'
+import { useLinkedInAccounts } from '@/hooks/useLinkedInAccounts'
+import { createCampaign, getCampaignByJobDescription, startCampaign, pauseCampaign, CampaignWithDetails } from '@/lib/search-api'
 
 interface SequencerTabProps {
   jobDescriptionId?: number | null
@@ -462,6 +466,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   const reactFlowInstance = useReactFlow()
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId || null)
   const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
+  const { data: linkedInAccounts } = useLinkedInAccounts()
   
   // Get approved candidates from API using the selected job ID (shortlisted = approved)
   const { 
@@ -470,7 +475,10 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     error: candidatesError 
   } = useShortlistedCandidates(selectedJobId)
   const approvedCount = approvedCandidatesData?.length || 0
-  const [campaignStatus, setCampaignStatus] = useState<'active' | 'paused'>('paused')
+  const [campaignStatus, setCampaignStatus] = useState<'draft' | 'paused' | 'running' | null>(null)
+  const [selectedLinkedInAccountId, setSelectedLinkedInAccountId] = useState<number | null>(null)
+  const [isSavingCampaign, setIsSavingCampaign] = useState(false)
+  const [currentCampaignId, setCurrentCampaignId] = useState<number | null>(null)
   const [showActionMenu, setShowActionMenu] = useState(false)
   const [pendingBranch, setPendingBranch] = useState<{ branch: string; parentId: string } | null>(null)
   const [pendingParent, setPendingParent] = useState<string | null>(null)
@@ -594,7 +602,23 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   
   // Message template settings (for send-message and send-inmail nodes)
   const [messageInstructions, setMessageInstructions] = useState('')
-  const [generatedMessage, setGeneratedMessage] = useState('')
+  
+  // Handler to update message text directly in node data
+  const handleMessageTextUpdate = useCallback((nodeId: string, text: string) => {
+    setNodes((nds) =>
+      nds.map((node) =>
+        node.id === nodeId
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                messageText: text
+              }
+            }
+          : node
+      )
+    )
+  }, [setNodes])
   
   // Activate Responder settings
   const [responderInstructions, setResponderInstructions] = useState('')
@@ -632,228 +656,305 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     }))
   }, [])
 
-  // Load sequence based on selected job
-  useEffect(() => {
-    if (!selectedJobId) return
-
-    // Different sequences for different job types
-    if (selectedJobId === 1) {
-      // Engineer sequence: Begin -> View profile, Like post, Connect, Message if accepted / InMail if not
-      // Gap-first approach: calculate positions with consistent gaps between nodes
-      let yPos = START_Y
-      
-      // Begin Sequence (always first)
-      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
-      
-      const pos0 = yPos
-      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
-      
-      const pos1 = yPos
-      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
-      
-      const pos2 = yPos
-      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
-      
-      const pos3 = yPos
-      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
-      
-      const pos4 = yPos
-      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
-      
-      const pos5 = yPos
-      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
-      
-      const pos6 = yPos
-      yPos += NODE_HEIGHTS.conditionalWithoutButtons + DESIRED_GAP + BRANCH_VERTICAL_OFFSET
-      
-      const pos7 = yPos
-      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
-      
-      const pos8 = yPos
-      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
-      
-      const pos9 = yPos
-      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
-      
-      const pos10 = yPos
-      
-      const engineerNodes: Node[] = [
-        createBeginSequenceNode(),
-        { id: 'action-0', type: 'actionNode', position: { x: START_X, y: pos0 }, data: { nodeId: 'action-0', label: 'View Profile', actionType: 'view-profile' }, draggable: false },
-        { id: 'wait-1', type: 'waitNode', position: { x: START_X, y: pos1 }, data: { nodeId: 'wait-1', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-1', type: 'actionNode', position: { x: START_X, y: pos2 }, data: { nodeId: 'action-1', label: 'Like Post', actionType: 'like-post' }, draggable: false },
-        { id: 'wait-2', type: 'waitNode', position: { x: START_X, y: pos3 }, data: { nodeId: 'wait-2', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-2', type: 'actionNode', position: { x: START_X, y: pos4 }, data: { nodeId: 'action-2', label: 'Connection Request', actionType: 'connection-request' }, draggable: false },
-        { id: 'wait-3', type: 'waitNode', position: { x: START_X, y: pos5 }, data: { nodeId: 'wait-3', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-3', type: 'conditionalNode', position: { x: START_X, y: pos6 }, data: { nodeId: 'action-3', label: 'If Connection Accepted', actionType: 'if-connection-accepted', hasYesChild: true, hasNoChild: true }, draggable: false },
-        { id: 'wait-4', type: 'waitNode', position: { x: START_X - BRANCH_OFFSET, y: pos7 }, data: { nodeId: 'wait-4', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-4', type: 'actionNode', position: { x: START_X - BRANCH_OFFSET, y: pos8 }, data: { nodeId: 'action-4', label: 'Send Message', actionType: 'send-message', branch: 'yes' }, draggable: false },
-        { id: 'wait-5', type: 'waitNode', position: { x: START_X + BRANCH_OFFSET, y: pos7 }, data: { nodeId: 'wait-5', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-5', type: 'actionNode', position: { x: START_X + BRANCH_OFFSET, y: pos8 }, data: { nodeId: 'action-5', label: 'Send InMail', actionType: 'send-inmail', branch: 'no' }, draggable: false },
-        { id: 'wait-6', type: 'waitNode', position: { x: START_X - BRANCH_OFFSET, y: pos9 }, data: { nodeId: 'wait-6', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-6', type: 'actionNode', position: { x: START_X - BRANCH_OFFSET, y: pos10 }, data: { nodeId: 'action-6', label: 'End Sequence', actionType: 'end-sequence', branch: 'yes' }, draggable: false },
-        { id: 'wait-7', type: 'waitNode', position: { x: START_X + BRANCH_OFFSET, y: pos9 }, data: { nodeId: 'wait-7', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-7', type: 'actionNode', position: { x: START_X + BRANCH_OFFSET, y: pos10 }, data: { nodeId: 'action-7', label: 'End Sequence', actionType: 'end-sequence', branch: 'no' }, draggable: false }
-      ]
-      const engineerEdges: Edge[] = [
-        { id: 'edge-begin-0', source: 'begin-sequence', target: 'action-0', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-0-wait-1', source: 'action-0', target: 'wait-1', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-1-1', source: 'wait-1', target: 'action-1', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-1-wait-2', source: 'action-1', target: 'wait-2', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-2-2', source: 'wait-2', target: 'action-2', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-2-wait-3', source: 'action-2', target: 'wait-3', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-3-3', source: 'wait-3', target: 'action-3', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-3-wait-4-yes', source: 'action-3', sourceHandle: 'yes', target: 'wait-4', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'Yes', labelStyle: { fill: '#000', fontWeight: '700', fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-4-4', source: 'wait-4', target: 'action-4', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-3-wait-5-no', source: 'action-3', sourceHandle: 'no', target: 'wait-5', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'No', labelStyle: { fill: '#000', fontWeight: '700', fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-5-5', source: 'wait-5', target: 'action-5', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-4-wait-6', source: 'action-4', target: 'wait-6', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-6-6', source: 'wait-6', target: 'action-6', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-5-wait-7', source: 'action-5', target: 'wait-7', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-7-7', source: 'wait-7', target: 'action-7', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } }
-      ]
-      
-      // Mark nodes with children to hide "Add Next Action" buttons
-      const nodesWithChildren = markNodesWithChildren(engineerNodes, engineerEdges)
-      
-      setNodes(nodesWithChildren)
-      setEdges(engineerEdges)
-      setActionCount(8)
-      
-      // Fit view to show all nodes after a short delay to ensure rendering is complete
-      setTimeout(() => {
-        reactFlowInstance.fitView({ padding: 0.2, duration: 300 })
-      }, 50)
-    } else if (selectedJobId === 2) {
-      // Territory Manager sequence: Begin -> Connect first, InMail if not accepted, Message if accepted
-      // Gap-first approach: calculate positions with consistent gaps between nodes
-      let yPos = START_Y
-      
-      // Begin Sequence (always first)
-      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
-      
-      const pos0 = yPos
-      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
-      
-      const pos1 = yPos
-      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
-      
-      const pos2 = yPos
-      yPos += NODE_HEIGHTS.conditionalWithoutButtons + DESIRED_GAP + BRANCH_VERTICAL_OFFSET
-      
-      const pos3 = yPos
-      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
-      
-      const pos4 = yPos
-      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
-      
-      const pos5 = yPos
-      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
-      
-      const pos6 = yPos
-      yPos += NODE_HEIGHTS.conditionalWithoutButtons + DESIRED_GAP + BRANCH_VERTICAL_OFFSET
-      
-      const pos7 = yPos
-      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
-      
-      const pos8 = yPos
-      yPos += NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
-      
-      const pos9 = yPos
-      yPos += NODE_HEIGHTS.wait + DESIRED_GAP
-      
-      const pos10 = yPos
-      
-      // Calculate nested branch positions (for "If Message Responded" branches)
-      // Assign unique columns to each of the 4 final branch paths to prevent overlap
-      const leftConditionalX = START_X - BRANCH_OFFSET
-      const leftYesBranchX = START_X - BRANCH_OFFSET * 3  // Column 0: leftmost
-      const leftNoBranchX = START_X - BRANCH_OFFSET       // Column 1: left-center
-      
-      // Right branch (from Send InMail)
-      const rightConditionalX = START_X + BRANCH_OFFSET
-      const rightYesBranchX = START_X + BRANCH_OFFSET     // Column 2: right-center  
-      const rightNoBranchX = START_X + BRANCH_OFFSET * 3  // Column 3: rightmost
-      
-      const managerNodes: Node[] = [
-        createBeginSequenceNode(),
-        { id: 'action-0', type: 'actionNode', position: { x: START_X, y: pos0 }, data: { nodeId: 'action-0', label: 'Connection Request', actionType: 'connection-request' }, draggable: false },
-        { id: 'wait-1', type: 'waitNode', position: { x: START_X, y: pos1 }, data: { nodeId: 'wait-1', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-1', type: 'conditionalNode', position: { x: START_X, y: pos2 }, data: { nodeId: 'action-1', label: 'If Connection Accepted', actionType: 'if-connection-accepted', hasYesChild: true, hasNoChild: true }, draggable: false },
-        { id: 'wait-2', type: 'waitNode', position: { x: START_X - BRANCH_OFFSET, y: pos3 }, data: { nodeId: 'wait-2', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-2', type: 'actionNode', position: { x: START_X - BRANCH_OFFSET, y: pos4 }, data: { nodeId: 'action-2', label: 'Send Message', actionType: 'send-message', branch: 'yes' }, draggable: false },
-        { id: 'wait-3', type: 'waitNode', position: { x: START_X + BRANCH_OFFSET, y: pos3 }, data: { nodeId: 'wait-3', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-3', type: 'actionNode', position: { x: START_X + BRANCH_OFFSET, y: pos4 }, data: { nodeId: 'action-3', label: 'Send InMail', actionType: 'send-inmail', branch: 'no' }, draggable: false },
-        { id: 'wait-4', type: 'waitNode', position: { x: START_X - BRANCH_OFFSET, y: pos5 }, data: { nodeId: 'wait-4', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-4', type: 'conditionalNode', position: { x: leftConditionalX, y: pos6 }, data: { nodeId: 'action-4', label: 'If Message Responded', actionType: 'if-message-responded', hasYesChild: true, hasNoChild: true }, draggable: false },
-        { id: 'wait-5', type: 'waitNode', position: { x: START_X + BRANCH_OFFSET, y: pos5 }, data: { nodeId: 'wait-5', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-5', type: 'conditionalNode', position: { x: rightConditionalX, y: pos6 }, data: { nodeId: 'action-5', label: 'If Message Responded', actionType: 'if-message-responded', hasYesChild: true, hasNoChild: true }, draggable: false },
-        // Left "If Message Responded" YES branch
-        { id: 'wait-6', type: 'waitNode', position: { x: leftYesBranchX, y: pos7 }, data: { nodeId: 'wait-6', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-6', type: 'actionNode', position: { x: leftYesBranchX, y: pos8 }, data: { nodeId: 'action-6', label: 'Like Post', actionType: 'like-post', branch: 'yes' }, draggable: false },
-        { id: 'wait-7', type: 'waitNode', position: { x: leftYesBranchX, y: pos9 }, data: { nodeId: 'wait-7', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-7', type: 'actionNode', position: { x: leftYesBranchX, y: pos10 }, data: { nodeId: 'action-7', label: 'End Sequence', actionType: 'end-sequence', branch: 'yes' }, draggable: false },
-        // Left "If Message Responded" NO branch
-        { id: 'wait-8', type: 'waitNode', position: { x: leftNoBranchX, y: pos7 }, data: { nodeId: 'wait-8', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-8', type: 'actionNode', position: { x: leftNoBranchX, y: pos8 }, data: { nodeId: 'action-8', label: 'Like Post', actionType: 'like-post', branch: 'no' }, draggable: false },
-        { id: 'wait-9', type: 'waitNode', position: { x: leftNoBranchX, y: pos9 }, data: { nodeId: 'wait-9', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-9', type: 'actionNode', position: { x: leftNoBranchX, y: pos10 }, data: { nodeId: 'action-9', label: 'End Sequence', actionType: 'end-sequence', branch: 'no' }, draggable: false },
-        // Right "If Message Responded" YES branch
-        { id: 'wait-10', type: 'waitNode', position: { x: rightYesBranchX, y: pos7 }, data: { nodeId: 'wait-10', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-10', type: 'actionNode', position: { x: rightYesBranchX, y: pos8 }, data: { nodeId: 'action-10', label: 'Like Post', actionType: 'like-post', branch: 'yes' }, draggable: false },
-        { id: 'wait-11', type: 'waitNode', position: { x: rightYesBranchX, y: pos9 }, data: { nodeId: 'wait-11', branch: 'yes', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-11', type: 'actionNode', position: { x: rightYesBranchX, y: pos10 }, data: { nodeId: 'action-11', label: 'End Sequence', actionType: 'end-sequence', branch: 'yes' }, draggable: false },
-        // Right "If Message Responded" NO branch
-        { id: 'wait-12', type: 'waitNode', position: { x: rightNoBranchX, y: pos7 }, data: { nodeId: 'wait-12', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-12', type: 'actionNode', position: { x: rightNoBranchX, y: pos8 }, data: { nodeId: 'action-12', label: 'Send InMail', actionType: 'send-inmail', branch: 'no' }, draggable: false },
-        { id: 'wait-13', type: 'waitNode', position: { x: rightNoBranchX, y: pos9 }, data: { nodeId: 'wait-13', branch: 'no', waitValue: 2, waitUnit: 'days' }, draggable: false },
-        { id: 'action-13', type: 'actionNode', position: { x: rightNoBranchX, y: pos10 }, data: { nodeId: 'action-13', label: 'End Sequence', actionType: 'end-sequence', branch: 'no' }, draggable: false }
-      ]
-      const managerEdges: Edge[] = [
-        { id: 'edge-begin-0', source: 'begin-sequence', target: 'action-0', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-0-wait-1', source: 'action-0', target: 'wait-1', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-1-1', source: 'wait-1', target: 'action-1', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-1-wait-2-yes', source: 'action-1', sourceHandle: 'yes', target: 'wait-2', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'Yes', labelStyle: { fill: '#000', fontWeight: '700', fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-2-2', source: 'wait-2', target: 'action-2', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-1-wait-3-no', source: 'action-1', sourceHandle: 'no', target: 'wait-3', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'No', labelStyle: { fill: '#000', fontWeight: '700', fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-3-3', source: 'wait-3', target: 'action-3', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-2-wait-4', source: 'action-2', target: 'wait-4', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-4-4', source: 'wait-4', target: 'action-4', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-3-wait-5', source: 'action-3', target: 'wait-5', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-5-5', source: 'wait-5', target: 'action-5', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        // Left "If Message Responded" branches
-        { id: 'edge-4-wait-6-yes', source: 'action-4', sourceHandle: 'yes', target: 'wait-6', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'Yes', labelStyle: { fill: '#000', fontWeight: '700', fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-6-6', source: 'wait-6', target: 'action-6', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-6-wait-7', source: 'action-6', target: 'wait-7', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-7-7', source: 'wait-7', target: 'action-7', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-4-wait-8-no', source: 'action-4', sourceHandle: 'no', target: 'wait-8', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'No', labelStyle: { fill: '#000', fontWeight: '700', fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-8-8', source: 'wait-8', target: 'action-8', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-8-wait-9', source: 'action-8', target: 'wait-9', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-9-9', source: 'wait-9', target: 'action-9', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        // Right "If Message Responded" branches
-        { id: 'edge-5-wait-10-yes', source: 'action-5', sourceHandle: 'yes', target: 'wait-10', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'Yes', labelStyle: { fill: '#000', fontWeight: '700', fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-10-10', source: 'wait-10', target: 'action-10', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-10-wait-11', source: 'action-10', target: 'wait-11', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-11-11', source: 'wait-11', target: 'action-11', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-5-wait-12-no', source: 'action-5', sourceHandle: 'no', target: 'wait-12', type: 'smoothstep', animated: false, markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }, style: { stroke: '#000', strokeWidth: 2 }, label: 'No', labelStyle: { fill: '#000', fontWeight: '700', fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-12-12', source: 'wait-12', target: 'action-12', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-12-wait-13', source: 'action-12', target: 'wait-13', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } },
-        { id: 'edge-wait-13-13', source: 'wait-13', target: 'action-13', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#000', strokeWidth: 2 } }
-      ]
-      
-      // Mark nodes with children to hide "Add Next Action" buttons
-      const nodesWithChildren = markNodesWithChildren(managerNodes, managerEdges)
-      
-      setNodes(nodesWithChildren)
-      setEdges(managerEdges)
-      setActionCount(14)
-      
-      // Fit view to show all nodes after a short delay to ensure rendering is complete
-      setTimeout(() => {
-        reactFlowInstance.fitView({ padding: 0.2, duration: 300 })
-      }, 50)
+  // Rebuild flow from campaign data
+  const rebuildFlowFromCampaign = useCallback((campaign: CampaignWithDetails) => {
+    const actionDefs = campaign.action_definitions
+    if (actionDefs.length === 0) {
+      // Just begin sequence if no actions
+      setNodes([createBeginSequenceNode()])
+      setEdges([])
+      setActionCount(0)
+      return
     }
-  }, [selectedJobId, setNodes, setEdges, markNodesWithChildren, reactFlowInstance, createBeginSequenceNode])
+
+    // Build a map of action definition ID to action definition
+    const actionDefMap = new Map<number, CampaignWithDetails['action_definitions'][0]>()
+    actionDefs.forEach(def => {
+      actionDefMap.set(def.id, def)
+    })
+
+    // Build nodes and edges
+    const newNodes: Node[] = [createBeginSequenceNode()]
+    const newEdges: Edge[] = []
+    let actionCounter = 0
+    let waitCounter = 0
+
+    // Map to track which nodes have been created for each action definition
+    const actionDefToNodeId = new Map<number, string>()
+    const actionDefToWaitNodeId = new Map<number, string>()
+
+    // Helper to create a node for an action definition
+    const createNodeForActionDef = (def: CampaignWithDetails['action_definitions'][0], x: number, y: number, branch?: 'yes' | 'no'): Node => {
+      let actionType: string
+      let nodeType: 'actionNode' | 'conditionalNode'
+      let label: string
+
+      if (def.condition_type) {
+        // It's a conditional node
+        actionType = reverseMapConditionType(def.condition_type) || 'if-connection-accepted'
+        nodeType = 'conditionalNode'
+        label = getActionLabel(actionType)
+      } else if (def.action_type) {
+        // It's a regular action
+        actionType = reverseMapActionType(def.action_type) || def.action_type
+        nodeType = 'actionNode'
+        label = getActionLabel(actionType)
+      } else {
+        // Fallback
+        actionType = 'end-sequence'
+        nodeType = 'actionNode'
+        label = 'End Sequence'
+      }
+
+      const nodeId = `action-${actionCounter++}`
+      const nodeData: {
+        nodeId: string
+        label: string
+        actionType: string
+        messageText?: string
+        branch?: 'yes' | 'no'
+        hasYesChild?: boolean
+        hasNoChild?: boolean
+      } = {
+        nodeId,
+        label,
+        actionType
+      }
+
+      // Add message text if present
+      if (def.json_metadata?.message_text) {
+        nodeData.messageText = def.json_metadata.message_text as string
+      }
+
+      if (branch) {
+        nodeData.branch = branch
+      }
+
+      // For conditional nodes, set hasYesChild/hasNoChild
+      if (nodeType === 'conditionalNode') {
+        nodeData.hasYesChild = !!def.next_step_if_true
+        nodeData.hasNoChild = !!def.next_step_if_false
+      }
+
+      return {
+        id: nodeId,
+        type: nodeType,
+        position: { x, y },
+        data: nodeData,
+        draggable: false
+      }
+    }
+
+    // Recursive function to process action definitions following the parent-child chain
+    const processActionDef = (
+      def: CampaignWithDetails['action_definitions'][0],
+      x: number,
+      y: number,
+      sourceNodeId: string,
+      branch?: 'yes' | 'no'
+    ): { lastNodeId: string; lastY: number } => {
+      let currentY = y
+      let lastNodeId = sourceNodeId
+
+      // Create wait node if delay > 0 (delay is BEFORE the action)
+      if (def.delay_value > 0) {
+        const waitNodeId = `wait-${waitCounter++}`
+        const waitNode: Node = {
+          id: waitNodeId,
+          type: 'waitNode',
+          position: { x, y: currentY },
+          data: {
+            nodeId: waitNodeId,
+            waitValue: def.delay_value,
+            waitUnit: def.delay_unit,
+            ...(branch ? { branch } : {})
+          },
+          draggable: false
+        }
+        newNodes.push(waitNode)
+        actionDefToWaitNodeId.set(def.id, waitNodeId)
+        
+        // Create edge from source to wait node
+        newEdges.push({
+          id: `edge-${sourceNodeId}-${waitNodeId}`,
+          source: sourceNodeId,
+          ...(branch ? { sourceHandle: branch, type: 'smoothstep' as const, label: branch === 'yes' ? 'Yes' : 'No', labelStyle: { fill: '#000', fontWeight: '700' as const, fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } } : {}),
+          target: waitNodeId,
+          markerEnd: { type: MarkerType.ArrowClosed, ...(branch ? { color: '#000' } : {}) },
+          style: { stroke: '#000', strokeWidth: 2 }
+        })
+        
+        currentY += NODE_HEIGHTS.wait + DESIRED_GAP
+        lastNodeId = waitNodeId
+      } else {
+        // No wait node - create edge directly from source to action
+        if (sourceNodeId !== 'begin-sequence') {
+          newEdges.push({
+            id: `edge-${sourceNodeId}-action-${def.id}`,
+            source: sourceNodeId,
+            ...(branch ? { sourceHandle: branch, type: 'smoothstep' as const, label: branch === 'yes' ? 'Yes' : 'No', labelStyle: { fill: '#000', fontWeight: '700' as const, fontSize: 16 }, labelBgPadding: [8, 4] as [number, number], labelBgBorderRadius: 4, labelBgStyle: { fill: '#fff', fillOpacity: 1, stroke: '#000', strokeWidth: 2 } } : {}),
+            target: `temp-${def.id}`, // Temporary target, will update after node creation
+            markerEnd: { type: MarkerType.ArrowClosed, ...(branch ? { color: '#000' } : {}) },
+            style: { stroke: '#000', strokeWidth: 2 }
+          })
+        }
+      }
+
+      // Create action/conditional node
+      const actionNode = createNodeForActionDef(def, x, currentY, branch)
+      newNodes.push(actionNode)
+      actionDefToNodeId.set(def.id, actionNode.id)
+      
+      // Update edge target if we created one without a wait node
+      if (def.delay_value === 0 && sourceNodeId !== 'begin-sequence') {
+        const edge = newEdges[newEdges.length - 1]
+        if (edge && edge.target === `temp-${def.id}`) {
+          edge.target = actionNode.id
+          edge.id = `edge-${sourceNodeId}-${actionNode.id}`
+        }
+      } else if (def.delay_value > 0) {
+        // Create edge from wait node to action node
+        newEdges.push({
+          id: `edge-${lastNodeId}-${actionNode.id}`,
+          source: lastNodeId,
+          target: actionNode.id,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#000', strokeWidth: 2 }
+        })
+      } else if (sourceNodeId === 'begin-sequence') {
+        // Edge from begin sequence to first action
+        newEdges.push({
+          id: `edge-begin-${actionNode.id}`,
+          source: 'begin-sequence',
+          target: actionNode.id,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#000', strokeWidth: 2 }
+        })
+      }
+
+      currentY += (def.condition_type ? NODE_HEIGHTS.conditionalWithoutButtons : NODE_HEIGHTS.actionWithoutButton) + DESIRED_GAP
+      lastNodeId = actionNode.id
+
+      // Handle conditional branches
+      if (def.condition_type) {
+        // Yes branch
+        if (def.next_step_if_true) {
+          const nextDef = actionDefMap.get(def.next_step_if_true)
+          if (nextDef) {
+            const branchX = x - BRANCH_OFFSET
+            const branchY = currentY + BRANCH_VERTICAL_OFFSET
+            const result = processActionDef(nextDef, branchX, branchY, actionNode.id, 'yes')
+            // Update currentY to be below the deepest branch
+            currentY = Math.max(currentY, result.lastY)
+          }
+        }
+
+        // No branch
+        if (def.next_step_if_false) {
+          const nextDef = actionDefMap.get(def.next_step_if_false)
+          if (nextDef) {
+            const branchX = x + BRANCH_OFFSET
+            const branchY = currentY + BRANCH_VERTICAL_OFFSET
+            const result = processActionDef(nextDef, branchX, branchY, actionNode.id, 'no')
+            // Update currentY to be below the deepest branch
+            currentY = Math.max(currentY, result.lastY)
+          }
+        }
+      } else {
+        // Regular action - find next action in chain via fk_parent_step_id
+        const nextDef = actionDefs.find(d => d.fk_parent_step_id === def.id)
+        if (nextDef) {
+          const result = processActionDef(nextDef, x, currentY, actionNode.id)
+          currentY = result.lastY
+          lastNodeId = result.lastNodeId
+        }
+      }
+
+      return { lastNodeId, lastY: currentY }
+    }
+
+    // Find root action (no parent)
+    const rootAction = actionDefs.find(def => !def.fk_parent_step_id)
+    if (rootAction) {
+      const initialY = START_Y + NODE_HEIGHTS.actionWithoutButton + DESIRED_GAP
+      processActionDef(rootAction, START_X, initialY, 'begin-sequence')
+    }
+
+    // Update state
+    const nodesWithChildren = markNodesWithChildren(newNodes, newEdges)
+    setNodes(nodesWithChildren)
+    setEdges(newEdges)
+    setActionCount(actionCounter)
+
+    // Update campaign settings
+    setDailyVolume(campaign.daily_volume)
+    setCandidateGapMin(Math.floor(campaign.min_gap_between_scheduling / 60))
+    setCandidateGapMax(Math.floor(campaign.max_gap_between_scheduling / 60))
+    setCandidateGapUnit('minutes')
+
+    // Update sending windows
+    if (campaign.campaign_sending_windows && campaign.campaign_sending_windows.length > 0) {
+      const windows = campaign.campaign_sending_windows.map(win => {
+        const startDate = new Date(win.window_start_time)
+        const endDate = new Date(win.window_end_time)
+        return {
+          start: `${String(startDate.getUTCHours()).padStart(2, '0')}:${String(startDate.getUTCMinutes()).padStart(2, '0')}`,
+          end: `${String(endDate.getUTCHours()).padStart(2, '0')}:${String(endDate.getUTCMinutes()).padStart(2, '0')}`
+        }
+      })
+      setSendingWindows(windows)
+    }
+
+    // Update LinkedIn account
+    setSelectedLinkedInAccountId(campaign.fk_linkedin_account_id)
+
+    // Store campaign ID and status
+    setCurrentCampaignId(campaign.id)
+    setCampaignStatus((campaign.status as 'draft' | 'paused' | 'running') || null)
+
+    // Fit view
+    setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.2, duration: 300 })
+    }, 50)
+  }, [createBeginSequenceNode, markNodesWithChildren, reactFlowInstance, setNodes, setEdges, setDailyVolume, setCandidateGapMin, setCandidateGapMax, setCandidateGapUnit, setSendingWindows, setSelectedLinkedInAccountId])
+
+  // Load campaign when job description changes
+  useEffect(() => {
+    if (!selectedJobId) {
+      // Clear nodes if no job selected
+      setNodes([])
+      setEdges([])
+      setActionCount(0)
+      setCurrentCampaignId(null)
+      setCampaignStatus(null)
+      return
+    }
+
+    // Fetch campaign for this job description
+    getCampaignByJobDescription(selectedJobId)
+      .then(campaign => {
+        if (campaign) {
+          // Rebuild flow from campaign
+          rebuildFlowFromCampaign(campaign)
+        } else {
+          // 404 - just show begin sequence, no campaign exists
+          setNodes([createBeginSequenceNode()])
+          setEdges([])
+          setActionCount(0)
+          setCurrentCampaignId(null)
+          setCampaignStatus(null)
+        }
+      })
+      .catch(error => {
+        console.error('Failed to load campaign:', error)
+        // On error, just show begin sequence
+        setNodes([createBeginSequenceNode()])
+        setEdges([])
+        setActionCount(0)
+        setCurrentCampaignId(null)
+        setCampaignStatus(null)
+      })
+  }, [selectedJobId, rebuildFlowFromCampaign, createBeginSequenceNode, setNodes, setEdges])
 
   // History management for undo/redo
   const [history, setHistory] = useState<Array<{ nodes: Node[], edges: Edge[], actionCount: number }>>([])
@@ -1729,9 +1830,15 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   }, [setNodes, setEdges, createBeginSequenceNode])
 
   const handleGenerateMessage = useCallback(() => {
-    // Mock message generation based on instructions
+    // Validate instructions
     if (!messageInstructions.trim()) {
-      setGeneratedMessage('Please provide instructions for the message.')
+      // Write hint message to node data so user sees feedback
+      if (configureNodeId) {
+        const currentNode = nodes.find(n => n.id === configureNodeId)
+        if (currentNode && (currentNode.data.actionType === 'send-message' || currentNode.data.actionType === 'send-inmail')) {
+          handleMessageTextUpdate(configureNodeId, 'Please provide instructions for the message above, then click "Generate Sample Message" again.')
+        }
+      }
       return
     }
     
@@ -1744,8 +1851,14 @@ Looking forward to connecting!
 
 Best regards`
     
-    setGeneratedMessage(generatedText)
-  }, [messageInstructions])
+    // Save the generated message directly to the configured node
+    if (configureNodeId) {
+      const currentNode = nodes.find(n => n.id === configureNodeId)
+      if (currentNode && (currentNode.data.actionType === 'send-message' || currentNode.data.actionType === 'send-inmail')) {
+        handleMessageTextUpdate(configureNodeId, generatedText)
+      }
+    }
+  }, [messageInstructions, configureNodeId, nodes, handleMessageTextUpdate])
 
   const handleGenerateResponderExample = useCallback(() => {
     if (!responderInstructions.trim()) {
@@ -1793,11 +1906,524 @@ Example response: Based on your instructions, the responder will handle incoming
     }
   }, [sendingWindows])
 
+  // Helper to validate time window
+  const isValidTimeWindow = useCallback((start: string, end: string): boolean => {
+    // Validate 24-hour format (HH:MM)
+    const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/
+    if (!timeRegex.test(start) || !timeRegex.test(end)) {
+      return false
+    }
+    
+    const [startHours, startMinutes] = start.split(':').map(Number)
+    const [endHours, endMinutes] = end.split(':').map(Number)
+    
+    const startTimeMinutes = startHours * 60 + startMinutes
+    const endTimeMinutes = endHours * 60 + endMinutes
+    
+    // Ensure end time is after start time (same day, 24-hour format)
+    return endTimeMinutes > startTimeMinutes
+  }, [])
+
   const handleUpdateTimeWindow = useCallback((index: number, field: 'start' | 'end', value: string) => {
     const updated = [...sendingWindows]
-    updated[index][field] = value
+    const window = { ...updated[index] }
+    
+    // Update the field
+    window[field] = value
+    
+    // Validate that end time is after start time on the same day
+    if (window.start && window.end) {
+      if (!isValidTimeWindow(window.start, window.end)) {
+        // If invalid, don't update - this prevents invalid time windows
+        return
+      }
+    }
+    
+    updated[index] = window
     setSendingWindows(updated)
-  }, [sendingWindows])
+  }, [sendingWindows, isValidTimeWindow])
+
+  // Map UI action types to backend enum values
+  const mapActionType = (uiActionType: string): string | null => {
+    const actionTypeMap: Record<string, string> = {
+      'view-profile': 'view_profile',
+      'like-post': 'like_post',
+      'connection-request': 'send_connection_request',
+      'send-message': 'send_message',
+      'send-inmail': 'send_inmail',
+      'rescind-connection-request': 'withdraw_connection',
+    }
+    return actionTypeMap[uiActionType] || null
+  }
+
+  // Reverse map: backend enum to UI action type
+  const reverseMapActionType = (backendActionType: string): string | null => {
+    const reverseMap: Record<string, string> = {
+      'view_profile': 'view-profile',
+      'like_post': 'like-post',
+      'send_connection_request': 'connection-request',
+      'send_message': 'send-message',
+      'send_inmail': 'send-inmail',
+      'withdraw_connection': 'rescind-connection-request',
+    }
+    return reverseMap[backendActionType] || null
+  }
+
+  // Map condition types
+  const mapConditionType = (uiActionType: string): string | null => {
+    if (uiActionType === 'if-connection-accepted') {
+      return 'connection_accepted'
+    }
+    // 'if-message-responded' is not in the ConditionTypeEnum, so we'll skip it for now
+    return null
+  }
+
+  // Reverse map: backend condition type to UI action type
+  const reverseMapConditionType = (backendConditionType: string): string | null => {
+    if (backendConditionType === 'connection_accepted') {
+      return 'if-connection-accepted'
+    }
+    return null
+  }
+
+  // Get action label from action type
+  const getActionLabel = (actionType: string): string => {
+    const labelMap: Record<string, string> = {
+      'view-profile': 'View Profile',
+      'like-post': 'Like Post',
+      'connection-request': 'Connection Request',
+      'send-message': 'Send Message',
+      'send-inmail': 'Send InMail',
+      'rescind-connection-request': 'Rescind Connection Request',
+      'if-connection-accepted': 'If Connection Accepted',
+      'if-message-responded': 'If Message Responded',
+    }
+    return labelMap[actionType] || actionType
+  }
+
+  // Build action definitions from the sequence graph
+  const buildActionDefinitions = useCallback(() => {
+    if (nodes.length === 0 || edges.length === 0) {
+      return []
+    }
+
+    // Find begin-sequence node
+    const beginNode = nodes.find(n => n.id === 'begin-sequence')
+    if (!beginNode) {
+      return []
+    }
+
+    // Build a map of node ID to node for quick lookup
+    const nodeMap = new Map(nodes.map(n => [n.id, n]))
+    
+    // Build a map of source node to outgoing edges
+    const outgoingEdges = new Map<string, Edge[]>()
+    edges.forEach(edge => {
+      if (!outgoingEdges.has(edge.source)) {
+        outgoingEdges.set(edge.source, [])
+      }
+      outgoingEdges.get(edge.source)!.push(edge)
+    })
+
+    // Build a map of target node to incoming edge (for finding wait nodes before actions)
+    const incomingEdgeMap = new Map<string, Edge>()
+    edges.forEach(edge => {
+      incomingEdgeMap.set(edge.target, edge)
+    })
+
+    // Traverse the graph and collect action nodes in order
+    type ActionDefWithTemp = {
+      action_type: string | null
+      condition_type?: string | null
+      next_step_if_true?: number | null
+      next_step_if_false?: number | null
+      delay_value: number
+      delay_unit: string
+      json_metadata?: Record<string, unknown> | null
+      nodeId: string
+      index: number
+      _nextTrueNodeId?: string | null
+      _nextFalseNodeId?: string | null
+    }
+    const actionDefinitions: ActionDefWithTemp[] = []
+
+    // Map node IDs to their action definition indices
+    const nodeToIndexMap = new Map<string, number>()
+
+    // Helper to find next action node after a given node (skipping wait nodes)
+    const findNextActionNode = (currentNodeId: string, branch?: 'yes' | 'no'): string | null => {
+      const edgesFromCurrent = outgoingEdges.get(currentNodeId) || []
+      
+      // Debug logging
+      if (branch) {
+        console.log(`findNextActionNode(${currentNodeId}, ${branch}):`, {
+          edges: edgesFromCurrent.map(e => ({ target: e.target, sourceHandle: e.sourceHandle, branch: e.data?.branch })),
+          targetNodes: edgesFromCurrent.map(e => {
+            const node = nodeMap.get(e.target)
+            return node ? { id: node.id, type: node.type } : null
+          })
+        })
+      }
+      
+      for (const edge of edgesFromCurrent) {
+        // If we're looking for a specific branch, check the sourceHandle (where branch info is stored)
+        if (branch && edge.sourceHandle !== branch) {
+          continue
+        }
+        
+        const targetNode = nodeMap.get(edge.target)
+        if (!targetNode) continue
+
+        // If it's a wait node, continue to its target
+        if (targetNode.type === 'waitNode') {
+          const result = findNextActionNode(targetNode.id, branch)
+          if (result) return result
+          continue
+        }
+        
+        // If it's an action or conditional node, return it
+        if (targetNode.type === 'actionNode' || targetNode.type === 'conditionalNode') {
+          return targetNode.id
+        }
+      }
+      
+      return null
+    }
+
+    // Helper to get delay from wait node before an action
+    const getDelayFromWaitNode = (actionNodeId: string): { value: number; unit: string } => {
+      const incomingEdge = incomingEdgeMap.get(actionNodeId)
+      if (!incomingEdge) {
+        return { value: 0, unit: 'days' }
+      }
+
+      const sourceNode = nodeMap.get(incomingEdge.source)
+      if (sourceNode?.type === 'waitNode') {
+        return {
+          value: sourceNode.data.waitValue || 0,
+          unit: sourceNode.data.waitUnit || 'days'
+        }
+      }
+
+      // Check if there's a wait node in the path
+      const checkPathForWait = (nodeId: string): { value: number; unit: string } | null => {
+        const incoming = incomingEdgeMap.get(nodeId)
+        if (!incoming) return null
+        
+        const source = nodeMap.get(incoming.source)
+        if (source?.type === 'waitNode') {
+          return {
+            value: source.data.waitValue || 0,
+            unit: source.data.waitUnit || 'days'
+          }
+        }
+        return checkPathForWait(incoming.source)
+      }
+
+      return checkPathForWait(actionNodeId) || { value: 0, unit: 'days' }
+    }
+
+    // Traverse starting from begin-sequence
+    const visited = new Set<string>()
+    const queue: Array<{ nodeId: string }> = [{ nodeId: 'begin-sequence' }]
+
+    while (queue.length > 0) {
+      const { nodeId } = queue.shift()!
+      
+      if (visited.has(nodeId)) continue
+      visited.add(nodeId)
+
+      const currentNode = nodeMap.get(nodeId)
+      if (!currentNode) continue
+
+      // Skip begin-sequence and wait nodes (wait nodes are handled as delays)
+      if (nodeId === 'begin-sequence' || currentNode.type === 'waitNode') {
+        // Continue to next nodes
+        const edgesFromCurrent = outgoingEdges.get(nodeId) || []
+        for (const edge of edgesFromCurrent) {
+          if (!visited.has(edge.target)) {
+            queue.push({ nodeId: edge.target })
+          }
+        }
+        continue
+      }
+
+      // Process action and conditional nodes
+      if (currentNode.type === 'actionNode' || currentNode.type === 'conditionalNode') {
+        const actionType = currentNode.data.actionType
+        
+        // Skip end-sequence and unsupported actions
+        if (actionType === 'end-sequence' || actionType === 'activate-responder') {
+          // Still traverse to mark as visited
+          const edgesFromCurrent = outgoingEdges.get(nodeId) || []
+          for (const edge of edgesFromCurrent) {
+            if (!visited.has(edge.target)) {
+              queue.push({ nodeId: edge.target })
+            }
+          }
+          continue
+        }
+
+        // Get delay from wait node before this action
+        const delay = getDelayFromWaitNode(nodeId)
+
+        // Check if it's a conditional node
+        const conditionType = mapConditionType(actionType)
+        
+        if (conditionType) {
+          // It's a conditional node - find the wait nodes in each branch first
+          // Branch information is stored in edge.sourceHandle, not edge.data.branch
+          const edgesFromConditional = outgoingEdges.get(nodeId) || []
+          let yesWaitNodeId: string | null = null
+          let noWaitNodeId: string | null = null
+          
+          for (const edge of edgesFromConditional) {
+            // Check sourceHandle for branch info (yes/no)
+            const branch = edge.sourceHandle as 'yes' | 'no' | undefined
+            if (branch === 'yes') {
+              const targetNode = nodeMap.get(edge.target)
+              if (targetNode?.type === 'waitNode') {
+                yesWaitNodeId = targetNode.id
+              }
+            } else if (branch === 'no') {
+              const targetNode = nodeMap.get(edge.target)
+              if (targetNode?.type === 'waitNode') {
+                noWaitNodeId = targetNode.id
+              }
+            }
+          }
+          
+          // Find the action nodes after the wait nodes
+          const nextTrueNodeId = yesWaitNodeId ? findNextActionNode(yesWaitNodeId) : null
+          const nextFalseNodeId = noWaitNodeId ? findNextActionNode(noWaitNodeId) : null
+          
+          // Debug logging
+          console.log(`Conditional node ${nodeId}:`, {
+            yesWaitNodeId,
+            noWaitNodeId,
+            nextTrueNodeId,
+            nextFalseNodeId,
+            edgesFromConditional: edgesFromConditional.map(e => ({ source: e.source, target: e.target, sourceHandle: e.sourceHandle, branch: e.data?.branch }))
+          })
+          
+          // Conditional nodes have null action_type
+          const actionDef = {
+            action_type: null,
+            condition_type: conditionType,
+            next_step_if_true: null as number | null,
+            next_step_if_false: null as number | null,
+            delay_value: delay.value,
+            delay_unit: delay.unit,
+            json_metadata: null,
+            nodeId: nodeId,
+            index: actionDefinitions.length,
+            _nextTrueNodeId: nextTrueNodeId, // Temporary storage - action node ID
+            _nextFalseNodeId: nextFalseNodeId // Temporary storage - action node ID
+          }
+          
+          actionDefinitions.push(actionDef)
+          nodeToIndexMap.set(nodeId, actionDef.index)
+        } else {
+          // Regular action node
+          const mappedActionType = mapActionType(actionType)
+          if (mappedActionType) {
+            // Build json_metadata for send_message and send_inmail actions
+            let jsonMetadata: Record<string, unknown> | null = null
+            if ((mappedActionType === 'send_message' || mappedActionType === 'send_inmail') && currentNode.data.messageText) {
+              jsonMetadata = {
+                message_text: currentNode.data.messageText
+              }
+            }
+            
+            const actionDef = {
+              action_type: mappedActionType,
+              condition_type: null,
+              next_step_if_true: null,
+              next_step_if_false: null,
+              delay_value: delay.value,
+              delay_unit: delay.unit,
+              json_metadata: jsonMetadata,
+              nodeId: nodeId,
+              index: actionDefinitions.length
+            }
+            
+            actionDefinitions.push(actionDef)
+            nodeToIndexMap.set(nodeId, actionDef.index)
+          }
+        }
+
+        // Continue traversal
+        const edgesFromCurrent = outgoingEdges.get(nodeId) || []
+        for (const edge of edgesFromCurrent) {
+          if (!visited.has(edge.target)) {
+            queue.push({ nodeId: edge.target })
+          }
+        }
+      }
+    }
+
+    // Debug: log all nodes in map
+    console.log('All nodes in nodeToIndexMap:', Array.from(nodeToIndexMap.entries()))
+    
+    // Resolve next_step indices for conditional nodes
+    // We need to do this after all nodes are processed to ensure nodeToIndexMap is complete
+    actionDefinitions.forEach(actionDef => {
+      if (actionDef.condition_type && actionDef._nextTrueNodeId !== undefined) {
+        const nextTrueNodeId = actionDef._nextTrueNodeId
+        const nextFalseNodeId = actionDef._nextFalseNodeId
+        
+        // The stored IDs are action node IDs, so we can directly look them up
+        if (nextTrueNodeId) {
+          if (nodeToIndexMap.has(nextTrueNodeId)) {
+            actionDef.next_step_if_true = nodeToIndexMap.get(nextTrueNodeId)! + 1 // 1-indexed
+            console.log(`Resolved next_step_if_true: ${nextTrueNodeId} -> ${actionDef.next_step_if_true}`)
+          } else {
+            // Debug: log if node not found
+            console.warn(`Next true node not found in map: ${nextTrueNodeId}. Available nodes:`, Array.from(nodeToIndexMap.keys()))
+          }
+        }
+        
+        if (nextFalseNodeId) {
+          if (nodeToIndexMap.has(nextFalseNodeId)) {
+            actionDef.next_step_if_false = nodeToIndexMap.get(nextFalseNodeId)! + 1 // 1-indexed
+            console.log(`Resolved next_step_if_false: ${nextFalseNodeId} -> ${actionDef.next_step_if_false}`)
+          } else {
+            // Debug: log if node not found
+            console.warn(`Next false node not found in map: ${nextFalseNodeId}. Available nodes:`, Array.from(nodeToIndexMap.keys()))
+          }
+        }
+      }
+    })
+
+    // Remove temporary fields and return clean payload with IDs
+    return actionDefinitions.map((actionDef, idx) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { nodeId, index, _nextTrueNodeId, _nextFalseNodeId, ...rest } = actionDef
+      return {
+        id: idx + 1, // 1-indexed ID
+        ...rest,
+        next_step_if_true: rest.next_step_if_true ?? null,
+        next_step_if_false: rest.next_step_if_false ?? null,
+      }
+    })
+  }, [nodes, edges])
+
+  // Prepare campaign payload
+  const prepareCampaignPayload = useCallback(() => {
+    // Validate required fields
+    if (!selectedJobId) {
+      console.error('Please select a job posting')
+      return null
+    }
+
+    if (!selectedLinkedInAccountId && (!linkedInAccounts || linkedInAccounts.length === 0)) {
+      console.error('Please select a LinkedIn account')
+      return null
+    }
+
+    // Use selected LinkedIn account or default to first one
+    const linkedInAccountId = selectedLinkedInAccountId || (linkedInAccounts?.[0]?.id ?? null)
+    if (!linkedInAccountId) {
+      console.error('No LinkedIn account available')
+      return null
+    }
+
+    // Get job posting for name
+    const selectedJob = jobPostings?.find(job => job.id === selectedJobId)
+    const campaignName = selectedJob ? `${selectedJob.title} - Campaign` : 'Campaign'
+
+    // Convert gap values to minutes
+    const minGapMinutes = candidateGapUnit === 'hours' ? candidateGapMin * 60 : candidateGapMin
+    const maxGapMinutes = candidateGapUnit === 'hours' ? candidateGapMax * 60 : candidateGapMax
+
+    // Convert time windows from 'HH:MM' format to datetime strings (ISO format)
+    // All times are on the same day (today) in 24-hour format, stored as UTC
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    
+    const sendingWindowsPayload = sendingWindows
+      .filter(window => {
+        // Validate that window is valid (24-hour format, same day, end after start)
+        return isValidTimeWindow(window.start, window.end)
+      })
+      .map(window => {
+        const [startHours, startMinutes] = window.start.split(':').map(Number)
+        const [endHours, endMinutes] = window.end.split(':').map(Number)
+        
+        // Format hours and minutes with leading zeros
+        const startHoursStr = String(startHours).padStart(2, '0')
+        const startMinutesStr = String(startMinutes).padStart(2, '0')
+        const endHoursStr = String(endHours).padStart(2, '0')
+        const endMinutesStr = String(endMinutes).padStart(2, '0')
+        
+        // Create ISO strings directly in UTC format (YYYY-MM-DDTHH:MM:SS.000Z)
+        // This ensures the selected time is preserved exactly as entered
+        const window_start_time = `${year}-${month}-${day}T${startHoursStr}:${startMinutesStr}:00.000Z`
+        const window_end_time = `${year}-${month}-${day}T${endHoursStr}:${endMinutesStr}:00.000Z`
+        
+        return {
+          window_start_time,
+          window_end_time
+        }
+      })
+
+    // Build action definitions
+    const actionDefinitions = buildActionDefinitions()
+
+    // Prepare campaign payload
+    const campaignPayload = {
+      name: campaignName,
+      status: (campaignStatus || 'draft') as 'draft' | 'paused' | 'running',
+      fk_linkedin_account_id: linkedInAccountId,
+      fk_job_description_id: selectedJobId,
+      daily_volume: dailyVolume,
+      min_gap_between_scheduling: minGapMinutes,
+      max_gap_between_scheduling: maxGapMinutes,
+      campaign_sending_windows: sendingWindowsPayload,
+      action_definitions: actionDefinitions
+    }
+
+    return campaignPayload
+  }, [
+    selectedJobId,
+    selectedLinkedInAccountId,
+    campaignStatus,
+    linkedInAccounts,
+    jobPostings,
+    dailyVolume,
+    candidateGapMin,
+    candidateGapMax,
+    candidateGapUnit,
+    sendingWindows,
+    buildActionDefinitions,
+    isValidTimeWindow
+  ])
+
+  // Handle saving campaign
+  const handleSaveCampaign = useCallback(async () => {
+    const payload = prepareCampaignPayload()
+    if (!payload) {
+      console.error('Invalid campaign payload')
+      return
+    }
+
+    setIsSavingCampaign(true)
+    try {
+      const response = await createCampaign(payload)
+      console.log('Campaign saved successfully:', response)
+      // Update campaign ID and status after successful save
+      setCurrentCampaignId(response.id)
+      setCampaignStatus((response.status as 'draft' | 'paused' | 'running') || 'draft')
+      // You can add a success toast/notification here if needed
+    } catch (error) {
+      console.error('Failed to save campaign:', error)
+      // You can add an error toast/notification here if needed
+    } finally {
+      setIsSavingCampaign(false)
+    }
+  }, [prepareCampaignPayload])
 
   return (
     <div className="space-y-6">
@@ -1841,6 +2467,39 @@ Example response: Based on your instructions, the responder will handle incoming
           </Select>
         </CardContent>
       </Card>
+
+      {/* LinkedIn Account Selector */}
+      {linkedInAccounts && linkedInAccounts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Select LinkedIn Account</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select 
+              value={selectedLinkedInAccountId?.toString() || ''} 
+              onValueChange={(value) => {
+                setSelectedLinkedInAccountId(value === 'clear-selection' ? null : parseInt(value))
+              }}
+            >
+              <SelectTrigger className={`w-full ${!selectedLinkedInAccountId ? 'border-gray-400 focus:border-gray-600' : ''}`}>
+                <SelectValue placeholder={linkedInAccounts[0] ? `${linkedInAccounts[0].email} (default)` : 'No account selected'} />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedLinkedInAccountId && (
+                  <SelectItem value="clear-selection">
+                    <span className="text-muted-foreground italic">Use default (first account)</span>
+                  </SelectItem>
+                )}
+                {linkedInAccounts.map((account) => (
+                  <SelectItem key={account.id} value={account.id.toString()}>
+                    {account.email} {account.first_name || account.last_name ? `(${account.first_name} ${account.last_name})`.trim() : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Candidates Summary */}
       {selectedJobId && (
@@ -1893,26 +2552,69 @@ Example response: Based on your instructions, the responder will handle incoming
               </Button>
               <Button
                 onClick={handleClearSequence}
-                disabled={nodes.length === 0}
+                // disabled={nodes.length === 0}
                 variant="outline"
                 className="bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Clear Sequence
               </Button>
               <Button
-                onClick={() => onNavigateToSandbox?.()}
+                onClick={handleSaveCampaign}
+                disabled={isSavingCampaign || currentCampaignId !== null}
                 variant="outline"
-                className="bg-white hover:bg-gray-50"
+                className="bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Test
+                {isSavingCampaign ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save
+                  </>
+                )}
               </Button>
               <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-300">
                 <span className="text-sm font-semibold text-gray-900">
-                  {campaignStatus === 'active' ? 'Active' : 'Paused'}
+                  {campaignStatus === 'running' ? 'Running' : campaignStatus === 'paused' ? 'Paused' : campaignStatus === 'draft' ? 'Draft' : 'Draft'}
                 </span>
                 <Switch
-                  checked={campaignStatus === 'active'}
-                  onCheckedChange={(checked) => setCampaignStatus(checked ? 'active' : 'paused')}
+                  checked={campaignStatus === 'running'}
+                  onCheckedChange={async (checked) => {
+                    // Only call API if campaign exists
+                    if (currentCampaignId) {
+                      const previousStatus = campaignStatus
+                      const newStatus = checked ? 'running' : 'paused'
+                      
+                      try {
+                        if (checked && (previousStatus === 'draft' || previousStatus === 'paused')) {
+                          // Starting campaign: draft/paused -> running
+                          await startCampaign(currentCampaignId)
+                          setCampaignStatus('running')
+                        } else if (!checked && previousStatus === 'running') {
+                          // Pausing campaign: running -> paused
+                          await pauseCampaign(currentCampaignId)
+                          setCampaignStatus('paused')
+                        } else {
+                          // Just update local state if no API call needed
+                          setCampaignStatus(newStatus)
+                        }
+                      } catch (error) {
+                        console.error('Failed to update campaign status:', error)
+                        // Revert to previous status on error
+                        setCampaignStatus(previousStatus || 'draft')
+                      }
+                    } else {
+                      // No campaign exists - prevent status changes
+                      if (!currentCampaignId) {
+                        console.error('Please save the campaign before changing status')
+                        return
+                      }
+                      setCampaignStatus(checked ? 'running' : 'draft')
+                    }
+                  }}
                   className="scale-110"
                 />
               </div>
@@ -2052,40 +2754,50 @@ Example response: Based on your instructions, the responder will handle incoming
                         </Button>
                       </div>
                       <div className="space-y-3">
-                        {sendingWindows.map((window, index) => (
-                          <div key={index} className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
-                            <div className="flex-1 flex items-center gap-2">
-                              <div className="flex-1">
-                                <Label htmlFor={`start-${index}`} className="text-xs text-gray-600">Start</Label>
-                                <Input
-                                  id={`start-${index}`}
-                                  type="time"
-                                  value={window.start}
-                                  onChange={(e) => handleUpdateTimeWindow(index, 'start', e.target.value)}
-                                  className="bg-white border-gray-300 mt-1"
-                                />
+                        {sendingWindows.map((window, index) => {
+                          const isValid = isValidTimeWindow(window.start, window.end)
+                          return (
+                            <div key={index} className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
+                              <div className="flex-1 flex items-center gap-2">
+                                <div className="flex-1">
+                                  <Label htmlFor={`start-${index}`} className="text-xs text-gray-600">Start (24h)</Label>
+                                  <Input
+                                    id={`start-${index}`}
+                                    type="time"
+                                    step="60"
+                                    value={window.start}
+                                    onChange={(e) => handleUpdateTimeWindow(index, 'start', e.target.value)}
+                                    className={`bg-white border-gray-300 mt-1 ${!isValid && window.start && window.end ? 'border-red-500' : ''}`}
+                                  />
+                                </div>
+                                <div className="flex-1">
+                                  <Label htmlFor={`end-${index}`} className="text-xs text-gray-600">End (24h)</Label>
+                                  <Input
+                                    id={`end-${index}`}
+                                    type="time"
+                                    step="60"
+                                    value={window.end}
+                                    onChange={(e) => handleUpdateTimeWindow(index, 'end', e.target.value)}
+                                    className={`bg-white border-gray-300 mt-1 ${!isValid && window.start && window.end ? 'border-red-500' : ''}`}
+                                  />
+                                </div>
                               </div>
-                              <div className="flex-1">
-                                <Label htmlFor={`end-${index}`} className="text-xs text-gray-600">End</Label>
-                                <Input
-                                  id={`end-${index}`}
-                                  type="time"
-                                  value={window.end}
-                                  onChange={(e) => handleUpdateTimeWindow(index, 'end', e.target.value)}
-                                  className="bg-white border-gray-300 mt-1"
-                                />
-                              </div>
+                              {!isValid && window.start && window.end && (
+                                <div className="text-xs text-red-500 mt-5">
+                                  End must be after start
+                                </div>
+                              )}
+                              {sendingWindows.length > 1 && (
+                                <button
+                                  onClick={() => handleRemoveTimeWindow(index)}
+                                  className="text-gray-400 hover:text-red-600 transition-colors mt-5"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
                             </div>
-                            {sendingWindows.length > 1 && (
-                              <button
-                                onClick={() => handleRemoveTimeWindow(index)}
-                                className="text-gray-400 hover:text-red-600 transition-colors mt-5"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                       <p className="text-xs text-gray-500">Messages will only be sent within these time windows</p>
                     </div>
@@ -2148,6 +2860,9 @@ Example response: Based on your instructions, the responder will handle incoming
                     const icon = actionType === 'send-message' ? <MessageSquare className="h-5 w-5" /> : <Send className="h-5 w-5" />
                     const label = actionType === 'send-message' ? 'Send Message' : 'Send InMail'
                     
+                    // Get current message text from node data (reactive to nodes changes)
+                    const currentMessageText = currentNode?.data.messageText || ''
+                    
                     return (
                       <>
                         <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-200">
@@ -2174,27 +2889,32 @@ Example response: Based on your instructions, the responder will handle incoming
                         <div>
                           <Button
                             onClick={handleGenerateMessage}
-                            className="w-full bg-black hover:bg-gray-800 text-white"
+                            disabled={!messageInstructions.trim()}
+                            className="w-full bg-black hover:bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Generate Sample Message
                           </Button>
                         </div>
                         
                         {/* Generated Output */}
-                        {generatedMessage && (
-                          <div className="space-y-2">
-                            <Label htmlFor="generated-output">Generated Output (Preview)</Label>
-                            <Textarea
-                              id="generated-output"
-                              value={generatedMessage}
-                              readOnly
-                              className="min-h-[180px] bg-gray-50 border-gray-300 cursor-text font-mono text-sm"
-                            />
-                            <p className="text-xs text-gray-500">
-                              This is a preview. You can select and copy this text to refine your instructions.
-                            </p>
-                          </div>
-                        )}
+                        <div className="space-y-2">
+                          <Label htmlFor="generated-output">Message Text</Label>
+                          <Textarea
+                            id="generated-output"
+                            value={currentMessageText}
+                            onChange={(e) => {
+                              const newValue = e.target.value
+                              if (configureNodeId) {
+                                handleMessageTextUpdate(configureNodeId, newValue)
+                              }
+                            }}
+                            placeholder="Enter or generate the message text here"
+                            className="min-h-[180px] bg-gray-50 border-gray-300 cursor-text font-mono text-sm"
+                          />
+                          <p className="text-xs text-gray-500">
+                            This message will be sent. You can edit it directly or generate from instructions above.
+                          </p>
+                        </div>
                       </>
                     )
                   }
