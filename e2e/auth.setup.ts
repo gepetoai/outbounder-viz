@@ -54,13 +54,12 @@ setup('authenticate', async ({ page }) => {
 
   console.log('Clerk signIn completed');
 
-  // Wait for Clerk session to be established
-  await page.waitForSelector('[data-clerk-loaded="true"]', { timeout: 5000 });
-  
-  // Verify user is authenticated
+  // Wait for Clerk to be loaded and session to be established
   await page.waitForFunction(() => {
-    return window.Clerk?.user !== null;
-  }, { timeout: 5000 });
+    return window.Clerk?.loaded === true && window.Clerk?.user !== null;
+  }, { timeout: 10000 });
+
+  console.log('Clerk session established');
 
   // Reload the page to ensure Clerk session is properly loaded
   await page.reload();
@@ -91,54 +90,39 @@ setup('authenticate', async ({ page }) => {
   console.log('Looking for Recruiter app icon...');
 
   const recruiterButton = page.getByTestId('recruiter-app-button');
-  const isRecruiterButtonVisible = await recruiterButton.isVisible({ timeout: 5000 }).catch(() => false);
+  await recruiterButton.waitFor({ state: 'visible', timeout: 10000 });
+  console.log('Clicking Recruiter app icon...');
+  await recruiterButton.click();
 
-  if (isRecruiterButtonVisible) {
-    console.log('Clicking Recruiter app icon...');
-    await recruiterButton.click();
-    
-    // Wait for Recruiter header instead of arbitrary timeout
-    const recruiterHeader = page.locator('h1:has-text("Recruiter")');
-    const hasRecruiterHeader = await recruiterHeader.waitFor({ timeout: 3000 })
-      .then(() => true)
-      .catch(() => false);
-      
-    if (hasRecruiterHeader) {
-      console.log('Recruiter sidebar opened successfully');
-    } else {
-      console.warn('Recruiter header not found after clicking button');
-      await page.screenshot({ path: 'test-results/auth-no-recruiter-header.png', fullPage: true });
-    }
-  } else {
-    console.error('Recruiter button not found!');
-    await page.screenshot({ path: 'test-results/auth-no-recruiter-button.png', fullPage: true });
-  }
+  // Wait for Recruiter header
+  const recruiterHeader = page.locator('h1:has-text("Recruiter")');
+  await recruiterHeader.waitFor({ state: 'visible', timeout: 5000 });
+  console.log('Recruiter sidebar opened successfully');
 
   // Navigate to Search tab (second level navigation within Recruiter)
   // NOTE: Recruiter defaults to "Jobs" tab, we need to click "Search"
   console.log('Looking for Search tab...');
 
   const searchTab = page.locator('button:has-text("Search")').first();
-  const isSearchVisible = await searchTab.isVisible({ timeout: 5000 }).catch(() => false);
+  await searchTab.waitFor({ state: 'visible', timeout: 5000 });
+  console.log('Clicking Search tab...');
+  await searchTab.click();
 
-  if (isSearchVisible) {
-    console.log('Clicking Search tab...');
-    await searchTab.click();
-    await page.waitForTimeout(500);
-  } else {
-    console.warn('Search tab not found!');
-    await page.screenshot({ path: 'test-results/auth-no-search-tab.png', fullPage: true });
-  }
+  // Wait for the tab content to load and stabilize
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(1000);
 
   // Wait for search form to be visible
+  console.log('Waiting for search form...');
   const jobTitleInput = page.getByTestId('job-title-input');
-  const hasSearchForm = await jobTitleInput.isVisible({ timeout: 5000 }).catch(() => false);
 
-  if (!hasSearchForm) {
-    console.error('Could not find search form input with correct placeholder!');
-    await page.screenshot({ path: 'test-results/auth-no-search-form.png', fullPage: true });
-  } else {
+  try {
+    await jobTitleInput.waitFor({ state: 'visible', timeout: 10000 });
     console.log('Successfully navigated to Search interface - job title input found');
+  } catch (error) {
+    console.error('Failed to find job title input!');
+    await page.screenshot({ path: 'test-results/auth-no-job-title-input.png', fullPage: true });
+    throw error;
   }
 
   // Save the authenticated state to reuse in tests
