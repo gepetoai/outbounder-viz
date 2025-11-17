@@ -41,7 +41,6 @@ export function AgentPanel({ initialMessage, campaignCandidateId, onMessageGener
       setGeneratedOutput(initialMessage);
     }
   }, [initialMessage]);
-  }, [initialMessage])
 
   const handleVariableToggle = (variableKey: string) => {
     if (selectedVariables.includes(variableKey)) {
