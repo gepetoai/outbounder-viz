@@ -79,31 +79,34 @@ export function AgentPanel({ initialMessage, campaignCandidateId, onMessageGener
         },
       }
     )
+
+  const handleGenerate = () => {
+    const candidateId = campaignCandidateId ? parseInt(campaignCandidateId, 10) : NaN
+    if (!campaignCandidateId || isNaN(candidateId) || !instructions.trim() || selectedVariables.length === 0) {
+      return
+    }
+
+    // Build context_variables object with true for selected, false for unselected
+    const contextVariables: Record<string, boolean> = {}
+    VARIABLE_OPTIONS.forEach((variable) => {
+      contextVariables[variable.key] = selectedVariables.includes(variable.key)
+    })
+
+    generateMessage(
+      {
+        user_instructions: instructions,
+        campaign_candidate_id: candidateId,
+        context_variables: contextVariables,
+      },
+      {
+        onSuccess: (data) => {
+          setGeneratedOutput(data.generated_message)
+          onMessageGenerated?.(data.generated_message)
+        },
+      }
+    )
   }
 
-  return (
-    <div className="h-full flex flex-col gap-4 overflow-auto px-4 py-2">
-      {/* Instructions Input */}
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="instructions">Instructions</Label>
-        <Textarea
-          id="instructions"
-          placeholder="Enter instructions for the agent..."
-          value={instructions}
-          onChange={(e) => setInstructions(e.target.value)}
-          className="min-h-[100px] resize-none"
-        />
-      </div>
-
-      {/* Variables Checkboxes */}
-      <div className="flex flex-col gap-2">
-        <Label>Variables</Label>
-        <div className="space-y-3 pl-4">
-          {VARIABLE_OPTIONS.map((variable) => (
-            <div key={variable.key} className="flex items-center space-x-2">
-              <Checkbox
-                id={variable.key}
-                checked={selectedVariables.includes(variable.key)}
                 onCheckedChange={() => handleVariableToggle(variable.key)}
               />
               <label
