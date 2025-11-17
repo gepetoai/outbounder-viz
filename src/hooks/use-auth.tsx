@@ -4,7 +4,7 @@ import { setAuthToken } from '@/lib/api-client'
 
 // JWT template name configured in Clerk Dashboard
 // Create a template in Clerk Dashboard > JWT Templates with your desired token lifetime
-const JWT_TEMPLATE_NAME = 'jwt-template-dev' // Change this to match your template name
+const JWT_TEMPLATE_NAME = process.env.NEXT_PUBLIC_CLERK_JWT_TEMPLATE || 'jwt-template-dev'
 
 export function useAuth() {
   const { getToken: getClerkToken, isSignedIn, isLoaded } = useClerkAuth()
@@ -16,7 +16,7 @@ export function useAuth() {
     try {
       // Try to get token with the specified template
       const token = await getClerkToken({ template: templateName })
-      if (token) {
+      if (token !== null && token !== undefined) {
         return token
       }
     } catch (templateError) {
