@@ -64,7 +64,12 @@ export function AgentPanel({ initialMessage, campaignCandidateId, onMessageGener
     generateMessage(
       {
         user_instructions: instructions,
-        campaign_candidate_id: parseInt(campaignCandidateId),
+        const parsedId = parseInt(campaignCandidateId);
+        if (isNaN(parsedId)) {
+          setError("Invalid candidate ID format");
+          return;
+        }
+        campaign_candidate_id: parsedId,
         context_variables: contextVariables,
       },
       {
