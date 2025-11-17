@@ -18,7 +18,8 @@ import {
   Zap,
   ChevronDown,
   Briefcase,
-  Plus
+  Plus,
+  Linkedin
 } from 'lucide-react'
 
 // Import our refactored components
@@ -30,6 +31,7 @@ import { AnalyticsTab } from '@/components/recruiter/AnalyticsTab'
 import { ApprovedRejectedCarousel } from '@/components/recruiter/ApprovedRejectedCarousel'
 import { SettingsTab } from '@/components/recruiter/SettingsTab'
 import { JobPostingRequiredModal } from '@/components/recruiter/JobPostingRequiredModal'
+import { LinkedInAccountsTab } from '@/components/recruiter/LinkedInAccountsTab'
 import { AuthWrapper } from '@/components/auth/auth-wrapper';
 import { UserButton } from '@clerk/nextjs';
 import { useJobPostings } from '@/hooks/useJobPostings'
@@ -274,6 +276,7 @@ export default function HomePage() {
         // { id: 'analytics', label: 'Analytics', icon: BarChart3 }
       ]
     },
+    { id: 'linkedin_accounts', label: 'Accounts', icon: Linkedin, subItems: [] },
     { id: 'settings', label: 'Settings', icon: Settings, subItems: [] }
   ]
 
@@ -404,6 +407,8 @@ export default function HomePage() {
         )
       case 'sequencer':
         return <SequencerTab />
+      case 'linkedin_accounts':
+        return <LinkedInAccountsTab />
       case 'settings':
         return <SettingsTab />
       default:
