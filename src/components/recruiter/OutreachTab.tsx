@@ -602,7 +602,6 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   
   // Message template settings (for send-message and send-inmail nodes)
   const [messageInstructions, setMessageInstructions] = useState('')
-  const [generatedMessage, setGeneratedMessage] = useState('')
   
   // Handler to update message text directly in node data
   const handleMessageTextUpdate = useCallback((nodeId: string, text: string) => {
@@ -1831,9 +1830,15 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   }, [setNodes, setEdges, createBeginSequenceNode])
 
   const handleGenerateMessage = useCallback(() => {
-    // Mock message generation based on instructions
+    // Validate instructions
     if (!messageInstructions.trim()) {
-      setGeneratedMessage('Please provide instructions for the message.')
+      // Write hint message to node data so user sees feedback
+      if (configureNodeId) {
+        const currentNode = nodes.find(n => n.id === configureNodeId)
+        if (currentNode && (currentNode.data.actionType === 'send-message' || currentNode.data.actionType === 'send-inmail')) {
+          handleMessageTextUpdate(configureNodeId, 'Please provide instructions for the message above, then click "Generate Sample Message" again.')
+        }
+      }
       return
     }
     
@@ -1846,9 +1851,7 @@ Looking forward to connecting!
 
 Best regards`
     
-    setGeneratedMessage(generatedText)
-    
-    // If there's a configured node for send-message or send-inmail, save the generated message to it
+    // Save the generated message directly to the configured node
     if (configureNodeId) {
       const currentNode = nodes.find(n => n.id === configureNodeId)
       if (currentNode && (currentNode.data.actionType === 'send-message' || currentNode.data.actionType === 'send-inmail')) {
@@ -2882,7 +2885,8 @@ Example response: Based on your instructions, the responder will handle incoming
                         <div>
                           <Button
                             onClick={handleGenerateMessage}
-                            className="w-full bg-black hover:bg-gray-800 text-white"
+                            disabled={!messageInstructions.trim()}
+                            className="w-full bg-black hover:bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Generate Sample Message
                           </Button>
