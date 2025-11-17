@@ -2607,7 +2607,11 @@ Example response: Based on your instructions, the responder will handle incoming
                         setCampaignStatus(previousStatus || 'draft')
                       }
                     } else {
-                      // No campaign exists, just update local state
+                      // No campaign exists - prevent status changes
+                      if (!currentCampaignId) {
+                        console.error('Please save the campaign before changing status')
+                        return
+                      }
                       setCampaignStatus(checked ? 'running' : 'draft')
                     }
                   }}
