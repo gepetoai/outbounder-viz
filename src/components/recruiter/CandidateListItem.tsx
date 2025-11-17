@@ -46,6 +46,9 @@ export function CandidateListItem({
         </div>
         <p className="text-sm text-gray-600">{candidate.company} • {candidate.location}</p>
         <p className="text-sm text-gray-500">{candidate.education}</p>
+        {candidate.searchTitle && (
+          <p className="text-xs text-gray-500 mt-1">{candidate.searchTitle}</p>
+        )}
       </div>
       {showActions && (
         <div className="flex items-center gap-2">

@@ -21,6 +21,7 @@ export interface Candidate {
   }>
   linkedinUrl: string
   summary: string
+  searchTitle?: string
 }
 
 /**
@@ -135,6 +136,10 @@ export function mapEnrichedCandidateToCandidate(enriched: EnrichedCandidateRespo
     || enriched.raw_data.generated_headline
     || `${enriched.job_title || 'Professional'} at ${enriched.company_name || 'current company'} located in ${location}`
 
+  const searchTitle = enriched.search_title && enriched.search_title !== 'Candidate Search' 
+    ? enriched.search_title 
+    : ''
+
   return {
     id: enriched.id.toString(),
     name: fullName,
@@ -145,6 +150,7 @@ export function mapEnrichedCandidateToCandidate(enriched: EnrichedCandidateRespo
     education: education,
     experience: experience,
     linkedinUrl: linkedinUrl,
-    summary: summary
+    summary: summary,
+    searchTitle: searchTitle
   }
 }

@@ -107,6 +107,7 @@ export interface EnrichedCandidateResponse {
     [key: string]: unknown
   }
   fk_job_description_search_id: number
+  search_title?: string
   id: number
   created_at: string
   updated_at: string
