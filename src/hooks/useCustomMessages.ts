@@ -21,6 +21,7 @@ export interface CustomMessageGeneratorContext {
 }
 
 export interface CustomMessagesGenerationCreate {
+  message_type?: string // Optional, defaults to "initial_message"
   user_instructions: string
   campaign_candidate_id: number
   context_variables: Record<string, boolean> // Variables to include (true = include, false = exclude)
@@ -33,6 +34,7 @@ export interface CustomMessagesGeneration {
   campaign_id: number
   campaign_candidate_id: number
   generated_message: string
+  action_type?: string
 }
 
 export interface CustomMessageCandidate {
@@ -42,6 +44,7 @@ export interface CustomMessageCandidate {
   generated_message: string
   created_at: string
   updated_at: string
+  action_type?: string
 }
 
 export interface CampaignCandidateWithCustomMessage {
@@ -71,16 +74,16 @@ export interface CampaignCandidateWithCustomMessage {
   custom_message_id: number | null
   custom_message_instruction_id: number | null
   custom_message_created_at: string | null
+  action_type?: string
 }
 
-export interface FeedbackItemCreate {
+export interface InstructionsFeedbackItemCreate {
   content: string
-  feedback_type: 'initial_message' | 'follow_up_message' | 'responder_message'
 }
 
-export interface AddFeedbackRequest {
+export interface AddInstructionsFeedbackRequest {
   custom_messages_candidate_id: number
-  feedbacks: FeedbackItemCreate[]
+  feedbacks: InstructionsFeedbackItemCreate[]
 }
 
 export interface CustomMessageUpdate {
@@ -112,7 +115,7 @@ async function fetchCustomMessagesByCampaign(
 }
 
 async function addFeedbackAndRegenerate(
-  data: AddFeedbackRequest
+  data: AddInstructionsFeedbackRequest
 ): Promise<CustomMessagesGeneration> {
   return fetchJson<CustomMessagesGeneration>(`${API_BASE_URL}/custom-messages-generation/feedback`, {
     method: 'POST',
