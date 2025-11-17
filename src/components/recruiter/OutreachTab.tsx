@@ -46,7 +46,7 @@ import {
   Play
 } from 'lucide-react'
 import { useJobPostings } from '@/hooks/useJobPostings'
-import { getMockCandidatesForJob, getMockShortlistedCandidates } from '@/lib/mock-data'
+import { useShortlistedCandidates } from '@/hooks/useCandidates'
 
 interface SequencerTabProps {
   jobDescriptionId?: number | null
@@ -463,13 +463,13 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId || null)
   const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
   
-  // Mock data for candidates
-  const mockCandidates = selectedJobId ? getMockCandidatesForJob(selectedJobId) : []
-  const mockShortlistedIds = getMockShortlistedCandidates()
-  const mockApprovedCandidates = mockCandidates.filter(candidate => mockShortlistedIds.includes(candidate.id))
-  const candidatesData = { approved_candidates: mockApprovedCandidates }
-  
-  const approvedCount = candidatesData?.approved_candidates?.length || 0
+  // Get approved candidates from API using the selected job ID (shortlisted = approved)
+  const { 
+    data: approvedCandidatesData, 
+    isLoading: isLoadingCandidates,
+    error: candidatesError 
+  } = useShortlistedCandidates(selectedJobId)
+  const approvedCount = approvedCandidatesData?.length || 0
   const [campaignStatus, setCampaignStatus] = useState<'active' | 'paused'>('paused')
   const [showActionMenu, setShowActionMenu] = useState(false)
   const [pendingBranch, setPendingBranch] = useState<{ branch: string; parentId: string } | null>(null)
@@ -1846,7 +1846,15 @@ Example response: Based on your instructions, the responder will handle incoming
       {selectedJobId && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">{approvedCount} Approved Candidates</CardTitle>
+            <CardTitle className="text-lg">
+              {isLoadingCandidates ? (
+                <span className="text-muted-foreground">Loading candidates...</span>
+              ) : candidatesError ? (
+                <span className="text-red-600">Error loading candidates</span>
+              ) : (
+                `${approvedCount} Approved Candidates`
+              )}
+            </CardTitle>
           </CardHeader>
         </Card>
       )}
