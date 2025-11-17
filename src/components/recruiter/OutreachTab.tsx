@@ -464,7 +464,11 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
   
   // Get approved candidates from API using the selected job ID (shortlisted = approved)
-  const { data: approvedCandidatesData } = useShortlistedCandidates(selectedJobId)
+  const { 
+    data: approvedCandidatesData, 
+    isLoading: isLoadingCandidates,
+    error: candidatesError 
+  } = useShortlistedCandidates(selectedJobId)
   const approvedCount = approvedCandidatesData?.length || 0
   const [campaignStatus, setCampaignStatus] = useState<'active' | 'paused'>('paused')
   const [showActionMenu, setShowActionMenu] = useState(false)
@@ -1842,7 +1846,15 @@ Example response: Based on your instructions, the responder will handle incoming
       {selectedJobId && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">{approvedCount} Approved Candidates</CardTitle>
+            <CardTitle className="text-lg">
+              {isLoadingCandidates ? (
+                <span className="text-muted-foreground">Loading candidates...</span>
+              ) : candidatesError ? (
+                <span className="text-red-600">Error loading candidates</span>
+              ) : (
+                `${approvedCount} Approved Candidates`
+              )}
+            </CardTitle>
           </CardHeader>
         </Card>
       )}
