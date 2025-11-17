@@ -10,6 +10,7 @@ import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-di
 import { Plus, ExternalLink, Crown, Loader2, MoreVertical, LogOut } from 'lucide-react'
 import { useLinkedInAccounts, useConnectLinkedInAccount, useDisconnectLinkedInAccount } from '@/hooks/useLinkedInAccounts'
 import type { LinkedInAccount } from '@/hooks/useLinkedInAccounts'
+import { useToast } from '@/components/ui/toast'
 
 export function LinkedInAccountsTab() {
   const { data: accounts = [], isLoading } = useLinkedInAccounts()
@@ -18,6 +19,7 @@ export function LinkedInAccountsTab() {
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false)
   const [accountToDisconnect, setAccountToDisconnect] = useState<LinkedInAccount | null>(null)
   const [openPopoverId, setOpenPopoverId] = useState<number | null>(null)
+  const { showToast } = useToast()
 
   const handleConnectAccount = () => {
     connectAccountMutation.mutate()
@@ -36,6 +38,12 @@ export function LinkedInAccountsTab() {
           setDisconnectDialogOpen(false)
           setAccountToDisconnect(null)
         },
+        onError: (error) => {
+          // Keep dialog open and show error
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          showToast(`Failed to disconnect account: ${errorMessage}`, 'error')
+          console.error('Failed to disconnect account:', error)
+        },
       })
     }
   }
@@ -47,6 +55,12 @@ export function LinkedInAccountsTab() {
 
   const getFullName = (account: { first_name: string; last_name: string }) => {
     return `${account.first_name} ${account.last_name}`.trim()
+  }
+
+  const getInitials = (account: { first_name: string; last_name: string }) => {
+    const first = account.first_name?.charAt(0)?.toUpperCase() || ''
+    const last = account.last_name?.charAt(0)?.toUpperCase() || ''
+    return `${first}${last}`
   }
 
   const getLinkedInProfileUrl = (publicIdentifier: string) => {
@@ -171,8 +185,8 @@ export function LinkedInAccountsTab() {
                               />
                             ) : (
                               <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                                <span className="text-gray-500 text-xs font-medium">
-                                  {getFullName(account)}
+                                <span className="text-gray-500 text-sm font-semibold">
+                                  {getInitials(account)}
                                 </span>
                               </div>
                             )}
