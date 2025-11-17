@@ -4,11 +4,16 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, ExternalLink, Crown } from 'lucide-react'
-import { useLinkedInAccounts } from '@/hooks/useLinkedInAccounts'
+import { Plus, ExternalLink, Crown, Loader2 } from 'lucide-react'
+import { useLinkedInAccounts, useConnectLinkedInAccount } from '@/hooks/useLinkedInAccounts'
 
 export function LinkedInAccountsTab() {
   const { data: accounts = [], isLoading } = useLinkedInAccounts()
+  const connectAccountMutation = useConnectLinkedInAccount()
+
+  const handleConnectAccount = () => {
+    connectAccountMutation.mutate()
+  }
 
   const getFullName = (account: { first_name: string; last_name: string }) => {
     return `${account.first_name} ${account.last_name}`.trim()
@@ -56,9 +61,21 @@ export function LinkedInAccountsTab() {
             Manage your connected LinkedIn accounts for outreach
           </p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Account
+        <Button 
+          onClick={handleConnectAccount}
+          disabled={connectAccountMutation.isPending}
+        >
+          {connectAccountMutation.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Connecting...
+            </>
+          ) : (
+            <>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Account
+            </>
+          )}
         </Button>
       </div>
 
@@ -83,9 +100,23 @@ export function LinkedInAccountsTab() {
                       <div className="text-muted-foreground">
                         <p className="text-lg font-medium mb-2">No LinkedIn accounts connected</p>
                         <p className="text-sm mb-4">Connect your LinkedIn account to start outreach</p>
-                        <Button variant="outline" size="sm">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Connect Account
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={handleConnectAccount}
+                          disabled={connectAccountMutation.isPending}
+                        >
+                          {connectAccountMutation.isPending ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Connecting...
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="h-4 w-4 mr-2" />
+                              Connect Account
+                            </>
+                          )}
                         </Button>
                       </div>
                     </TableCell>
