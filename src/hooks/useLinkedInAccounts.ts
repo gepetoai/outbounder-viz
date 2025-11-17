@@ -40,6 +40,12 @@ async function connectLinkedInAccount(): Promise<ConnectAccountResponse> {
   })
 }
 
+async function disconnectLinkedInAccount(id: number): Promise<void> {
+  return fetchJson<void>(`${API_BASE_URL}/linkedin-accounts/${id}/`, {
+    method: 'DELETE',
+  })
+}
+
 // React Query hooks
 export function useLinkedInAccounts() {
   const queryClient = useQueryClient()
@@ -105,6 +111,21 @@ export function useConnectLinkedInAccount() {
     },
     onError: (error) => {
       console.error('Failed to connect LinkedIn account:', error)
+    },
+  })
+}
+
+export function useDisconnectLinkedInAccount() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: disconnectLinkedInAccount,
+    onSuccess: () => {
+      // Invalidate and refetch the accounts list
+      queryClient.invalidateQueries({ queryKey: ['linkedInAccounts'] })
+    },
+    onError: (error) => {
+      console.error('Failed to disconnect LinkedIn account:', error)
     },
   })
 }
