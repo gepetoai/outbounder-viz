@@ -77,6 +77,29 @@ export function AgentPanel({ initialMessage, campaignCandidateId, onMessageGener
     )
   }
 
+  return (
+    <div className="flex flex-col gap-4 h-full p-4">
+      {/* Instructions Section */}
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="instructions">Instructions</Label>
+        <Textarea
+          id="instructions"
+          placeholder="Enter your instructions for message generation..."
+          value={instructions}
+          onChange={(e) => setInstructions(e.target.value)}
+          className="min-h-[100px] resize-none"
+        />
+      </div>
+
+      {/* Variables Section */}
+      <div className="flex flex-col gap-2">
+        <Label>Available Variables</Label>
+        <div className="flex flex-col gap-3">
+          {VARIABLE_OPTIONS.map((variable) => (
+            <div key={variable.key} className="flex items-center space-x-2">
+              <Checkbox
+                id={variable.key}
+                checked={selectedVariables.includes(variable.key)}
                 onCheckedChange={() => handleVariableToggle(variable.key)}
               />
               <label
