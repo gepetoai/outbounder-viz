@@ -50,7 +50,9 @@ import {
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useShortlistedCandidates } from '@/hooks/useCandidates'
 import { useLinkedInAccounts } from '@/hooks/useLinkedInAccounts'
+import { useGenerateSampleMessages } from '@/hooks/useCustomMessages'
 import { createCampaign, getCampaignByJobDescription, startCampaign, pauseCampaign, CampaignWithDetails } from '@/lib/search-api'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface SequencerTabProps {
   jobDescriptionId?: number | null
@@ -69,6 +71,20 @@ const actionTypes = [
   { id: 'activate-responder', label: 'Activate Responder', icon: Zap },
   { id: 'rescind-connection-request', label: 'Rescind Connection Request', icon: RefreshCcw },
   { id: 'end-sequence', label: 'End Sequence', icon: X }
+]
+
+// Context variables available for message generation
+const VARIABLE_OPTIONS = [
+  { key: 'first_name', label: 'First Name' },
+  { key: 'last_name', label: 'Last Name' },
+  { key: 'headline', label: 'Headline' },
+  { key: 'current_job', label: 'Current Job' },
+  { key: 'company', label: 'Company' },
+  { key: 'location', label: 'Location' },
+  { key: 'industry', label: 'Industry' },
+  { key: 'experience_years', label: 'Experience Years' },
+  { key: 'education', label: 'Education' },
+  { key: 'skills', label: 'Skills' },
 ]
 
 // Begin Sequence is not in the action menu - it's always present
@@ -467,7 +483,8 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId || null)
   const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
   const { data: linkedInAccounts } = useLinkedInAccounts()
-  
+  const { mutate: generateSampleMessages, isPending: isGenerating, error: generateError } = useGenerateSampleMessages()
+
   // Get approved candidates from API using the selected job ID (shortlisted = approved)
   const { 
     data: approvedCandidatesData, 
@@ -602,7 +619,8 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   
   // Message template settings (for send-message and send-inmail nodes)
   const [messageInstructions, setMessageInstructions] = useState('')
-  
+  const [selectedVariables, setSelectedVariables] = useState<string[]>([])
+
   // Handler to update message text directly in node data
   const handleMessageTextUpdate = useCallback((nodeId: string, text: string) => {
     setNodes((nds) =>
@@ -619,7 +637,35 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
       )
     )
   }, [setNodes])
-  
+
+  // Handler to update subject text directly in node data (for InMail)
+  const handleSubjectTextUpdate = useCallback((nodeId: string, text: string) => {
+    setNodes((nds) =>
+      nds.map((node) =>
+        node.id === nodeId
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                subjectText: text
+              }
+            }
+          : node
+      )
+    )
+  }, [setNodes])
+
+  // Handler to toggle context variables
+  const handleVariableToggle = useCallback((variableKey: string) => {
+    setSelectedVariables((prev) => {
+      if (prev.includes(variableKey)) {
+        return prev.filter((v) => v !== variableKey)
+      } else {
+        return [...prev, variableKey]
+      }
+    })
+  }, [])
+
   // Activate Responder settings
   const [responderInstructions, setResponderInstructions] = useState('')
   const [responderExample, setResponderExample] = useState('')
@@ -1830,35 +1876,69 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   }, [setNodes, setEdges, createBeginSequenceNode])
 
   const handleGenerateMessage = useCallback(() => {
-    // Validate instructions
-    if (!messageInstructions.trim()) {
-      // Write hint message to node data so user sees feedback
-      if (configureNodeId) {
-        const currentNode = nodes.find(n => n.id === configureNodeId)
-        if (currentNode && (currentNode.data.actionType === 'send-message' || currentNode.data.actionType === 'send-inmail')) {
-          handleMessageTextUpdate(configureNodeId, 'Please provide instructions for the message above, then click "Generate Sample Message" again.')
-        }
-      }
+    // Validate all required fields
+    if (!selectedJobId || !selectedLinkedInAccountId || !messageInstructions.trim() || selectedVariables.length === 0) {
       return
     }
-    
-    // Simulate AI-generated message based on instructions
-    const generatedText = `Hi there,
 
-I noticed your experience and background. ${messageInstructions}
-
-Looking forward to connecting!
-
-Best regards`
-    
-    // Save the generated message directly to the configured node
-    if (configureNodeId) {
-      const currentNode = nodes.find(n => n.id === configureNodeId)
-      if (currentNode && (currentNode.data.actionType === 'send-message' || currentNode.data.actionType === 'send-inmail')) {
-        handleMessageTextUpdate(configureNodeId, generatedText)
-      }
+    if (!configureNodeId) {
+      return
     }
-  }, [messageInstructions, configureNodeId, nodes, handleMessageTextUpdate])
+
+    const currentNode = nodes.find(n => n.id === configureNodeId)
+    if (!currentNode || (currentNode.data.actionType !== 'send-message' && currentNode.data.actionType !== 'send-inmail')) {
+      return
+    }
+
+    // Map action type from node's actionType to API format
+    const actionTypeMap: Record<string, string> = {
+      'send-message': 'send_message',
+      'send-inmail': 'send_inmail'
+    }
+    const actionType = actionTypeMap[currentNode.data.actionType]
+
+    // Build context_variables object with true for selected, false for unselected
+    const contextVariables: Record<string, boolean> = {}
+    VARIABLE_OPTIONS.forEach((variable) => {
+      contextVariables[variable.key] = selectedVariables.includes(variable.key)
+    })
+
+    // Call the API to generate sample messages
+    generateSampleMessages(
+      {
+        job_description_id: selectedJobId,
+        linkedin_account_id: selectedLinkedInAccountId,
+        action_type: actionType,
+        user_instructions: messageInstructions,
+        context_variables: contextVariables,
+      },
+      {
+        onSuccess: (data) => {
+          // Save the generated message to the node
+          handleMessageTextUpdate(configureNodeId, data.custom_message)
+          // Save the subject if present (for InMail)
+          if (data.custom_subject) {
+            handleSubjectTextUpdate(configureNodeId, data.custom_subject)
+          }
+          // Save the generation parameters to node data for campaign saving
+          setNodes((nds) =>
+            nds.map((node) =>
+              node.id === configureNodeId
+                ? {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      userInstructions: messageInstructions,
+                      contextVariables: contextVariables,
+                    }
+                  }
+                : node
+            )
+          )
+        },
+      }
+    )
+  }, [messageInstructions, selectedVariables, selectedJobId, selectedLinkedInAccountId, configureNodeId, nodes, handleMessageTextUpdate, handleSubjectTextUpdate, generateSampleMessages, setNodes])
 
   const handleGenerateResponderExample = useCallback(() => {
     if (!responderInstructions.trim()) {
@@ -2229,12 +2309,18 @@ Example response: Based on your instructions, the responder will handle incoming
           if (mappedActionType) {
             // Build json_metadata for send_message and send_inmail actions
             let jsonMetadata: Record<string, unknown> | null = null
-            if ((mappedActionType === 'send_message' || mappedActionType === 'send_inmail') && currentNode.data.messageText) {
+            if (mappedActionType === 'send_message' || mappedActionType === 'send_inmail') {
+              // Store generation parameters instead of actual message
               jsonMetadata = {
-                message_text: currentNode.data.messageText
+                user_instructions: currentNode.data.userInstructions || '',
+                context_variables: currentNode.data.contextVariables || {}
+              }
+              // Add subject_line for InMail only
+              if (mappedActionType === 'send_inmail' && currentNode.data.subjectText) {
+                jsonMetadata.subject_line = currentNode.data.subjectText
               }
             }
-            
+
             const actionDef = {
               action_type: mappedActionType,
               condition_type: null,
@@ -2862,7 +2948,8 @@ Example response: Based on your instructions, the responder will handle incoming
                     
                     // Get current message text from node data (reactive to nodes changes)
                     const currentMessageText = currentNode?.data.messageText || ''
-                    
+                    const currentSubjectText = currentNode?.data.subjectText || ''
+
                     return (
                       <>
                         <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-200">
@@ -2884,18 +2971,79 @@ Example response: Based on your instructions, the responder will handle incoming
                             Provide plain English instructions for generating the message
                           </p>
                         </div>
-                        
+
+                        {/* Context Variables */}
+                        <div className="space-y-2">
+                          <Label>Context Variables <span className="text-xs text-gray-500">(Required)</span></Label>
+                          <div className="grid grid-cols-2 gap-3">
+                            {VARIABLE_OPTIONS.map((variable) => (
+                              <div key={variable.key} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={variable.key}
+                                  checked={selectedVariables.includes(variable.key)}
+                                  onCheckedChange={() => handleVariableToggle(variable.key)}
+                                />
+                                <label
+                                  htmlFor={variable.key}
+                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                >
+                                  {variable.label}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            Select which candidate data to include in the message generation
+                          </p>
+                        </div>
+
                         {/* Generate Button */}
                         <div>
                           <Button
                             onClick={handleGenerateMessage}
-                            disabled={!messageInstructions.trim()}
+                            disabled={!selectedJobId || !selectedLinkedInAccountId || !messageInstructions.trim() || selectedVariables.length === 0 || isGenerating}
                             className="w-full bg-black hover:bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            Generate Sample Message
+                            {isGenerating ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Generating...
+                              </>
+                            ) : (
+                              'Generate Sample Message'
+                            )}
                           </Button>
                         </div>
-                        
+
+                        {/* Error Display */}
+                        {generateError && (
+                          <div className="text-sm text-red-600 p-2 bg-red-50 rounded">
+                            Error: {generateError instanceof Error ? generateError.message : 'Failed to generate message'}
+                          </div>
+                        )}
+
+                        {/* Subject (InMail only) */}
+                        {actionType === 'send-inmail' && (
+                          <div className="space-y-2">
+                            <Label htmlFor="subject-text">Subject</Label>
+                            <Input
+                              id="subject-text"
+                              value={currentSubjectText}
+                              onChange={(e) => {
+                                const newValue = e.target.value
+                                if (configureNodeId) {
+                                  handleSubjectTextUpdate(configureNodeId, newValue)
+                                }
+                              }}
+                              placeholder="Enter or generate the subject line here"
+                              className="bg-gray-50 border-gray-300"
+                            />
+                            <p className="text-xs text-gray-500">
+                              Subject line for the InMail. You can edit it directly or generate from instructions above.
+                            </p>
+                          </div>
+                        )}
+
                         {/* Generated Output */}
                         <div className="space-y-2">
                           <Label htmlFor="generated-output">Message Text</Label>
