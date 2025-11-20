@@ -630,6 +630,22 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   const [messageInstructions, setMessageInstructions] = useState('')
   const [selectedVariables, setSelectedVariables] = useState<string[]>([])
 
+  // Initialize dialog state from node data when configuration panel opens
+  useEffect(() => {
+    if (configureNodeId && showConfigPanel) {
+      const currentNode = nodes.find(n => n.id === configureNodeId)
+      if (currentNode && (currentNode.data.actionType === 'send-message' || currentNode.data.actionType === 'send-inmail')) {
+        // Initialize instructions from node data
+        setMessageInstructions(currentNode.data.userInstructions || '')
+
+        // Initialize selected variables from node data
+        const variables = currentNode.data.contextVariables || {}
+        const selected = Object.keys(variables).filter(key => variables[key])
+        setSelectedVariables(selected)
+      }
+    }
+  }, [configureNodeId, showConfigPanel, nodes])
+
   // Handler to update message text directly in node data
   const handleMessageTextUpdate = useCallback((nodeId: string, text: string) => {
     setNodes((nds) =>
@@ -767,6 +783,9 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
         label: string
         actionType: string
         messageText?: string
+        subjectText?: string
+        userInstructions?: string
+        contextVariables?: Record<string, boolean>
         branch?: 'yes' | 'no'
         hasYesChild?: boolean
         hasNoChild?: boolean
@@ -776,9 +795,39 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
         actionType
       }
 
-      // Add message text if present
-      if (def.json_metadata?.message_text) {
-        nodeData.messageText = def.json_metadata.message_text as string
+      // Get mapped action type for comparison
+      const mappedActionType = def.action_type
+
+      // Load custom message data for send_message and send_inmail
+      if (mappedActionType === 'send_message' || mappedActionType === 'send_inmail') {
+        // Load from custom_message if available (new API format)
+        if (def.custom_message) {
+          nodeData.messageText = def.custom_message.message || ''
+          if (mappedActionType === 'send_inmail') {
+            nodeData.subjectText = def.custom_message.subject || ''
+          }
+        }
+
+        // Load configuration data from json_metadata
+        if (def.json_metadata) {
+          nodeData.userInstructions = def.json_metadata.user_instructions as string || ''
+          nodeData.contextVariables = def.json_metadata.context_variables as Record<string, boolean> || {}
+
+          // Also load subject from json_metadata if not in custom_message
+          if (mappedActionType === 'send_inmail' && !nodeData.subjectText && def.json_metadata.subject_line) {
+            nodeData.subjectText = def.json_metadata.subject_line as string
+          }
+        }
+
+        // Backward compatibility: if custom_message is not available, try old format
+        if (!def.custom_message && def.json_metadata?.message_text) {
+          nodeData.messageText = def.json_metadata.message_text as string
+        }
+      } else {
+        // For other node types, load message text if present (backward compatibility)
+        if (def.json_metadata?.message_text) {
+          nodeData.messageText = def.json_metadata.message_text as string
+        }
       }
 
       if (branch) {
