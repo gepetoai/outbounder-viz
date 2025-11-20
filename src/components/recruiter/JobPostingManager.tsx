@@ -147,9 +147,8 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
             <Input
               id="target-candidates"
               type="number"
-              placeholder="500"
               value={newTargetCandidates}
-              onChange={(e) => setNewTargetCandidates(parseInt(e.target.value) || 500)}
+              onChange={(e) => setNewTargetCandidates(parseInt(e.target.value))}
             />
           </div>
           <Button 
