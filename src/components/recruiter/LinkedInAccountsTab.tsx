@@ -8,22 +8,17 @@ import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog'
 import { Plus, ExternalLink, Crown, Loader2, MoreVertical, LogOut } from 'lucide-react'
-import { useLinkedInAccounts, useConnectLinkedInAccount, useDisconnectLinkedInAccount } from '@/hooks/useLinkedInAccounts'
+import { useLinkedInAccounts, useDisconnectLinkedInAccount } from '@/hooks/useLinkedInAccounts'
 import type { LinkedInAccount } from '@/hooks/useLinkedInAccounts'
 import { useToast } from '@/components/ui/toast'
 
 export function LinkedInAccountsTab() {
   const { data: accounts = [], isLoading } = useLinkedInAccounts()
-  const connectAccountMutation = useConnectLinkedInAccount()
   const disconnectAccountMutation = useDisconnectLinkedInAccount()
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false)
   const [accountToDisconnect, setAccountToDisconnect] = useState<LinkedInAccount | null>(null)
   const [openPopoverId, setOpenPopoverId] = useState<number | null>(null)
   const { showToast } = useToast()
-
-  const handleConnectAccount = () => {
-    connectAccountMutation.mutate()
-  }
 
   const handleOpenDisconnectDialog = (account: LinkedInAccount) => {
     setOpenPopoverId(null) // Close the popover
@@ -106,20 +101,12 @@ export function LinkedInAccountsTab() {
           </p>
         </div>
         <Button 
-          onClick={handleConnectAccount}
-          disabled={connectAccountMutation.isPending}
+          onClick={() => {
+            window.open('https://chromewebstore.google.com/detail/248-recruiter-connector/dpoiockpdkpgocjdnooilcpfnhclbifl?authuser=0&hl=en-GB', '_blank', 'noopener,noreferrer')
+          }}
         >
-          {connectAccountMutation.isPending ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Connecting...
-            </>
-          ) : (
-            <>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Account
-            </>
-          )}
+          <Plus className="h-4 w-4 mr-2" />
+          Add Account
         </Button>
       </div>
 
@@ -148,20 +135,11 @@ export function LinkedInAccountsTab() {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={handleConnectAccount}
-                          disabled={connectAccountMutation.isPending}
+                          onClick={() => {
+                            window.open('https://chromewebstore.google.com/detail/248-recruiter-connector/dpoiockpdkpgocjdnooilcpfnhclbifl?authuser=0&hl=en-GB', '_blank', 'noopener,noreferrer')
+                          }}
                         >
-                          {connectAccountMutation.isPending ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Connecting...
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="h-4 w-4 mr-2" />
-                              Connect Account
-                            </>
-                          )}
+                          Connect Account
                         </Button>
                       </div>
                     </TableCell>
