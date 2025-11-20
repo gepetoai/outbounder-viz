@@ -46,7 +46,7 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
     createJobMutation.mutate({
       title: newJobTitle,
       url: newJobUrl,
-      target_candidates_count: newTargetCandidates,
+      target_candidates_count: isNaN(newTargetCandidates) || newTargetCandidates < 1 ? 500 : newTargetCandidates,
       fk_organization_id: 1, // As specified by user
     }, {
       onSuccess: () => {
