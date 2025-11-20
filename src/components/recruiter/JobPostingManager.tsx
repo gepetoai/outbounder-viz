@@ -46,7 +46,7 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
     createJobMutation.mutate({
       title: newJobTitle,
       url: newJobUrl,
-      target_candidates_count: newTargetCandidates,
+      target_candidates_count: isNaN(newTargetCandidates) || newTargetCandidates < 1 ? 500 : newTargetCandidates,
       fk_organization_id: 1, // As specified by user
     }, {
       onSuccess: () => {
@@ -147,9 +147,8 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
             <Input
               id="target-candidates"
               type="number"
-              placeholder="500"
               value={newTargetCandidates}
-              onChange={(e) => setNewTargetCandidates(parseInt(e.target.value) || 500)}
+              onChange={(e) => setNewTargetCandidates(parseInt(e.target.value))}
             />
           </div>
           <Button 
