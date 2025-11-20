@@ -1866,14 +1866,6 @@ export function SearchTab({
           {currentSearchId && (
             <div className="flex items-center gap-3 pt-4">
                 <Button
-                  variant="outline"
-                  className="flex items-center gap-2"
-                  onClick={handleRefreshCandidates}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Refresh
-                </Button>
-                <Button
                   className="flex items-center gap-2"
                   onClick={handleSendToReview}
                   disabled={stagingCandidates.length === 0}

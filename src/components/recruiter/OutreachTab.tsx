@@ -53,6 +53,7 @@ import { useLinkedInAccounts } from '@/hooks/useLinkedInAccounts'
 import { useGenerateSampleMessages } from '@/hooks/useCustomMessages'
 import { createCampaign, getCampaignByJobDescription, startCampaign, pauseCampaign, resumeCampaign, updateCampaign, CampaignWithDetails, CampaignResponse } from '@/lib/search-api'
 import { Checkbox } from '@/components/ui/checkbox'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface SequencerTabProps {
   jobDescriptionId?: number | null
@@ -489,6 +490,7 @@ const nodeTypes = {
 
 function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox }: SequencerTabProps) {
   const reactFlowInstance = useReactFlow()
+  const queryClient = useQueryClient()
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId || null)
   const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
   const { data: linkedInAccounts } = useLinkedInAccounts()
@@ -2686,6 +2688,10 @@ Example response: Based on your instructions, the responder will handle incoming
       
       // Update campaign status after successful save/update
       setCampaignStatus((response.status as 'draft' | 'paused' | 'running') || 'draft')
+
+      // Invalidate job postings cache so Sandbox tab sees the updated campaign
+      queryClient.invalidateQueries({ queryKey: ['jobPostings'] })
+
       // You can add a success toast/notification here if needed
     } catch (error) {
       console.error('Failed to save/update campaign:', error)
@@ -2693,7 +2699,7 @@ Example response: Based on your instructions, the responder will handle incoming
     } finally {
       setIsSavingCampaign(false)
     }
-  }, [prepareCampaignPayload, currentCampaignId, campaignStatus])
+  }, [prepareCampaignPayload, currentCampaignId, campaignStatus, queryClient])
 
   return (
     <div className="space-y-6">
