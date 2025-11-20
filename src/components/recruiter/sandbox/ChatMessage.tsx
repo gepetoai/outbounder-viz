@@ -9,6 +9,7 @@ export interface ChatMessageProps {
   isInitialMessage?: boolean
   isActiveFeedbackTarget?: boolean
   onFeedbackTargetSelect?: (messageIndex: number) => void
+  actionType?: string | null
 }
 
 const getSystemIcon = (message: string) => {
@@ -32,8 +33,26 @@ export function ChatMessage({
   messageIndex,
   isInitialMessage = false,
   isActiveFeedbackTarget = false,
-  onFeedbackTargetSelect
+  onFeedbackTargetSelect,
+  actionType
 }: ChatMessageProps) {
+  // Helper to get feedback label based on action type
+  const getFeedbackLabel = () => {
+    if (!actionType) return 'Responder'
+
+    // InMail actions (both send_inmail and send_inmail_message)
+    if (actionType === 'send_inmail') {
+      return 'InMail'
+    }
+
+    // Regular message actions
+    if (actionType === 'send_message') {
+      return 'Send Message'
+    }
+
+    // Everything else defaults to Responder
+    return 'Responder'
+  }
   // System messages are just plain text with icon
   if (type === 'system') {
     const icon = getSystemIcon(message)
@@ -114,11 +133,11 @@ export function ChatMessage({
                 ? "bg-blue-100 text-blue-700 border border-blue-300"
                 : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
             )}
-            title={isInitialMessage ? "Feedback for initial message" : "Feedback for responder"}
+            title={`Feedback for ${getFeedbackLabel()}`}
           >
             <MessageSquare className="h-3 w-3" />
             <span className="font-medium">
-              {isInitialMessage ? "Initial" : "Responder"}
+              {getFeedbackLabel()}
             </span>
           </button>
         )}
