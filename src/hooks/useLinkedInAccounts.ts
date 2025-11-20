@@ -41,7 +41,7 @@ async function connectLinkedInAccount(): Promise<ConnectAccountResponse> {
 }
 
 async function disconnectLinkedInAccount(id: number): Promise<void> {
-  return fetchJson<void>(`${API_BASE_URL}/linkedin-accounts/${id}/`, {
+  return fetchJson<void>(`${API_BASE_URL}/linkedin-accounts/${id}`, {
     method: 'DELETE',
   })
 }
