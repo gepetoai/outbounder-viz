@@ -345,18 +345,27 @@ BeginSequenceNode.displayName = 'BeginSequenceNode'
 const WaitNode = memo(({ data }: NodeProps) => {
   const waitValue = data.waitValue || 2
   const waitUnit = data.waitUnit || 'days'
+  const [inputValue, setInputValue] = useState<string>(String(waitValue))
   
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value
-    // Allow empty input for user to type
-    if (inputValue === '') return
+    const newValue = e.target.value
+    setInputValue(newValue)
     
-    // Parse and validate
-    const value = parseInt(inputValue)
+    if (newValue === '') return
+    
+    const value = parseInt(newValue)
     if (isNaN(value)) return
     
     const clampedValue = Math.min(Math.max(value, 1), 60)
     nodeHandlers.onWaitChange?.(data.nodeId, clampedValue, waitUnit)
+  }
+  
+  const handleBlur = () => {
+    const value = parseInt(inputValue)
+    if (isNaN(value) || value < 1) {
+      setInputValue('1')
+      nodeHandlers.onWaitChange?.(data.nodeId, 1, waitUnit)
+    }
   }
   
   const handleUnitChange = (unit: string) => {
@@ -377,8 +386,9 @@ const WaitNode = memo(({ data }: NodeProps) => {
           type="text"
           inputMode="numeric"
           pattern="[0-9]*"
-          value={waitValue}
+          value={inputValue}
           onChange={handleValueChange}
+          onBlur={handleBlur}
           className="h-7 w-16 px-3 py-0 text-xs leading-7 text-center border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-gray-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
         <Select
@@ -2828,7 +2838,10 @@ Example response: Based on your instructions, the responder will handle incoming
                     {/* Multiple Sending Windows */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label>Sending Windows</Label>
+                        <div>
+                          <Label>Sending Windows</Label>
+                          <p className="text-xs text-gray-500 mt-0.5">Times are in UTC</p>
+                        </div>
                         <Button
                           onClick={handleAddTimeWindow}
                           variant="outline"
