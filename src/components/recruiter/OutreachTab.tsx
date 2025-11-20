@@ -70,7 +70,6 @@ const actionTypes = [
   { id: 'if-message-responded', label: 'If Message Responded', icon: Reply },
   { id: 'activate-responder', label: 'Activate Responder', icon: Zap },
   { id: 'rescind-connection-request', label: 'Rescind Connection Request', icon: RefreshCcw },
-  { id: 'end-sequence', label: 'End Sequence', icon: X }
 ]
 
 // Context variables available for message generation
@@ -624,8 +623,6 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     { start: '09:00', end: '17:00' }
   ])
   const [candidateGapMin, setCandidateGapMin] = useState(3)
-  const [candidateGapMax, setCandidateGapMax] = useState(5)
-  const [candidateGapUnit, setCandidateGapUnit] = useState<'minutes' | 'hours'>('minutes')
   
   // Message template settings (for send-message and send-inmail nodes)
   const [messageInstructions, setMessageInstructions] = useState('')
@@ -944,22 +941,53 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     setActionCount(actionCounter)
 
     // Update campaign settings
-    setDailyVolume(campaign.daily_volume)
-    setCandidateGapMin(Math.floor(campaign.min_gap_between_scheduling / 60))
-    setCandidateGapMax(Math.floor(campaign.max_gap_between_scheduling / 60))
-    setCandidateGapUnit('minutes')
+    if (campaign.daily_volume !== undefined && campaign.daily_volume !== null) {
+      setDailyVolume(campaign.daily_volume)
+    }
+
+    // Handle gap values - check if they're in seconds (> 60) or already in minutes
+    if (campaign.min_gap_between_scheduling !== undefined && campaign.min_gap_between_scheduling !== null) {
+      const minGap = campaign.min_gap_between_scheduling >= 60 
+        ? Math.floor(campaign.min_gap_between_scheduling / 60) 
+        : campaign.min_gap_between_scheduling
+      setCandidateGapMin(minGap)
+    }
+    
 
     // Update sending windows
     if (campaign.campaign_sending_windows && campaign.campaign_sending_windows.length > 0) {
       const windows = campaign.campaign_sending_windows.map(win => {
-        const startDate = new Date(win.window_start_time)
-        const endDate = new Date(win.window_end_time)
+        // Parse time strings directly to avoid timezone issues
+        // Format: "2025-11-20T09:00:00" or "2025-11-20T09:00:00.000Z"
+        const parseTime = (timeString: string) => {
+          // Extract the time part (HH:MM:SS)
+          const timeMatch = timeString.match(/T(\d{2}):(\d{2}):/)
+          if (timeMatch) {
+            return {
+              hours: parseInt(timeMatch[1], 10),
+              minutes: parseInt(timeMatch[2], 10)
+            }
+          }
+          // Fallback to Date parsing if format is unexpected
+          const date = new Date(timeString)
+          return {
+            hours: date.getUTCHours(),
+            minutes: date.getUTCMinutes()
+          }
+        }
+        
+        const startTime = parseTime(win.window_start_time)
+        const endTime = parseTime(win.window_end_time)
+        
         return {
-          start: `${String(startDate.getUTCHours()).padStart(2, '0')}:${String(startDate.getUTCMinutes()).padStart(2, '0')}`,
-          end: `${String(endDate.getUTCHours()).padStart(2, '0')}:${String(endDate.getUTCMinutes()).padStart(2, '0')}`
+          start: `${String(startTime.hours).padStart(2, '0')}:${String(startTime.minutes).padStart(2, '0')}`,
+          end: `${String(endTime.hours).padStart(2, '0')}:${String(endTime.minutes).padStart(2, '0')}`
         }
       })
       setSendingWindows(windows)
+    } else {
+      // Reset to empty array if no windows
+      setSendingWindows([])
     }
 
     // Update LinkedIn account
@@ -973,7 +1001,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     setTimeout(() => {
       reactFlowInstance.fitView({ padding: 0.2, duration: 300 })
     }, 50)
-  }, [createBeginSequenceNode, markNodesWithChildren, reactFlowInstance, setNodes, setEdges, setDailyVolume, setCandidateGapMin, setCandidateGapMax, setCandidateGapUnit, setSendingWindows, setSelectedLinkedInAccountId])
+  }, [createBeginSequenceNode, markNodesWithChildren, reactFlowInstance, setNodes, setEdges, setDailyVolume, setCandidateGapMin, setSendingWindows, setSelectedLinkedInAccountId])
 
   // Load campaign when job description changes
   useEffect(() => {
@@ -2469,9 +2497,8 @@ Example response: Based on your instructions, the responder will handle incoming
     const selectedJob = jobPostings?.find(job => job.id === selectedJobId)
     const campaignName = selectedJob ? `${selectedJob.title} - Campaign` : 'Campaign'
 
-    // Convert gap values to minutes
-    const minGapMinutes = candidateGapUnit === 'hours' ? candidateGapMin * 60 : candidateGapMin
-    const maxGapMinutes = candidateGapUnit === 'hours' ? candidateGapMax * 60 : candidateGapMax
+    // Gap value is already in minutes
+    const gapMinutes = candidateGapMin
 
     // Convert time windows from 'HH:MM' format to datetime strings (ISO format)
     // All times are on the same day (today) in 24-hour format, stored as UTC
@@ -2516,8 +2543,8 @@ Example response: Based on your instructions, the responder will handle incoming
       fk_linkedin_account_id: linkedInAccountId,
       fk_job_description_id: selectedJobId,
       daily_volume: dailyVolume,
-      min_gap_between_scheduling: minGapMinutes,
-      max_gap_between_scheduling: maxGapMinutes,
+      min_gap_between_scheduling: gapMinutes,
+      max_gap_between_scheduling: gapMinutes,
       campaign_sending_windows: sendingWindowsPayload,
       action_definitions: actionDefinitions
     }
@@ -2531,8 +2558,6 @@ Example response: Based on your instructions, the responder will handle incoming
     jobPostings,
     dailyVolume,
     candidateGapMin,
-    candidateGapMax,
-    candidateGapUnit,
     sendingWindows,
     buildActionDefinitions,
     isValidTimeWindow
@@ -2947,7 +2972,7 @@ Example response: Based on your instructions, the responder will handle incoming
                       <Label>Gap Between Candidates</Label>
                       <div className="flex items-center gap-2">
                         <div className="flex-1">
-                          <Label htmlFor="gap-min" className="text-xs text-gray-600">Min</Label>
+                          <Label htmlFor="gap-min" className="text-xs text-gray-600">Wait Time (minutes)</Label>
                           <Input
                             id="gap-min"
                             type="number"
@@ -2958,36 +2983,9 @@ Example response: Based on your instructions, the responder will handle incoming
                             className="bg-white border-gray-300 mt-1"
                           />
                         </div>
-                        <div className="flex-1">
-                          <Label htmlFor="gap-max" className="text-xs text-gray-600">Max</Label>
-                          <Input
-                            id="gap-max"
-                            type="number"
-                            value={candidateGapMax}
-                            onChange={(e) => setCandidateGapMax(parseInt(e.target.value) || 1)}
-                            min="1"
-                            max="60"
-                            className="bg-white border-gray-300 mt-1"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <Label htmlFor="gap-unit" className="text-xs text-gray-600">Unit</Label>
-                          <Select
-                            value={candidateGapUnit}
-                            onValueChange={(value: 'minutes' | 'hours') => setCandidateGapUnit(value)}
-                          >
-                            <SelectTrigger id="gap-unit" className="bg-white border-gray-300 mt-1">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="minutes">Minutes</SelectItem>
-                              <SelectItem value="hours">Hours</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
                       </div>
                       <p className="text-xs text-gray-500">
-                        Randomized wait time between starting sequences for different candidates (e.g., wait {candidateGapMin}-{candidateGapMax} {candidateGapUnit})
+                        Wait time between starting sequences for different candidates (e.g., wait {candidateGapMin} minutes)
                       </p>
                     </div>
                   </>
