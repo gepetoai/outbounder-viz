@@ -51,7 +51,7 @@ import { useJobPostings } from '@/hooks/useJobPostings'
 import { useShortlistedCandidates } from '@/hooks/useCandidates'
 import { useLinkedInAccounts } from '@/hooks/useLinkedInAccounts'
 import { useGenerateSampleMessages } from '@/hooks/useCustomMessages'
-import { createCampaign, getCampaignByJobDescription, startCampaign, pauseCampaign, CampaignWithDetails } from '@/lib/search-api'
+import { createCampaign, getCampaignByJobDescription, startCampaign, pauseCampaign, resumeCampaign, CampaignWithDetails } from '@/lib/search-api'
 import { Checkbox } from '@/components/ui/checkbox'
 
 interface SequencerTabProps {
@@ -2748,8 +2748,12 @@ Example response: Based on your instructions, the responder will handle incoming
                       const newStatus = checked ? 'running' : 'paused'
                       
                       try {
-                        if (checked && (previousStatus === 'draft' || previousStatus === 'paused')) {
-                          // Starting campaign: draft/paused -> running
+                        if (checked && previousStatus === 'paused') {
+                          // Resuming campaign: paused -> running
+                          await resumeCampaign(currentCampaignId)
+                          setCampaignStatus('running')
+                        } else if (checked && previousStatus === 'draft') {
+                          // Starting campaign: draft -> running
                           await startCampaign(currentCampaignId)
                           setCampaignStatus('running')
                         } else if (!checked && previousStatus === 'running') {
