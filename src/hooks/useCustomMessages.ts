@@ -47,6 +47,16 @@ export interface CustomMessageCandidate {
   action_type?: string
 }
 
+export interface CustomMessage {
+  message: string
+  subject: string
+  id: number
+  instruction_id: number
+  created_at: string
+  action_type: string
+  campaign_action_definition_id: number
+}
+
 export interface CampaignCandidateWithCustomMessage {
   id: number
   campaign_id: number
@@ -70,11 +80,7 @@ export interface CampaignCandidateWithCustomMessage {
   }
   created_at: string
   updated_at: string
-  latest_custom_message: string | null
-  custom_message_id: number | null
-  custom_message_instruction_id: number | null
-  custom_message_created_at: string | null
-  action_type?: string
+  custom_messages: CustomMessage[]
 }
 
 export interface InstructionsFeedbackItemCreate {
