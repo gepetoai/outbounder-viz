@@ -51,7 +51,7 @@ import { useJobPostings } from '@/hooks/useJobPostings'
 import { useShortlistedCandidates } from '@/hooks/useCandidates'
 import { useLinkedInAccounts } from '@/hooks/useLinkedInAccounts'
 import { useGenerateSampleMessages } from '@/hooks/useCustomMessages'
-import { createCampaign, getCampaignByJobDescription, startCampaign, pauseCampaign, resumeCampaign, CampaignWithDetails } from '@/lib/search-api'
+import { createCampaign, getCampaignByJobDescription, startCampaign, pauseCampaign, resumeCampaign, updateCampaign, CampaignWithDetails, CampaignResponse } from '@/lib/search-api'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/components/ui/toast'
 
@@ -2570,7 +2570,7 @@ Example response: Based on your instructions, the responder will handle incoming
     isValidTimeWindow
   ])
 
-  // Handle saving campaign
+  // Handle saving/updating campaign
   const handleSaveCampaign = useCallback(async () => {
     const payload = prepareCampaignPayload()
     if (!payload) {
@@ -2580,19 +2580,32 @@ Example response: Based on your instructions, the responder will handle incoming
 
     setIsSavingCampaign(true)
     try {
-      const response = await createCampaign(payload)
-      console.log('Campaign saved successfully:', response)
-      // Update campaign ID and status after successful save
-      setCurrentCampaignId(response.id)
+      let response: CampaignResponse
+      if (currentCampaignId && campaignStatus === 'draft') {
+        // Update existing draft campaign
+        response = await updateCampaign(currentCampaignId, payload)
+        console.log('Campaign updated successfully:', response)
+      } else if (!currentCampaignId) {
+        // Create new campaign
+        response = await createCampaign(payload)
+        console.log('Campaign saved successfully:', response)
+        setCurrentCampaignId(response.id)
+      } else {
+        // Campaign exists but is not in draft - should not happen due to button disabled state
+        console.error('Cannot update campaign that is not in draft status')
+        return
+      }
+      
+      // Update campaign status after successful save/update
       setCampaignStatus((response.status as 'draft' | 'paused' | 'running') || 'draft')
       // You can add a success toast/notification here if needed
     } catch (error) {
-      console.error('Failed to save campaign:', error)
+      console.error('Failed to save/update campaign:', error)
       // You can add an error toast/notification here if needed
     } finally {
       setIsSavingCampaign(false)
     }
-  }, [prepareCampaignPayload])
+  }, [prepareCampaignPayload, currentCampaignId, campaignStatus])
 
   return (
     <div className="space-y-6">
@@ -2729,19 +2742,19 @@ Example response: Based on your instructions, the responder will handle incoming
               </Button>
               <Button
                 onClick={handleSaveCampaign}
-                disabled={isSavingCampaign || currentCampaignId !== null}
+                disabled={isSavingCampaign || (currentCampaignId !== null && campaignStatus !== 'draft')}
                 variant="outline"
                 className="bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSavingCampaign ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
+                    {currentCampaignId && campaignStatus === 'draft' ? 'Updating...' : 'Saving...'}
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    Save
+                    {currentCampaignId && campaignStatus === 'draft' ? 'Update' : 'Save'}
                   </>
                 )}
               </Button>
