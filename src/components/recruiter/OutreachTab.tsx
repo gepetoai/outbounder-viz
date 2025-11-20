@@ -21,6 +21,7 @@ import 'reactflow/dist/style.css'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -55,6 +56,7 @@ import { createCampaign, getCampaignByJobDescription, startCampaign, pauseCampai
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/components/ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
+import { getTimeZones } from '@vvo/tzdb'
 
 interface SequencerTabProps {
   jobDescriptionId?: number | null
@@ -87,6 +89,43 @@ const VARIABLE_OPTIONS = [
   { key: 'education', label: 'Education' },
   { key: 'skills', label: 'Skills' },
 ]
+
+// Get all available timezones using @vvo/tzdb library
+function getAllTimezones(): Array<{ value: string; label: string }> {
+  try {
+    // Get timezones from library (includes UTC by default)
+    const timezones = getTimeZones({ includeUtc: true })
+    
+    return timezones.map(tz => {
+      // Format label: "City Name (Abbreviation)" or "Alternative Name (Abbreviation)"
+      // Prefer main city if available, otherwise use alternativeName
+      const cityName = tz.mainCities && tz.mainCities.length > 0 
+        ? tz.mainCities[0] 
+        : tz.alternativeName || tz.name.split('/').pop()?.replace(/_/g, ' ') || tz.name
+      
+      const label = tz.abbreviation 
+        ? `${cityName} (${tz.abbreviation})`
+        : cityName
+      
+      return {
+        value: tz.name,
+        label
+      }
+    }).sort((a, b) => a.label.localeCompare(b.label))
+  } catch (error) {
+    console.error('Failed to load timezones from library:', error)
+    // Fallback to empty array if library fails
+    return []
+  }
+}
+
+// Get timezone options (memoized at module level)
+const TIMEZONE_OPTIONS = getAllTimezones()
+
+// Helper function to validate if a timezone exists in our options
+function isValidTimezone(timezone: string): boolean {
+  return TIMEZONE_OPTIONS.some(option => option.value === timezone)
+}
 
 // Begin Sequence is not in the action menu - it's always present
 
@@ -644,6 +683,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   const [sendingWindows, setSendingWindows] = useState<Array<{ start: string; end: string }>>([
     { start: '09:00', end: '17:00' }
   ])
+  const [timezone, setTimezone] = useState<string>('America/New_York')
   const [candidateGapMin, setCandidateGapMin] = useState(3)
   
   // Message template settings (for send-message and send-inmail nodes)
@@ -1088,6 +1128,19 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     } else {
       // Reset to empty array if no windows
       setSendingWindows([])
+    }
+
+    // Update timezone if available and valid
+    if (campaign.timezone) {
+      // Validate that the timezone exists in our options
+      // If TIMEZONE_OPTIONS is empty (library failed), still try to set it
+      // as it might be a valid IANA timezone
+      if (TIMEZONE_OPTIONS.length === 0 || isValidTimezone(campaign.timezone)) {
+        setTimezone(campaign.timezone)
+      } else {
+        console.warn(`Invalid timezone from campaign: ${campaign.timezone}, keeping current timezone`)
+        // Keep the current timezone - don't change it if invalid
+      }
     }
 
     // Update LinkedIn account
@@ -2653,6 +2706,7 @@ Example response: Based on your instructions, the responder will handle incoming
       daily_volume: dailyVolume,
       min_gap_between_scheduling: gapMinutes,
       max_gap_between_scheduling: gapMinutes,
+      timezone: timezone,
       campaign_sending_windows: sendingWindowsPayload,
       action_definitions: actionDefinitions
     }
@@ -2667,6 +2721,7 @@ Example response: Based on your instructions, the responder will handle incoming
     dailyVolume,
     candidateGapMin,
     sendingWindows,
+    timezone,
     buildActionDefinitions,
     isValidTimeWindow
   ])
@@ -3052,12 +3107,27 @@ Example response: Based on your instructions, the responder will handle incoming
                       <p className="text-xs text-gray-500">Number of leads to contact per day (1-200)</p>
                     </div>
                     
+                    {/* Timezone Selector */}
+                    <div className="space-y-2">
+                      <Label htmlFor="timezone-select">Timezone</Label>
+                      <SearchableSelect
+                        placeholder="Select timezone..."
+                        options={TIMEZONE_OPTIONS}
+                        value={timezone}
+                        onValueChange={setTimezone}
+                        className="bg-white"
+                      />
+                      <p className="text-xs text-gray-500">
+                        All sending windows will use this timezone
+                      </p>
+                    </div>
+
                     {/* Multiple Sending Windows */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div>
                           <Label>Sending Windows</Label>
-                          <p className="text-xs text-gray-500 mt-0.5">Times are in UTC</p>
+                          <p className="text-xs text-gray-500 mt-0.5">Times are in {timezone}</p>
                         </div>
                         <Button
                           onClick={handleAddTimeWindow}

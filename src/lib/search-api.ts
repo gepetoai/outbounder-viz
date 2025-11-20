@@ -485,6 +485,7 @@ export interface CampaignPayload {
   daily_volume: number
   min_gap_between_scheduling: number
   max_gap_between_scheduling: number
+  timezone?: string
   campaign_sending_windows: Array<{
     window_start_time: string
     window_end_time: string
@@ -514,9 +515,9 @@ export interface CampaignResponse {
   updated_at: string
 }
 
-export async function createCampaign(data: CampaignPayload): Promise<CampaignResponse> {
+export async function createCampaign(data: CampaignPayload): Promise<CampaignWithDetails> {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
-  return fetchJson<CampaignResponse>(`${API_BASE_URL}/campaigns/`, {
+  return fetchJson<CampaignWithDetails>(`${API_BASE_URL}/campaigns/`, {
     method: 'POST',
     body: JSON.stringify(data)
   })
@@ -543,15 +544,16 @@ export async function resumeCampaign(campaignId: number): Promise<CampaignRespon
   })
 }
 
-export async function updateCampaign(campaignId: number, data: CampaignPayload): Promise<CampaignResponse> {
+export async function updateCampaign(campaignId: number, data: CampaignPayload): Promise<CampaignWithDetails> {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
-  return fetchJson<CampaignResponse>(`${API_BASE_URL}/campaigns/${campaignId}`, {
+  return fetchJson<CampaignWithDetails>(`${API_BASE_URL}/campaigns/${campaignId}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   })
 }
 
 export interface CampaignWithDetails extends CampaignResponse {
+  timezone?: string
   campaign_sending_windows: Array<{
     window_start_time: string
     window_end_time: string
