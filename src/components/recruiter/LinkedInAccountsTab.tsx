@@ -13,6 +13,7 @@ import type { LinkedInAccount } from '@/hooks/useLinkedInAccounts'
 import { useToast } from '@/components/ui/toast'
 
 export function LinkedInAccountsTab() {
+  const CHROME_WEBSTORE_URL = 'https://chromewebstore.google.com/detail/248-recruiter-connector/dpoiockpdkpgocjdnooilcpfnhclbifl?authuser=0&hl=en-GB'
   const { data: accounts = [], isLoading } = useLinkedInAccounts()
   const disconnectAccountMutation = useDisconnectLinkedInAccount()
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false)
@@ -102,7 +103,7 @@ export function LinkedInAccountsTab() {
         </div>
         <Button 
           onClick={() => {
-            window.open('https://chromewebstore.google.com/detail/248-recruiter-connector/dpoiockpdkpgocjdnooilcpfnhclbifl?authuser=0&hl=en-GB', '_blank', 'noopener,noreferrer')
+            window.open(CHROME_WEBSTORE_URL, '_blank', 'noopener,noreferrer')
           }}
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -136,7 +137,7 @@ export function LinkedInAccountsTab() {
                           variant="outline" 
                           size="sm"
                           onClick={() => {
-                            window.open('https://chromewebstore.google.com/detail/248-recruiter-connector/dpoiockpdkpgocjdnooilcpfnhclbifl?authuser=0&hl=en-GB', '_blank', 'noopener,noreferrer')
+                            window.open(CHROME_WEBSTORE_URL, '_blank', 'noopener,noreferrer')
                           }}
                         >
                           Connect Account
