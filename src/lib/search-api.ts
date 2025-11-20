@@ -573,6 +573,15 @@ export interface CampaignWithDetails extends CampaignResponse {
     id: number
     created_at: string
     updated_at: string
+    custom_message?: {
+      message: string
+      subject: string
+      id: number
+      instruction_id: number
+      created_at: string
+      action_type: string
+      campaign_action_definition_id: number
+    }
   }>
 }
 
