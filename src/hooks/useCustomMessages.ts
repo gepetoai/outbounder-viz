@@ -89,7 +89,8 @@ export interface InstructionsFeedbackItemCreate {
 
 export interface AddInstructionsFeedbackRequest {
   custom_messages_candidate_id: number
-  feedbacks: InstructionsFeedbackItemCreate[]
+  custom_messages_instruction_id: number
+  instructions_feedbacks: InstructionsFeedbackItemCreate[]
 }
 
 export interface CustomMessageUpdate {
