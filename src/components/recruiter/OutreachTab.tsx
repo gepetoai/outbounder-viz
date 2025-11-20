@@ -618,6 +618,24 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [nodeToDelete, setNodeToDelete] = useState<string | null>(null)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+
+  // Panel resize state
+  const [panelWidth, setPanelWidth] = useState(() => {
+    // Load from localStorage or use default
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('outreachPanelWidth')
+      if (saved) {
+        const parsed = parseInt(saved, 10)
+        return !isNaN(parsed) ? parsed : 384
+      }
+      return 384
+    }
+  })
+  const [isResizing, setIsResizing] = useState(false)
+  const panelWidthRef = useRef(panelWidth)
+  useEffect(() => {
+    panelWidthRef.current = panelWidth
+  }, [panelWidth])
   
   // Sequence settings for Begin Sequence node
   const [dailyVolume, setDailyVolume] = useState(50)
@@ -645,6 +663,38 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
       }
     }
   }, [configureNodeId, showConfigPanel, nodes])
+
+  // Panel resize handlers
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    setIsResizing(true)
+    e.preventDefault()
+  }, [])
+
+  useEffect(() => {
+    if (!isResizing) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = window.innerWidth - e.clientX
+      // Constrain width between 320px and 800px
+      const constrainedWidth = Math.max(320, Math.min(800, newWidth))
+      setPanelWidth(constrainedWidth)
+      panelWidthRef.current = constrainedWidth
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+      // Save to localStorage
+      localStorage.setItem('outreachPanelWidth', panelWidthRef.current?.toString() || '384')
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing])
 
   // Handler to update message text directly in node data
   const handleMessageTextUpdate = useCallback((nodeId: string, text: string) => {
@@ -2947,7 +2997,22 @@ Example response: Based on your instructions, the responder will handle incoming
           />
           
           {/* Panel */}
-          <div className="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-50 border-l-2 border-gray-900 transform transition-transform duration-300 ease-in-out">
+          <div
+            className="fixed top-0 right-0 h-full bg-white shadow-2xl border-l-2 border-gray-900"
+            style={{
+              width: `${panelWidth}px`,
+              minWidth: '320px',
+              maxWidth: '800px',
+              zIndex: 9999
+            }}
+          >
+            {/* Resize Handle */}
+            <div
+              className={`absolute left-0 top-0 h-full w-1 cursor-col-resize hover:bg-blue-500 transition-colors ${isResizing ? 'bg-blue-500' : 'bg-transparent'}`}
+              style={{ zIndex: 10000 }}
+              onMouseDown={handleResizeStart}
+              title="Drag to resize"
+            />
             <div className="flex flex-col h-full">
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200">
