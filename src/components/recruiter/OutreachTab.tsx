@@ -1953,7 +1953,14 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
 
   const handleGenerateMessage = useCallback(() => {
     // Validate all required fields
-    if (!selectedJobId || !selectedLinkedInAccountId || !messageInstructions.trim() || selectedVariables.length === 0) {
+    if (!selectedJobId || !messageInstructions.trim() || selectedVariables.length === 0) {
+      return
+    }
+
+    // Use selected LinkedIn account or default to first one
+    const linkedInAccountId = selectedLinkedInAccountId || (linkedInAccounts?.[0]?.id ?? null)
+    if (!linkedInAccountId) {
+      console.error('No LinkedIn account available')
       return
     }
 
@@ -1983,7 +1990,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     generateSampleMessages(
       {
         job_description_id: selectedJobId,
-        linkedin_account_id: selectedLinkedInAccountId,
+        linkedin_account_id: linkedInAccountId,
         action_type: actionType,
         user_instructions: messageInstructions,
         context_variables: contextVariables,
@@ -2014,7 +2021,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
         },
       }
     )
-  }, [messageInstructions, selectedVariables, selectedJobId, selectedLinkedInAccountId, configureNodeId, nodes, handleMessageTextUpdate, handleSubjectTextUpdate, generateSampleMessages, setNodes])
+  }, [messageInstructions, selectedVariables, selectedJobId, selectedLinkedInAccountId, linkedInAccounts, configureNodeId, nodes, handleMessageTextUpdate, handleSubjectTextUpdate, generateSampleMessages, setNodes])
 
   const handleGenerateResponderExample = useCallback(() => {
     if (!responderInstructions.trim()) {
@@ -3054,7 +3061,7 @@ Example response: Based on your instructions, the responder will handle incoming
                         <div>
                           <Button
                             onClick={handleGenerateMessage}
-                            disabled={!selectedJobId || !selectedLinkedInAccountId || !messageInstructions.trim() || selectedVariables.length === 0 || isGenerating}
+                            disabled={!selectedJobId || (!selectedLinkedInAccountId && (!linkedInAccounts || linkedInAccounts.length === 0)) || !messageInstructions.trim() || selectedVariables.length === 0 || isGenerating}
                             className="w-full bg-black hover:bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {isGenerating ? (
