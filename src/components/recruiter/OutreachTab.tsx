@@ -945,12 +945,9 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
       setDailyVolume(campaign.daily_volume)
     }
 
-    // Handle gap values - check if they're in seconds (> 60) or already in minutes
+    // Gap values are stored in minutes
     if (campaign.min_gap_between_scheduling !== undefined && campaign.min_gap_between_scheduling !== null) {
-      const minGap = campaign.min_gap_between_scheduling >= 60 
-        ? Math.floor(campaign.min_gap_between_scheduling / 60) 
-        : campaign.min_gap_between_scheduling
-      setCandidateGapMin(minGap)
+      setCandidateGapMin(campaign.min_gap_between_scheduling)
     }
     
 
