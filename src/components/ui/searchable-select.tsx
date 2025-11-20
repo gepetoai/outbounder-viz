@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { X } from 'lucide-react'
 import { Input } from './input'
 
 interface SearchableSelectProps {
@@ -30,19 +31,38 @@ export function SearchableSelect({
     option.label.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onValueChange('')
+    setIsOpen(false)
+    setSearchTerm('')
+  }
+
   return (
     <div className={`relative ${className}`}>
-      <Input
-        placeholder={placeholder}
-        value={displayValue}
-        onChange={(e) => {
-          setSearchTerm(e.target.value)
-          setIsOpen(true)
-        }}
-        onFocus={() => setIsOpen(true)}
-        disabled={disabled}
-        className="w-full"
-      />
+      <div className="relative">
+        <Input
+          placeholder={placeholder}
+          value={displayValue}
+          onChange={(e) => {
+            setSearchTerm(e.target.value)
+            setIsOpen(true)
+          }}
+          onFocus={() => setIsOpen(true)}
+          disabled={disabled}
+          className="w-full pr-8"
+        />
+        {value && !disabled && !isOpen && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="Clear selection"
+          >
+            <X className="h-4 w-4 text-gray-500" />
+          </button>
+        )}
+      </div>
       {isOpen && !disabled && (
         <>
           <div
