@@ -115,9 +115,9 @@ export function SandBoxTab() {
       if (!messages[candidateId]) {
         messages[candidateId] = []
       }
-      // Add the latest custom message if it exists
-      if (cc.latest_custom_message) {
-        messages[candidateId].push(cc.latest_custom_message)
+      // Add all custom messages from the array
+      if (cc.custom_messages && cc.custom_messages.length > 0) {
+        messages[candidateId] = cc.custom_messages.map(msg => msg.message)
       }
     })
 
@@ -194,18 +194,19 @@ export function SandBoxTab() {
     // If candidate has messages, replace the mock messages with real ones
     if (candidate && candidateMessages[candidate.id] && candidateMessages[candidate.id].length > 0) {
       // Start by showing just the first message
-      const firstMessage: ChatMessageProps = {
+      const initialChatMessage: ChatMessageProps = {
         message: candidateMessages[candidate.id][0],
         type: 'assistant' as const
       }
-      setMessages([firstMessage])
+      setMessages([initialChatMessage])
       setCurrentMessageIndex(1)
       // Default to initial message feedback when only one message is shown
       setActiveFeedbackMessageIndex(0)
 
-      // Find the custom message ID for this candidate
+      // Find the first custom message ID for this candidate (for regeneration)
       const candidateData = candidatesWithMessages.find(cc => cc.id.toString() === candidate.id)
-      setCurrentMessageId(candidateData?.custom_message_id || null)
+      const firstCustomMessage = candidateData?.custom_messages?.[0]
+      setCurrentMessageId(firstCustomMessage?.id || null)
     } else {
       // Reset to empty if no real messages
       setMessages([])
@@ -268,7 +269,7 @@ export function SandBoxTab() {
   const handleMessageSave = (newMessage: string) => {
     if (!selectedMessageCandidateId) return
 
-    // Find the candidate data to get custom message ID
+    // Find the candidate data to get the specific message by index
     const candidateData = candidatesWithMessages.find(
       cc => cc.id.toString() === selectedMessageCandidateId
     )
@@ -290,14 +291,17 @@ export function SandBoxTab() {
       }
     })
 
-    // If we have a custom message ID, call the API to persist the change
-    if (candidateData?.custom_message_id && candidateData?.custom_message_instruction_id) {
+    // Get the specific message being edited from the custom_messages array
+    const messageData = candidateData?.custom_messages?.[selectedMessageIndex]
+
+    // If we have message data with ID and instruction_id, call the API to persist the change
+    if (candidateData && messageData?.id && messageData?.instruction_id) {
       updateCustomMessage(
         {
-          customMessageId: candidateData.custom_message_id,
+          customMessageId: messageData.id,
           data: {
-            id: candidateData.custom_message_id,
-            fk_custom_messages_instruction_id: candidateData.custom_message_instruction_id,
+            id: messageData.id,
+            fk_custom_messages_instruction_id: messageData.instruction_id,
             fk_campaign_candidate_id: candidateData.id,
             generated_message: newMessage
           }
@@ -339,8 +343,19 @@ export function SandBoxTab() {
   }
 
   const handleRegenerate = () => {
-    if (!currentMessageId || feedbackItems.length === 0) {
-      console.warn('Cannot regenerate: missing message ID or no feedback items')
+    if (!selectedCandidate || feedbackItems.length === 0) {
+      console.warn('Cannot regenerate: missing candidate or no feedback items')
+      return
+    }
+
+    // Find the candidate data and get the message ID based on active feedback message index
+    const candidateData = candidatesWithMessages.find(
+      cc => cc.id.toString() === selectedCandidate.id
+    )
+    const messageData = candidateData?.custom_messages?.[activeFeedbackMessageIndex]
+
+    if (!messageData?.id) {
+      console.warn('Cannot regenerate: missing message ID')
       return
     }
 
@@ -348,7 +363,7 @@ export function SandBoxTab() {
 
     regenerateWithFeedback(
       {
-        custom_messages_candidate_id: currentMessageId,
+        custom_messages_candidate_id: messageData.id,
         feedbacks: feedbackItems.map(item => ({
           content: item.text
         }))
@@ -506,6 +521,7 @@ export function SandBoxTab() {
             <SandboxTableView
               candidates={tableViewCandidates}
               messages={candidateMessages}
+              candidatesWithMessages={candidatesWithMessages}
               onCandidateClick={handleCandidatePhotoClick}
               onMessageClick={handleMessageClick}
               selectedCandidateId={selectedMessageCandidateId}

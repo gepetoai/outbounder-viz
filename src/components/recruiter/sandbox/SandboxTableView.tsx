@@ -3,19 +3,38 @@
 import { useEffect, useRef } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { Candidate } from '@/lib/utils'
+import type { CampaignCandidateWithCustomMessage } from '@/hooks/useCustomMessages'
 
 interface SandboxTableViewProps {
   candidates: Candidate[]
   messages: { [candidateId: string]: string[] }
+  candidatesWithMessages: CampaignCandidateWithCustomMessage[]
   onCandidateClick: (candidate: Candidate) => void
   onMessageClick: (candidateId: string, messageIndex: number) => void
   selectedCandidateId?: string | null
   selectedMessageIndex?: number
 }
 
+// Helper function to format action type for display
+const formatActionType = (actionType: string): string => {
+  const typeMap: { [key: string]: string } = {
+    'send_connection_request': 'Connection Request',
+    'send_message': 'Send Message',
+    'send_inmail': 'Send InMail',
+    'view_profile': 'View Profile',
+    'follow': 'Follow',
+    'like_post': 'Like Post',
+    'comment_post': 'Comment',
+  }
+  return typeMap[actionType] || actionType.split('_').map(word =>
+    word.charAt(0).toUpperCase() + word.slice(1)
+  ).join(' ')
+}
+
 export function SandboxTableView({
   candidates,
   messages,
+  candidatesWithMessages,
   onCandidateClick,
   onMessageClick,
   selectedCandidateId,
@@ -26,6 +45,20 @@ export function SandboxTableView({
   // Get the maximum number of messages across all candidates to determine column count
   // Default to 1 column if no messages exist yet
   const maxMessages = Math.max(...Object.values(messages).map(msgs => msgs.length), 1)
+
+  // Build column headers with action types
+  // For each message index, find the most common action_type across all candidates
+  const columnHeaders: string[] = []
+  for (let i = 0; i < maxMessages; i++) {
+    // Get action types for this message index across all candidates
+    const actionTypes = candidatesWithMessages
+      .map(cc => cc.custom_messages?.[i]?.action_type)
+      .filter(Boolean)
+
+    // Use the first action type found, or default to "Message {i+1}"
+    const actionType = actionTypes[0]
+    columnHeaders.push(actionType ? formatActionType(actionType) : `Message ${i + 1}`)
+  }
 
   // Auto-scroll to selected cell when selection changes
   useEffect(() => {
@@ -44,9 +77,9 @@ export function SandboxTableView({
         <Table className="table-fixed">
           <TableHeader className="sticky top-0 z-20 bg-white border-b shadow-sm">
             <TableRow className="h-12">
-              <TableHead className="w-[100px] sticky left-0 bg-white z-30 border-r pl-4">Candidate</TableHead>
-              {Array.from({ length: maxMessages }, (_, i) => (
-                <TableHead key={i} className="w-[300px] bg-white">Message {i + 1}</TableHead>
+              <TableHead className="w-[250px] sticky left-0 bg-white z-30 border-r pl-4">Candidate</TableHead>
+              {columnHeaders.map((header, i) => (
+                <TableHead key={i} className="w-[300px] bg-white border-r last:border-r-0">{header}</TableHead>
               ))}
             </TableRow>
           </TableHeader>
@@ -77,10 +110,11 @@ export function SandboxTableView({
                     </TableCell>
                     {Array.from({ length: maxMessages }, (_, i) => {
                       const isSelected = selectedCandidateId === candidate.id && selectedMessageIndex === i
+                      const isLastColumn = i === maxMessages - 1
                       return (
                         <TableCell
                           key={i}
-                          className="align-top max-w-[300px]"
+                          className={`align-top max-w-[300px] border-r ${isLastColumn ? 'border-r-0' : ''}`}
                           onClick={(e) => {
                             e.stopPropagation()
                             onMessageClick(candidate.id, i)
