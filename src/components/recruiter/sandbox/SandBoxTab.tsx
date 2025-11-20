@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { ChatInterface } from './ChatInterface'
 import { FeedbackSection, type FeedbackItem } from './FeedbackSection'
 import { SelectionPanel } from './SelectionPanel'
@@ -10,6 +10,7 @@ import { AgentPanel } from './AgentPanel'
 import { CandidateDetailPanel } from '../CandidateDetailPanel'
 import { ChatMessageProps } from './ChatMessage'
 import { useJobPostings } from '@/hooks/useJobPostings'
+import { getCampaignByJobDescription, type CampaignWithDetails } from '@/lib/search-api'
 import { useCampaignCandidates } from '@/hooks/useCampaigns'
 import {
   useCandidatesWithMessages,
@@ -72,15 +73,29 @@ export function SandBoxTab() {
   const [currentEditingMessage, setCurrentEditingMessage] = useState<string>('')
   const [editedMessages, setEditedMessages] = useState<{ [candidateId: string]: string[] }>({})
 
-  // Feedback type selection state
+  // Feedback type selection state - track both message index and action type
   const [activeFeedbackMessageIndex, setActiveFeedbackMessageIndex] = useState<number>(0)
+  const [activeFeedbackActionType, setActiveFeedbackActionType] = useState<string | null>(null)
 
-  // Fetch open roles (job postings) from API - filter only those with campaign_id
-  const { data: allJobPostings = [] } = useJobPostings()
-  const jobPostings = useMemo(
-    () => allJobPostings.filter(job => job.campaign_id),
-    [allJobPostings]
+  // State to store the selected job description ID and campaign
+  const [selectedJobDescriptionId, setSelectedJobDescriptionId] = useState<number | null>(null)
+  const [campaign, setCampaign] = useState<CampaignWithDetails | null>(null)
+
+  // Fetch job descriptions from API and filter for those with campaigns
+  const { data: allJobDescriptions = [] } = useJobPostings()
+  const jobDescriptions = useMemo(
+    () => allJobDescriptions.filter(job => job.campaign_id),
+    [allJobDescriptions]
   )
+
+  // Fetch campaign when job description changes
+  useEffect(() => {
+    if (selectedJobDescriptionId) {
+      getCampaignByJobDescription(selectedJobDescriptionId).then(setCampaign)
+    } else {
+      setCampaign(null)
+    }
+  }, [selectedJobDescriptionId])
 
   // Fetch candidates from campaign using campaign_id (for chat view)
   const campaignId = selectedCampaignId ? parseInt(selectedCampaignId) : null
@@ -203,6 +218,16 @@ export function SandBoxTab() {
       // Default to initial message feedback when only one message is shown
       setActiveFeedbackMessageIndex(0)
 
+      // Set the action type for the first message
+      if (campaign?.action_definitions) {
+        const messageActionDefs = campaign.action_definitions.filter(
+          def => def.action_type === 'send_message' ||
+                def.action_type === 'send_inmail'
+        )
+        const firstActionType = messageActionDefs[0]?.action_type || null
+        setActiveFeedbackActionType(firstActionType)
+      }
+
       // Find the first custom message ID for this candidate (for regeneration)
       const candidateData = candidatesWithMessages.find(cc => cc.id.toString() === candidate.id)
       const firstCustomMessage = candidateData?.custom_messages?.[0]
@@ -212,6 +237,7 @@ export function SandBoxTab() {
       setMessages([])
       setCurrentMessageIndex(0)
       setActiveFeedbackMessageIndex(0)
+      setActiveFeedbackActionType(null)
       setCurrentMessageId(null)
     }
   }
@@ -220,6 +246,29 @@ export function SandBoxTab() {
     setSelectedCandidate(candidate)
     setIsPanelOpen(true)
   }
+
+  const handleJobDescriptionChange = (jobDescriptionId: string) => {
+    const jobId = jobDescriptionId ? parseInt(jobDescriptionId) : null
+    setSelectedJobDescriptionId(jobId)
+
+    // Reset selected candidate when job description changes
+    setSelectedCandidate(null)
+    // Reset chat to empty
+    setMessages([])
+    setCurrentMessageIndex(0)
+    // Reset feedback items
+    setFeedbackItems([])
+    setCurrentMessageId(null)
+  }
+
+  // Update campaign ID when campaign data is loaded
+  useEffect(() => {
+    if (campaign?.id) {
+      setSelectedCampaignId(campaign.id.toString())
+    } else {
+      setSelectedCampaignId('')
+    }
+  }, [campaign])
 
   const handleCampaignChange = (campaignId: string) => {
     setSelectedCampaignId(campaignId)
@@ -244,17 +293,41 @@ export function SandBoxTab() {
         }))
         setMessages(realMessages)
         setCurrentMessageIndex(currentMessageIndex + 1)
-        // When showing more than one message, default to responder feedback
-        if (currentMessageIndex + 1 > 1) {
-          setActiveFeedbackMessageIndex(currentMessageIndex)
+
+        // Update the active feedback message index and action type for the newly shown message
+        const newMessageIndex = currentMessageIndex
+        setActiveFeedbackMessageIndex(newMessageIndex)
+
+        // Determine and set the action type for this message index
+        if (campaign?.action_definitions) {
+          const messageActionDefs = campaign.action_definitions.filter(
+            def => def.action_type === 'send_message' ||
+                  def.action_type === 'send_inmail'
+          )
+          const actionType = messageActionDefs[newMessageIndex]?.action_type || null
+          setActiveFeedbackActionType(actionType)
         }
+
+        // Clear feedback items when showing a new message
+        setFeedbackItems([])
       }
     }
   }
 
   const handleFeedbackTargetSelect = (messageIndex: number) => {
     setActiveFeedbackMessageIndex(messageIndex)
-    // Clear feedback items when switching between initial and responder messages
+
+    // Determine the action type for this message index
+    if (campaign?.action_definitions) {
+      const messageActionDefs = campaign.action_definitions.filter(
+        def => def.action_type === 'send_message' ||
+              def.action_type === 'send_inmail'
+      )
+      const actionType = messageActionDefs[messageIndex]?.action_type || null
+      setActiveFeedbackActionType(actionType)
+    }
+
+    // Clear feedback items when switching between message types
     setFeedbackItems([])
   }
 
@@ -354,8 +427,8 @@ export function SandBoxTab() {
     )
     const messageData = candidateData?.custom_messages?.[activeFeedbackMessageIndex]
 
-    if (!messageData?.id) {
-      console.warn('Cannot regenerate: missing message ID')
+    if (!messageData?.id || !messageData?.instruction_id) {
+      console.warn('Cannot regenerate: missing message ID or instruction ID')
       return
     }
 
@@ -364,7 +437,8 @@ export function SandBoxTab() {
     regenerateWithFeedback(
       {
         custom_messages_candidate_id: messageData.id,
-        feedbacks: feedbackItems.map(item => ({
+        custom_messages_instruction_id: messageData.instruction_id,
+        instructions_feedbacks: feedbackItems.map(item => ({
           content: item.text
         }))
       },
@@ -375,13 +449,17 @@ export function SandBoxTab() {
           // Update the current message ID to the new one
           setCurrentMessageId(data.id)
 
-          // Update the displayed message with the new generated message
-          setMessages([
-            {
-              message: data.generated_message,
-              type: 'assistant' as const
+          // Update only the specific message at the active feedback index
+          setMessages(prevMessages => {
+            const newMessages = [...prevMessages]
+            if (newMessages[activeFeedbackMessageIndex]) {
+              newMessages[activeFeedbackMessageIndex] = {
+                ...newMessages[activeFeedbackMessageIndex],
+                message: data.generated_message
+              }
             }
-          ])
+            return newMessages
+          })
 
           // Clear feedback items after successful regeneration
           setFeedbackItems([])
@@ -415,24 +493,24 @@ export function SandBoxTab() {
 
   return (
     <div className="h-[calc(100vh-150px)] max-h-[calc(100vh-150px)] overflow-hidden flex flex-col gap-6">
-      {/* Top Bar: Select Job Posting + View Toggle */}
+      {/* Top Bar: Select Job Description + View Toggle */}
       <div className="flex justify-between items-center">
-        {/* Left: Select Job Posting */}
+        {/* Left: Select Job Description */}
         <div className="w-64">
-          <Select value={selectedCampaignId} onValueChange={handleCampaignChange}>
+          <Select value={selectedJobDescriptionId?.toString() || ''} onValueChange={handleJobDescriptionChange}>
             <SelectTrigger>
-              <SelectValue placeholder="Select a job posting..." />
+              <SelectValue placeholder="Select a job description..." />
             </SelectTrigger>
             <SelectContent>
-              {jobPostings && jobPostings.length > 0 ? (
-                jobPostings.map((job) => (
-                  <SelectItem key={job.campaign_id} value={job.campaign_id!.toString()}>
-                    {job.title}
+              {jobDescriptions && jobDescriptions.length > 0 ? (
+                jobDescriptions.map((jobDesc) => (
+                  <SelectItem key={jobDesc.id} value={jobDesc.id.toString()}>
+                    {jobDesc.title}
                   </SelectItem>
                 ))
               ) : (
                 <SelectItem value="no-jobs" disabled>
-                  No job postings available
+                  No job descriptions available
                 </SelectItem>
               )}
             </SelectContent>
@@ -477,6 +555,7 @@ export function SandBoxTab() {
               hasMoreMessages={hasMoreMessages}
               activeFeedbackMessageIndex={activeFeedbackMessageIndex}
               onFeedbackTargetSelect={handleFeedbackTargetSelect}
+              actionDefinitions={campaign?.action_definitions || []}
             />
           )}
         </div>
@@ -485,7 +564,7 @@ export function SandBoxTab() {
         <div className="col-span-1 h-full flex flex-col gap-4">
           {/* Selection Panel */}
           <SelectionPanel
-            openRoles={jobPostings}
+            openRoles={[]}
             selectedOpenRole={selectedCampaignId}
             onOpenRoleChange={handleCampaignChange}
             candidates={candidatesData}
@@ -502,11 +581,16 @@ export function SandBoxTab() {
               selectedFeedbackId={selectedFeedbackId}
               onAddFeedback={handleAddFeedback}
               onRemoveFeedback={handleRemoveFeedback}
-              feedbackType={activeFeedbackMessageIndex === 0 ? 'initial_message' : 'responder_message'}
+              feedbackType={
+                activeFeedbackActionType === 'send_inmail'
+                  ? 'InMail'
+                  : activeFeedbackActionType === 'send_message'
+                  ? 'Send Message'
+                  : 'Responder'
+              }
               onRegenerate={handleRegenerate}
               isRegenerating={isRegenerating || isRegeneratingMutation}
               showRegenerateButton={
-                activeFeedbackMessageIndex === 0 &&
                 feedbackItems.length > 0 &&
                 !!currentMessageId
               }
@@ -526,6 +610,7 @@ export function SandBoxTab() {
               onMessageClick={handleMessageClick}
               selectedCandidateId={selectedMessageCandidateId}
               selectedMessageIndex={selectedMessageIndex}
+              actionDefinitions={campaign?.action_definitions || []}
             />
           ) : (
             <div className="flex items-center justify-center h-full">

@@ -4,6 +4,9 @@ import { useEffect, useRef } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { Candidate } from '@/lib/utils'
 import type { CampaignCandidateWithCustomMessage } from '@/hooks/useCustomMessages'
+import type { CampaignWithDetails } from '@/lib/search-api'
+
+type ActionDefinition = CampaignWithDetails['action_definitions'][number]
 
 interface SandboxTableViewProps {
   candidates: Candidate[]
@@ -13,6 +16,7 @@ interface SandboxTableViewProps {
   onMessageClick: (candidateId: string, messageIndex: number) => void
   selectedCandidateId?: string | null
   selectedMessageIndex?: number
+  actionDefinitions?: ActionDefinition[]
 }
 
 // Helper function to format action type for display
@@ -21,6 +25,7 @@ const formatActionType = (actionType: string): string => {
     'send_connection_request': 'Connection Request',
     'send_message': 'Send Message',
     'send_inmail': 'Send InMail',
+    'send_inmail_message': 'Send InMail',
     'view_profile': 'View Profile',
     'follow': 'Follow',
     'like_post': 'Like Post',
@@ -38,27 +43,40 @@ export function SandboxTableView({
   onCandidateClick,
   onMessageClick,
   selectedCandidateId,
-  selectedMessageIndex
+  selectedMessageIndex,
+  actionDefinitions = []
 }: SandboxTableViewProps) {
   const selectedCellRef = useRef<HTMLDivElement>(null)
 
-  // Get the maximum number of messages across all candidates to determine column count
-  // Default to 1 column if no messages exist yet
-  const maxMessages = Math.max(...Object.values(messages).map(msgs => msgs.length), 1)
+  // Filter action definitions to only message types (send_message, send_inmail, and send_inmail_message)
+  const messageActionDefinitions = actionDefinitions.filter(
+    actionDef => actionDef.action_type && (
+      actionDef.action_type === 'send_message' ||
+      actionDef.action_type === 'send_inmail'
+    )
+  )
 
-  // Build column headers with action types
-  // For each message index, find the most common action_type across all candidates
-  const columnHeaders: string[] = []
-  for (let i = 0; i < maxMessages; i++) {
-    // Get action types for this message index across all candidates
-    const actionTypes = candidatesWithMessages
-      .map(cc => cc.custom_messages?.[i]?.action_type)
-      .filter(Boolean)
+  // Use filtered action definitions to build column headers, or fallback to old behavior
+  const columnHeaders: string[] = messageActionDefinitions.length > 0
+    ? messageActionDefinitions.map(actionDef => formatActionType(actionDef.action_type!))
+    : (() => {
+        // Fallback: Get the maximum number of messages across all candidates
+        const maxMessages = Math.max(...Object.values(messages).map(msgs => msgs.length), 1)
+        const headers: string[] = []
+        for (let i = 0; i < maxMessages; i++) {
+          // Get action types for this message index across all candidates
+          const actionTypes = candidatesWithMessages
+            .map(cc => cc.custom_messages?.[i]?.action_type)
+            .filter(Boolean)
 
-    // Use the first action type found, or default to "Message {i+1}"
-    const actionType = actionTypes[0]
-    columnHeaders.push(actionType ? formatActionType(actionType) : `Message ${i + 1}`)
-  }
+          // Use the first action type found, or default to "Message {i+1}"
+          const actionType = actionTypes[0]
+          headers.push(actionType ? formatActionType(actionType) : `Message ${i + 1}`)
+        }
+        return headers
+      })()
+
+  const maxMessages = columnHeaders.length
 
   // Auto-scroll to selected cell when selection changes
   useEffect(() => {
