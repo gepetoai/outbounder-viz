@@ -426,6 +426,7 @@ export default function HomePage() {
             return (
               <Button
                 key={app.id}
+                data-testid={`${app.id}-app-button`}
                 variant={activeApp === app.id ? 'default' : 'ghost'}
                 size="icon"
                 className="w-full h-9 flex items-center justify-center"
