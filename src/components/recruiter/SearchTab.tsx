@@ -141,6 +141,12 @@ export function SearchTab({
   const [tempJobTitleInclusionInput, setTempJobTitleInclusionInput] = useState('')
   const [tempProfileKeywordInclusionInput, setTempProfileKeywordInclusionInput] = useState('')
   const [inputError, setInputError] = useState('')
+
+  // MUST/MUST_NOT dropdown states
+  const [tempJobTitleType, setTempJobTitleType] = useState<'MUST' | 'MUST_NOT'>('MUST')
+  const [tempIndustryType, setTempIndustryType] = useState<'MUST' | 'MUST_NOT'>('MUST')
+  const [tempProfileKeywordType, setTempProfileKeywordType] = useState<'MUST' | 'MUST_NOT'>('MUST')
+  const [tempIndustryInput, setTempIndustryInput] = useState('')
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false)
@@ -407,15 +413,29 @@ export function SearchTab({
     if (tempJobTitleInclusionInput.trim()) {
       if (isCommaSeparatedList(tempJobTitleInclusionInput)) {
         const parsedInclusions = parseCommaSeparatedList(tempJobTitleInclusionInput)
-        setSearchParams({
-          ...searchParams,
-          jobTitlesInclusions: [...searchParams.jobTitlesInclusions, ...parsedInclusions]
-        })
+        if (tempJobTitleType === 'MUST') {
+          setSearchParams({
+            ...searchParams,
+            jobTitlesInclusions: [...searchParams.jobTitlesInclusions, ...parsedInclusions]
+          })
+        } else {
+          setSearchParams({
+            ...searchParams,
+            titleExclusions: [...searchParams.titleExclusions, ...parsedInclusions]
+          })
+        }
       } else {
-        setSearchParams({
-          ...searchParams,
-          jobTitlesInclusions: [...searchParams.jobTitlesInclusions, tempJobTitleInclusionInput.trim()]
-        })
+        if (tempJobTitleType === 'MUST') {
+          setSearchParams({
+            ...searchParams,
+            jobTitlesInclusions: [...searchParams.jobTitlesInclusions, tempJobTitleInclusionInput.trim()]
+          })
+        } else {
+          setSearchParams({
+            ...searchParams,
+            titleExclusions: [...searchParams.titleExclusions, tempJobTitleInclusionInput.trim()]
+          })
+        }
       }
       setTempJobTitleInclusionInput('')
     }
@@ -430,15 +450,29 @@ export function SearchTab({
     if (tempProfileKeywordInclusionInput.trim()) {
       if (isCommaSeparatedList(tempProfileKeywordInclusionInput)) {
         const parsedKeywords = parseCommaSeparatedList(tempProfileKeywordInclusionInput)
-        setSearchParams({
-          ...searchParams,
-          profileKeywordsInclusions: [...searchParams.profileKeywordsInclusions, ...parsedKeywords]
-        })
+        if (tempProfileKeywordType === 'MUST') {
+          setSearchParams({
+            ...searchParams,
+            profileKeywordsInclusions: [...searchParams.profileKeywordsInclusions, ...parsedKeywords]
+          })
+        } else {
+          setSearchParams({
+            ...searchParams,
+            keywordExclusions: [...searchParams.keywordExclusions, ...parsedKeywords]
+          })
+        }
       } else {
-        setSearchParams({
-          ...searchParams,
-          profileKeywordsInclusions: [...searchParams.profileKeywordsInclusions, tempProfileKeywordInclusionInput.trim()]
-        })
+        if (tempProfileKeywordType === 'MUST') {
+          setSearchParams({
+            ...searchParams,
+            profileKeywordsInclusions: [...searchParams.profileKeywordsInclusions, tempProfileKeywordInclusionInput.trim()]
+          })
+        } else {
+          setSearchParams({
+            ...searchParams,
+            keywordExclusions: [...searchParams.keywordExclusions, tempProfileKeywordInclusionInput.trim()]
+          })
+        }
       }
       setTempProfileKeywordInclusionInput('')
     }
@@ -447,6 +481,23 @@ export function SearchTab({
   const removeProfileKeywordInclusion = (index: number) => {
     const newKeywords = searchParams.profileKeywordsInclusions.filter((_, i) => i !== index)
     setSearchParams({ ...searchParams, profileKeywordsInclusions: newKeywords })
+  }
+
+  const addIndustry = () => {
+    if (tempIndustryInput.trim()) {
+      if (tempIndustryType === 'MUST') {
+        setSearchParams({
+          ...searchParams,
+          industryInclusions: [...searchParams.industryInclusions, tempIndustryInput]
+        })
+      } else {
+        setSearchParams({
+          ...searchParams,
+          industryExclusions: [...searchParams.industryExclusions, tempIndustryInput]
+        })
+      }
+      setTempIndustryInput('')
+    }
   }
 
   const addSkill = () => {
@@ -1160,7 +1211,7 @@ export function SearchTab({
                       />
                     </div>
                     <div className="space-y-1 w-32">
-                      <Label className="text-xs text-gray-600">Radius (mile)</Label>
+                      <Label className="text-xs text-gray-600">Radius (miles)</Label>
                       <Input
                         type="number"
                         value={tempLocationRadius ?? ''}
@@ -1249,7 +1300,6 @@ export function SearchTab({
                   <SearchableSelect
                     placeholder="Select language..."
                     options={[
-                      { label: 'English', value: 'English' },
                       { label: 'Spanish', value: 'Spanish' },
                       { label: 'French', value: 'French' },
                       { label: 'German', value: 'German' },
@@ -1291,38 +1341,51 @@ export function SearchTab({
             
             <div className="space-y-4">
               {/* Department Selection */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Department</Label>
-                <div className="flex items-center gap-3">
-                  <Select
-                    value={searchParams.department}
-                    onValueChange={(value) => setSearchParams({ ...searchParams, department: value })}
-                  >
-                    <SelectTrigger className="w-full max-w-md">
-                      <SelectValue placeholder="Select department..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {departmentsData?.departments?.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="current-job-in-department"
-                      checked={searchParams.currentJobInDepartment ?? false}
-                      onCheckedChange={(checked) =>
-                        setSearchParams({ ...searchParams, currentJobInDepartment: checked })
-                      }
-                      disabled={searchParams.department === 'none'}
-                    />
-                    <Label htmlFor="current-job-in-department" className="text-sm whitespace-nowrap">
-                      Current job in department
-                    </Label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2 space-y-2">
+                  <Label className="text-sm font-medium">Department</Label>
+                  <div className="flex items-center gap-3">
+                    <Select
+                      value={searchParams.department}
+                      onValueChange={(value) => setSearchParams({ ...searchParams, department: value })}
+                    >
+                      <SelectTrigger className="w-full max-w-md">
+                        <SelectValue placeholder="Select department..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {departmentsData?.departments?.map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="current-job-in-department"
+                        checked={searchParams.currentJobInDepartment ?? false}
+                        onCheckedChange={(checked) =>
+                          setSearchParams({ ...searchParams, currentJobInDepartment: checked })
+                        }
+                        disabled={searchParams.department === 'none'}
+                      />
+                      <Label htmlFor="current-job-in-department" className="text-sm whitespace-nowrap">
+                        Current job in department
+                      </Label>
+                    </div>
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Minimum months of experience in Department</Label>
+                  <Input
+                    type="number"
+                    value={searchParams.deptYears ?? ''}
+                    onChange={(e) => setSearchParams({ ...searchParams, deptYears: e.target.value === '' ? undefined : parseInt(e.target.value) })}
+                    min="0"
+                    className="w-20"
+                    placeholder="24"
+                  />
                 </div>
               </div>
 
@@ -1367,7 +1430,7 @@ export function SearchTab({
               {/* Second Row of Experience Fields */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Minimum number of professional connections</Label>
+                  <Label className="text-sm font-medium">Minimum # of LinkedIn Connections</Label>
                   <Input
                     type="number"
                     value={searchParams.connections ?? ''}
@@ -1376,17 +1439,6 @@ export function SearchTab({
                     max="500"
                     className="w-20"
                     placeholder="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Minimum months of relevant experience</Label>
-                  <Input
-                    type="number"
-                    value={searchParams.deptYears ?? ''}
-                    onChange={(e) => setSearchParams({ ...searchParams, deptYears: e.target.value === '' ? undefined : parseInt(e.target.value) })}
-                    min="0"
-                    className="w-20"
-                    placeholder="24"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1408,41 +1460,44 @@ export function SearchTab({
 
           {/* Job Titles Section */}
           <div className="border-b pb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Briefcase className="h-5 w-5" />
-              <h3 className="text-lg font-semibold">Job Titles</h3>
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Briefcase className="h-5 w-5" />
+                <h3 className="text-lg font-semibold">Current Job Title Search</h3>
+              </div>
+              <p className="text-xs text-gray-500">
+                Finds candidates with <strong>any</strong> of these titles in their current position.
+              </p>
             </div>
             <div className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <div className="flex gap-2">
-                    <Input
-                      data-testid="job-title-input"
-                      placeholder="Add job title (comma-separated for multiple)..."
-                      value={tempJobTitleInput}
-                      onChange={(e) => setTempJobTitleInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          addJobTitle()
-                        }
-                      }}
+              <div className="flex gap-2">
+                <Input
+                  data-testid="job-title-input"
+                  placeholder="e.g., Software Engineer, Product Manager (comma-separated)..."
+                  value={tempJobTitleInput}
+                  onChange={(e) => setTempJobTitleInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      addJobTitle()
+                    }
+                  }}
+                />
+                <Button onClick={addJobTitle} variant="outline">
+                  Add
+                </Button>
+              </div>
+              {searchParams.jobTitles.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {searchParams.jobTitles.map((title, index) => (
+                    <RemovableBadge
+                      key={index}
+                      label={title}
+                      onRemove={() => removeJobTitle(index)}
+                      variant="secondary"
                     />
-                    <Button onClick={addJobTitle} variant="outline" className="mt-auto">
-                      Add
-                    </Button>
-                  </div>
+                  ))}
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {searchParams.jobTitles.map((title, index) => (
-                  <RemovableBadge
-                    key={index}
-                    label={title}
-                    onRemove={() => removeJobTitle(index)}
-                    variant="secondary"
-                  />
-                ))}
-              </div>
+              )}
             </div>
           </div>
 
@@ -1481,226 +1536,217 @@ export function SearchTab({
             </div>
           </div>
 
-          {/* Inclusions Section */}
+          {/* Inclusions/Exclusions Section */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Target className="h-5 w-5" />
-              <h3 className="text-lg font-semibold">Inclusions</h3>
-            </div>
-
             <div className="space-y-4">
 
-              {/* Industry Inclusions */}
+              {/* Industries */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Industry Inclusions</Label>
-                <SearchableMultiSelect
-                  placeholder="Select industries to include..."
-                  options={industriesData?.industries || []}
-                  selectedValues={searchParams.industryInclusions}
-                  onSelect={(industry) => {
-                    setSearchParams({
-                      ...searchParams,
-                      industryInclusions: [...searchParams.industryInclusions, industry]
-                    })
-                  }}
-                />
+                <Label className="text-sm font-medium">Industries</Label>
+                <div className="flex gap-2 items-start">
+                  <div className="flex-1">
+                    <SearchableMultiSelect
+                      placeholder="Select industries..."
+                      options={industriesData?.industries || []}
+                      selectedValues={[...searchParams.industryInclusions, ...searchParams.industryExclusions]}
+                      onSelect={(industry) => {
+                        if (tempIndustryType === 'MUST') {
+                          setSearchParams({
+                            ...searchParams,
+                            industryInclusions: [...searchParams.industryInclusions, industry]
+                          })
+                        } else {
+                          setSearchParams({
+                            ...searchParams,
+                            industryExclusions: [...searchParams.industryExclusions, industry]
+                          })
+                        }
+                      }}
+                    />
+                  </div>
+                  <Select
+                    value={tempIndustryType}
+                    onValueChange={(value) => setTempIndustryType(value as 'MUST' | 'MUST_NOT')}
+                  >
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MUST">MUST</SelectItem>
+                      <SelectItem value="MUST_NOT">MUST NOT</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* Display Industry MUST Inclusions */}
                 {searchParams.industryInclusions.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {searchParams.industryInclusions.map((industry, index) => (
-                      <RemovableBadge
-                        key={index}
-                        label={industry}
-                        onRemove={() => {
-                          setSearchParams({
-                            ...searchParams,
-                            industryInclusions: searchParams.industryInclusions.filter((_, i) => i !== index)
-                          })
-                        }}
-                      />
-                    ))}
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-xs text-gray-500">MUST include:</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {searchParams.industryInclusions.map((industry, index) => (
+                        <RemovableBadge
+                          key={index}
+                          label={industry}
+                          onRemove={() => {
+                            setSearchParams({
+                              ...searchParams,
+                              industryInclusions: searchParams.industryInclusions.filter((_, i) => i !== index)
+                            })
+                          }}
+                          variant="default"
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
-              </div>
-
-              {/* Title and Keyword Inclusions */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-gray-600">Job Title Inclusions</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="e.g., Engineer, Developer (comma-separated)..."
-                      value={tempJobTitleInclusionInput}
-                      onChange={(e) => setTempJobTitleInclusionInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          addJobTitleInclusion()
-                        }
-                      }}
-                    />
-                    <Button onClick={addJobTitleInclusion} variant="outline" className="mt-auto">
-                      Add
-                    </Button>
-                  </div>
-                      {/* Display Title Inclusions */}
-                      {searchParams.jobTitlesInclusions.length > 0 && (
-                        <div className="space-y-2 pt-2">
-                          <div className="flex flex-wrap gap-2">
-                            {searchParams.jobTitlesInclusions.map((inclusion, index) => (
-                              <RemovableBadge
-                                key={index}
-                                label={inclusion}
-                                onRemove={() => removeJobTitleInclusion(index)}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-gray-600">Profile Keyword Inclusions</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="e.g., AWS, Python (comma-separated)..."
-                      value={tempProfileKeywordInclusionInput}
-                      onChange={(e) => setTempProfileKeywordInclusionInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          addProfileKeywordInclusion()
-                        }
-                      }}
-                    />
-                    <Button onClick={addProfileKeywordInclusion} variant="outline" className="mt-auto">
-                      Add
-                    </Button>
-                  </div>
-                      {/* Display Keyword Inclusions */}
-                      {searchParams.profileKeywordsInclusions.length > 0 && (
-                        <div className="space-y-2 pt-2">
-                          <div className="flex flex-wrap gap-2">
-                            {searchParams.profileKeywordsInclusions.map((keyword, index) => (
-                              <RemovableBadge
-                                key={index}
-                                label={keyword}
-                                onRemove={() => removeProfileKeywordInclusion(index)}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                </div>
-
-              </div>
-            </div>
-          </div>
-
-          {/* Refinements Section - New Fields from Step3 */}
-          <div className="border-b pb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <X className="h-5 w-5" />
-              <h3 className="text-lg font-semibold">Exclusions</h3>
-            </div>
-            
-            <div className="space-y-4">
-
-              {/* Industry Exclusions */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Industry Exclusions</Label>
-                <SearchableMultiSelect
-                  placeholder="Select industry to exclude..."
-                  options={industriesData?.industries || []}
-                  selectedValues={searchParams.industryExclusions}
-                  onSelect={(industry) => {
-                    setSearchParams({ 
-                      ...searchParams, 
-                      industryExclusions: [...searchParams.industryExclusions, industry] 
-                    })
-                  }}
-                />
+                {/* Display Industry MUST NOT Exclusions */}
                 {searchParams.industryExclusions.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {searchParams.industryExclusions.map((industry, index) => (
-                      <RemovableBadge
-                        key={index}
-                        label={industry}
-                        onRemove={() => {
-                          setSearchParams({
-                            ...searchParams,
-                            industryExclusions: searchParams.industryExclusions.filter((_, i) => i !== index)
-                          })
-                        }}
-                      />
-                    ))}
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-xs text-gray-500">MUST NOT include:</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {searchParams.industryExclusions.map((industry, index) => (
+                        <RemovableBadge
+                          key={index}
+                          label={industry}
+                          onRemove={() => {
+                            setSearchParams({
+                              ...searchParams,
+                              industryExclusions: searchParams.industryExclusions.filter((_, i) => i !== index)
+                            })
+                          }}
+                          variant="secondary"
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Title and Keyword Exclusions */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-gray-600">Job Title Exclusions</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="e.g., CEO, CFO, Manager (comma-separated)..."
-                      value={tempTitleExclusionInput}
-                      onChange={(e) => setTempTitleExclusionInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          addTitleExclusion()
-                        }
-                      }}
-                    />
-                    <Button onClick={addTitleExclusion} variant="outline" className="mt-auto">
-                      Add
-                    </Button>
-                  </div>
-                      {/* Display Title Exclusions */}
-                      {searchParams.titleExclusions.length > 0 && (
-                        <div className="space-y-2 pt-2">
-                          <div className="flex flex-wrap gap-2">
-                            {searchParams.titleExclusions.map((exclusion, index) => (
-                              <RemovableBadge
-                                key={index}
-                                label={exclusion}
-                                onRemove={() => removeTitleExclusion(index)}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
+              {/* Job Titles */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Job Titles</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g., Engineer, Developer (comma-separated)..."
+                    value={tempJobTitleInclusionInput}
+                    onChange={(e) => setTempJobTitleInclusionInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        addJobTitleInclusion()
+                      }
+                    }}
+                  />
+                  <Select
+                    value={tempJobTitleType}
+                    onValueChange={(value) => setTempJobTitleType(value as 'MUST' | 'MUST_NOT')}
+                  >
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MUST">MUST</SelectItem>
+                      <SelectItem value="MUST_NOT">MUST NOT</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={addJobTitleInclusion} variant="outline">
+                    Add
+                  </Button>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-gray-600">Profile Keyword Exclusions</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="e.g., healthcare, medical (comma-separated)..."
-                      value={tempKeywordExclusionInput}
-                      onChange={(e) => setTempKeywordExclusionInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          addKeywordExclusion()
-                        }
-                      }}
-                    />
-                    <Button onClick={addKeywordExclusion} variant="outline" className="mt-auto">
-                      Add
-                    </Button>
+                {/* Display Title MUST Inclusions */}
+                {searchParams.jobTitlesInclusions.length > 0 && (
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-xs text-gray-500">MUST include:</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {searchParams.jobTitlesInclusions.map((inclusion, index) => (
+                        <RemovableBadge
+                          key={index}
+                          label={inclusion}
+                          onRemove={() => removeJobTitleInclusion(index)}
+                          variant="default"
+                        />
+                      ))}
+                    </div>
                   </div>
-                      {/* Display Keyword Exclusions */}
-                      {searchParams.keywordExclusions.length > 0 && (
-                        <div className="space-y-2 pt-2">
-                          <div className="flex flex-wrap gap-2">
-                            {searchParams.keywordExclusions.map((exclusion, index) => (
-                              <RemovableBadge
-                                key={index}
-                                label={exclusion}
-                                onRemove={() => removeKeywordExclusion(index)}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                </div>
+                )}
+                {/* Display Title MUST NOT Exclusions */}
+                {searchParams.titleExclusions.length > 0 && (
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-xs text-gray-500">MUST NOT include:</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {searchParams.titleExclusions.map((exclusion, index) => (
+                        <RemovableBadge
+                          key={index}
+                          label={exclusion}
+                          onRemove={() => removeTitleExclusion(index)}
+                          variant="secondary"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
 
+              {/* Profile Keywords */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Profile Keywords</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g., AWS, Python (comma-separated)..."
+                    value={tempProfileKeywordInclusionInput}
+                    onChange={(e) => setTempProfileKeywordInclusionInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        addProfileKeywordInclusion()
+                      }
+                    }}
+                  />
+                  <Select
+                    value={tempProfileKeywordType}
+                    onValueChange={(value) => setTempProfileKeywordType(value as 'MUST' | 'MUST_NOT')}
+                  >
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MUST">MUST</SelectItem>
+                      <SelectItem value="MUST_NOT">MUST NOT</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={addProfileKeywordInclusion} variant="outline">
+                    Add
+                  </Button>
+                </div>
+                {/* Display Keyword MUST Inclusions */}
+                {searchParams.profileKeywordsInclusions.length > 0 && (
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-xs text-gray-500">MUST include:</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {searchParams.profileKeywordsInclusions.map((keyword, index) => (
+                        <RemovableBadge
+                          key={index}
+                          label={keyword}
+                          onRemove={() => removeProfileKeywordInclusion(index)}
+                          variant="default"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Display Keyword MUST NOT Exclusions */}
+                {searchParams.keywordExclusions.length > 0 && (
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-xs text-gray-500">MUST NOT include:</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {searchParams.keywordExclusions.map((exclusion, index) => (
+                        <RemovableBadge
+                          key={index}
+                          label={exclusion}
+                          onRemove={() => removeKeywordExclusion(index)}
+                          variant="secondary"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
