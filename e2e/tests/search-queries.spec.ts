@@ -19,7 +19,7 @@ test.describe('Search Query Management', () => {
     await selectJobPosting(page);
 
     // Step 2: Add a job title
-    const jobTitleInput = page.locator('input[placeholder="Add job title (comma-separated for multiple)..."]');
+    const jobTitleInput = page.locator('input[data-testid="job-title-input"]');
     await jobTitleInput.fill('Software Engineer');
     await jobTitleInput.locator('..').locator('button:has-text("Add")').click();
 
@@ -53,7 +53,7 @@ test.describe('Search Query Management', () => {
     await selectJobPosting(page);
 
     // Step 2: Fill in search parameters
-    const jobTitleInput = page.locator('input[placeholder="Add job title (comma-separated for multiple)..."]');
+    const jobTitleInput = page.locator('input[data-testid="job-title-input"]');
     await jobTitleInput.fill('Product Manager');
     // Use a more specific selector - find the Add button that's a sibling of the job title input
     await jobTitleInput.locator('..').locator('button:has-text("Add")').click();
@@ -102,7 +102,7 @@ test.describe('Search Query Management', () => {
     await selectJobPosting(page);
 
     // Step 2: Create initial search
-    const jobTitleInput = page.locator('input[placeholder="Add job title (comma-separated for multiple)..."]');
+    const jobTitleInput = page.locator('input[data-testid="job-title-input"]');
     await jobTitleInput.fill('Data Scientist');
     // Use a more specific selector - find the Add button that's a sibling of the job title input
     await jobTitleInput.locator('..').locator('button:has-text("Add")').click();
@@ -124,7 +124,7 @@ test.describe('Search Query Management', () => {
 
     // Step 2: Modify search parameters
     // Add another job title to modify the search
-    const jobTitleInput2 = page.locator('input[placeholder="Add job title (comma-separated for multiple)..."]');
+    const jobTitleInput2 = page.locator('input[data-testid="job-title-input"]');
     await jobTitleInput2.fill('Machine Learning Engineer');
     await jobTitleInput2.locator('..').locator('button:has-text("Add")').click();
 
@@ -148,7 +148,7 @@ test.describe('Search Query Management', () => {
     // This test verifies that the app shows a modal when no job posting is selected
 
     // Fill in search parameters
-    const jobTitleInput = page.locator('input[placeholder="Add job title (comma-separated for multiple)..."]');
+    const jobTitleInput = page.locator('input[data-testid="job-title-input"]');
     await jobTitleInput.fill('Frontend Developer');
     await jobTitleInput.locator('..').locator('button:has-text("Add")').click();
 
@@ -166,7 +166,7 @@ test.describe('Search Query Management', () => {
     await selectJobPosting(page);
 
     // Step 2: Add a job title
-    const jobTitleInput = page.locator('input[placeholder="Add job title (comma-separated for multiple)..."]');
+    const jobTitleInput = page.locator('input[data-testid="job-title-input"]');
     await jobTitleInput.fill('Backend Engineer');
     await jobTitleInput.locator('..').locator('button:has-text("Add")').click();
 
@@ -212,7 +212,7 @@ test.describe('Search Parameter Validation', () => {
 
   test('should add and remove job titles', async ({ page }) => {
     // Add a job title
-    const jobTitleInput = page.locator('input[placeholder="Add job title (comma-separated for multiple)..."]');
+    const jobTitleInput = page.locator('input[data-testid="job-title-input"]');
     await jobTitleInput.fill('DevOps Engineer');
     await page.keyboard.press('Enter');
 
