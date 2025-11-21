@@ -20,7 +20,7 @@ test.describe('Location Search Functionality', () => {
     await selectJobPosting(page);
 
     // Step 2: Add job title
-    const jobTitleInput = page.locator('input[placeholder="Add job title (comma-separated for multiple)..."]');
+    const jobTitleInput = page.locator('input[data-testid="job-title-input"]');
     await jobTitleInput.fill('Software Engineer');
     await jobTitleInput.locator('..').locator('button:has-text("Add")').click();
 
