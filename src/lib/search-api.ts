@@ -536,6 +536,13 @@ export async function pauseCampaign(campaignId: number): Promise<CampaignRespons
   })
 }
 
+export async function resumeCampaign(campaignId: number): Promise<CampaignResponse> {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+  return fetchJson<CampaignResponse>(`${API_BASE_URL}/campaigns/${campaignId}/resume`, {
+    method: 'PATCH'
+  })
+}
+
 export interface CampaignWithDetails extends CampaignResponse {
   campaign_sending_windows: Array<{
     window_start_time: string
