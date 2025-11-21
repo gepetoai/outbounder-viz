@@ -44,6 +44,21 @@ export async function fetchWithAuth(
 }
 
 /**
+ * Custom error class that includes API error details
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public statusText: string,
+    public detail?: string
+  ) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
+/**
  * Fetch with auth and automatic JSON parsing
  */
 export async function fetchJson<T>(
@@ -53,7 +68,23 @@ export async function fetchJson<T>(
   const response = await fetchWithAuth(url, options)
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.status} ${response.statusText}`)
+    // Try to parse error response body for detailed error messages
+    let errorDetail: string | undefined
+    try {
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        const errorBody = await response.json()
+        errorDetail = errorBody.detail || errorBody.message || errorBody.error
+      }
+    } catch {
+      // If parsing fails, ignore and use default error message
+    }
+
+    const errorMessage = errorDetail 
+      ? `API Error: ${response.status} ${response.statusText} - ${errorDetail}`
+      : `API Error: ${response.status} ${response.statusText}`
+    
+    throw new ApiError(errorMessage, response.status, response.statusText, errorDetail)
   }
 
   // Handle 204 No Content responses (e.g., successful DELETE)
