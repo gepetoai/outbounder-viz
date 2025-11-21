@@ -24,32 +24,7 @@ import { MessageSquare, Table as TableIcon } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 
-const MOCK_ALL_MESSAGES: ChatMessageProps[] = [
-  { message: "viewed profile", type: 'system' },
-  { message: "liked post", type: 'system' },
-  {
-    message: `You + SpotOn = Impact your community
 
-Hi! I'm reaching out because I'm very impressed with your overall experience!
-I'm a Talent Acquisition Specialist for our Sales division at SpotOn and would love a chance to connect with you about our Territory of Sales Representative position within the Chicago area.
-
-SpotOn is committed to supporting businesses at the heart of our communities. We have been rated the top POS system based on real customer reviews. Our investors helped launch Facebook, Uber, Instacart, and Airbnb.
-
-We offer base salary, uncapped commissions, Restricted Stock Unites, full benefits, Awards for Best Places to Work, and PTO. I understand you probably receive several messages on a daily basis, but I wanted to reach out to see if you were interested in speaking sometime this week or next.
-
-Check out the job posting: https://www.linkedin.com/jobs/view/4315734459/
-
-More information about the role and SpotOn here:
-https://drive.google.com/file/d/1m34TyPzz4WAgUTXgDwjib8a_0X9OjhaG/view?usp=drive_link
-https://drive.google.com/file/d/1pS9em57PibTRTDB86tPq_BSgxvRvhlGC/view?usp=drive_link`,
-    type: 'assistant'
-  },
-  { message: "sent connection request", type: 'system' },
-  {
-    message: "Nice, thanks for connecting! Let me know if the job above makes sense for you and we can schedule a call to talk more about it!",
-    type: 'assistant'
-  }
-]
 
 // Helper function to map campaign candidate data to Candidate type
 const mapCampaignCandidateToCandidate = (
@@ -77,8 +52,8 @@ const mapCampaignCandidateToCandidate = (
 }
 
 export function SandBoxTab() {
-  const [currentMessageIndex, setCurrentMessageIndex] = useState(3) // Show first 3 messages initially
-  const [messages, setMessages] = useState<ChatMessageProps[]>(MOCK_ALL_MESSAGES.slice(0, 3))
+  const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
+  const [messages, setMessages] = useState<ChatMessageProps[]>([])
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>('')
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [selectedFeedbackId, setSelectedFeedbackId] = useState<string | null>(null)
@@ -232,9 +207,9 @@ export function SandBoxTab() {
       const candidateData = candidatesWithMessages.find(cc => cc.id.toString() === candidate.id)
       setCurrentMessageId(candidateData?.custom_message_id || null)
     } else {
-      // Reset to initial mock messages if no real messages
-      setMessages(MOCK_ALL_MESSAGES.slice(0, 3))
-      setCurrentMessageIndex(3)
+      // Reset to empty if no real messages
+      setMessages([])
+      setCurrentMessageIndex(0)
       setActiveFeedbackMessageIndex(0)
       setCurrentMessageId(null)
     }
@@ -249,9 +224,9 @@ export function SandBoxTab() {
     setSelectedCampaignId(campaignId)
     // Reset selected candidate when campaign changes
     setSelectedCandidate(null)
-    // Reset chat to initial mock messages
-    setMessages(MOCK_ALL_MESSAGES.slice(0, 3))
-    setCurrentMessageIndex(3)
+    // Reset chat to empty
+    setMessages([])
+    setCurrentMessageIndex(0)
     // Reset feedback items
     setFeedbackItems([])
     setCurrentMessageId(null)
@@ -267,16 +242,6 @@ export function SandBoxTab() {
           type: 'assistant' as const
         }))
         setMessages(realMessages)
-        setCurrentMessageIndex(currentMessageIndex + 1)
-        // When showing more than one message, default to responder feedback
-        if (currentMessageIndex + 1 > 1) {
-          setActiveFeedbackMessageIndex(currentMessageIndex)
-        }
-      }
-    } else {
-      // Showing mock messages
-      if (currentMessageIndex < MOCK_ALL_MESSAGES.length) {
-        setMessages(MOCK_ALL_MESSAGES.slice(0, currentMessageIndex + 1))
         setCurrentMessageIndex(currentMessageIndex + 1)
         // When showing more than one message, default to responder feedback
         if (currentMessageIndex + 1 > 1) {
@@ -429,7 +394,7 @@ export function SandBoxTab() {
   // Otherwise, use the mock messages count
   const totalAvailableMessages = selectedCandidate && candidateMessages[selectedCandidate.id]?.length > 0
     ? candidateMessages[selectedCandidate.id].length
-    : MOCK_ALL_MESSAGES.length
+    : 0
 
   const hasMoreMessages = currentMessageIndex < totalAvailableMessages
 
@@ -484,15 +449,21 @@ export function SandBoxTab() {
         <div className="grid grid-cols-3 gap-6 flex-1 min-h-0">
         {/* Left side - Chat Interface (2/3 width) */}
         <div className="col-span-2 h-full min-h-0">
-          <ChatInterface
-            messages={messages}
-            onSendMessage={handleSendMessage}
-            placeholder="Type your message..."
-            onNext={handleNext}
-            hasMoreMessages={hasMoreMessages}
-            activeFeedbackMessageIndex={activeFeedbackMessageIndex}
-            onFeedbackTargetSelect={handleFeedbackTargetSelect}
-          />
+          {!selectedCampaignId ? (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              Please select a Job Posting from the drop-down
+            </div>
+          ) : (
+            <ChatInterface
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              placeholder="Type your message..."
+              onNext={handleNext}
+              hasMoreMessages={hasMoreMessages}
+              activeFeedbackMessageIndex={activeFeedbackMessageIndex}
+              onFeedbackTargetSelect={handleFeedbackTargetSelect}
+            />
+          )}
         </div>
 
         {/* Right side - Selection Panel + Feedback Section (1/3 width) */}
