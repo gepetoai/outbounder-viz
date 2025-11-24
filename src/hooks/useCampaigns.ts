@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { startCampaign, pauseCampaign, resumeCampaign, createCampaign, updateCampaign, CampaignResponse, CampaignWithDetails, CampaignPayload } from '@/lib/search-api'
+import { startCampaign, pauseCampaign, resumeCampaign, createCampaign, updateCampaign, deleteCampaign, CampaignResponse, CampaignWithDetails, CampaignPayload } from '@/lib/search-api'
 import { ApiError, fetchJson } from '@/lib/api-client'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
@@ -120,6 +120,17 @@ export function useUpdateCampaign() {
 
   return useMutation<CampaignWithDetails, ApiError, { campaignId: number; data: CampaignPayload }>({
     mutationFn: ({ campaignId, data }) => updateCampaign(campaignId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobPostings'] })
+    },
+  })
+}
+
+export function useDeleteCampaign() {
+  const queryClient = useQueryClient()
+
+  return useMutation<void, ApiError, number>({
+    mutationFn: deleteCampaign,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobPostings'] })
     },
