@@ -2740,24 +2740,31 @@ Example response: Based on your instructions, the responder will handle incoming
               >
                 Clear Sequence
               </Button>
-              <Button
-                onClick={handleSaveCampaign}
-                disabled={isSavingCampaign || (currentCampaignId !== null && campaignStatus !== 'draft')}
-                variant="outline"
-                className="bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSavingCampaign ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {currentCampaignId && campaignStatus === 'draft' ? 'Updating...' : 'Saving...'}
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    {currentCampaignId && campaignStatus === 'draft' ? 'Update' : 'Save'}
-                  </>
-                )}
-              </Button>
+              {(() => {
+                const canUpdate = currentCampaignId !== null && campaignStatus === 'draft'
+                const isDisabled = isSavingCampaign || (currentCampaignId !== null && campaignStatus !== 'draft')
+                
+                return (
+                  <Button
+                    onClick={handleSaveCampaign}
+                    disabled={isDisabled}
+                    variant="outline"
+                    className="bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSavingCampaign ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {canUpdate ? 'Updating...' : 'Saving...'}
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        {canUpdate ? 'Update' : 'Save'}
+                      </>
+                    )}
+                  </Button>
+                )
+              })()}
               <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-300">
                 <span className="text-sm font-semibold text-gray-900">
                   {campaignStatus === 'running' ? 'Running' : campaignStatus === 'paused' ? 'Paused' : campaignStatus === 'draft' ? 'Draft' : 'Draft'}
