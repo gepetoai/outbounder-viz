@@ -57,6 +57,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/components/ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { getTimeZones } from '@vvo/tzdb'
+import { useToast } from '@/components/ui/toast'
 
 interface SequencerTabProps {
   jobDescriptionId?: number | null
@@ -531,6 +532,7 @@ const nodeTypes = {
 function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox }: SequencerTabProps) {
   const reactFlowInstance = useReactFlow()
   const queryClient = useQueryClient()
+  const { showToast } = useToast()
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId || null)
   const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
   const { data: linkedInAccounts } = useLinkedInAccounts()
@@ -1140,6 +1142,11 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
       } else {
         console.warn(`Invalid timezone from campaign: ${campaign.timezone}, keeping current timezone`)
         // Keep the current timezone - don't change it if invalid
+        showToast(
+          `Campaign has an invalid timezone (${campaign.timezone}). Using current timezone setting.`,
+          'warning',
+          6000
+        )
       }
     }
 
@@ -1154,7 +1161,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     setTimeout(() => {
       reactFlowInstance.fitView({ padding: 0.2, duration: 300 })
     }, 50)
-  }, [createBeginSequenceNode, markNodesWithChildren, reactFlowInstance, setNodes, setEdges, setDailyVolume, setCandidateGapMin, setSendingWindows, setSelectedLinkedInAccountId])
+  }, [createBeginSequenceNode, markNodesWithChildren, reactFlowInstance, setNodes, setEdges, setDailyVolume, setCandidateGapMin, setSendingWindows, setSelectedLinkedInAccountId, showToast])
 
   // Load campaign when job description changes
   useEffect(() => {
@@ -2697,6 +2704,11 @@ Example response: Based on your instructions, the responder will handle incoming
     // Build action definitions
     const actionDefinitions = buildActionDefinitions()
 
+    // Validate timezone before sending
+    const validatedTimezone = (TIMEZONE_OPTIONS.length === 0 || isValidTimezone(timezone)) 
+      ? timezone 
+      : 'Etc/UTC' // fallback
+
     // Prepare campaign payload
     const campaignPayload = {
       name: campaignName,
@@ -2706,7 +2718,7 @@ Example response: Based on your instructions, the responder will handle incoming
       daily_volume: dailyVolume,
       min_gap_between_scheduling: gapMinutes,
       max_gap_between_scheduling: gapMinutes,
-      timezone: timezone,
+      timezone: validatedTimezone,
       campaign_sending_windows: sendingWindowsPayload,
       action_definitions: actionDefinitions
     }
