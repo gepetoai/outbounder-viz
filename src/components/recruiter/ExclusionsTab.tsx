@@ -159,7 +159,7 @@ export function ExclusionsTab() {
       </Card>
 
       {/* Pagination */}
-      {totalCount > 0 && (
+      {totalCount > 0 && exclusions.length > 0 && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
             Showing {startIndex + 1} to {endIndex} of {totalCount} exclusion(s)
