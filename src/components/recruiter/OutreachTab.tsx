@@ -3073,6 +3073,7 @@ Example response: Based on your instructions, the responder will handle incoming
                     disabled={isCampaignLoading}
                     variant="outline"
                     size="sm"
+                    aria-label="Delete campaign"
                     className="ml-2 bg-white hover:bg-red-50 hover:border-red-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Trash2 className="h-4 w-4" />
