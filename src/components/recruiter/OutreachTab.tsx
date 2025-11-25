@@ -53,6 +53,7 @@ import { useLinkedInAccounts } from '@/hooks/useLinkedInAccounts'
 import { useGenerateSampleMessages } from '@/hooks/useCustomMessages'
 import { createCampaign, getCampaignByJobDescription, startCampaign, pauseCampaign, resumeCampaign, CampaignWithDetails } from '@/lib/search-api'
 import { Checkbox } from '@/components/ui/checkbox'
+import { useToast } from '@/components/ui/toast'
 
 interface SequencerTabProps {
   jobDescriptionId?: number | null
@@ -493,6 +494,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
   const { data: linkedInAccounts } = useLinkedInAccounts()
   const { mutate: generateSampleMessages, isPending: isGenerating, error: generateError } = useGenerateSampleMessages()
+  const { showToast } = useToast()
 
   // Get approved candidates from API using the selected job ID (shortlisted = approved)
   const { 
@@ -1961,6 +1963,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     const linkedInAccountId = selectedLinkedInAccountId || (linkedInAccounts?.[0]?.id ?? null)
     if (!linkedInAccountId) {
       console.error('No LinkedIn account available')
+      showToast('Select a LinkedIn account before generating a message.', 'error')
       return
     }
 
@@ -2021,7 +2024,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
         },
       }
     )
-  }, [messageInstructions, selectedVariables, selectedJobId, selectedLinkedInAccountId, linkedInAccounts, configureNodeId, nodes, handleMessageTextUpdate, handleSubjectTextUpdate, generateSampleMessages, setNodes])
+  }, [messageInstructions, selectedVariables, selectedJobId, selectedLinkedInAccountId, linkedInAccounts, configureNodeId, nodes, handleMessageTextUpdate, handleSubjectTextUpdate, generateSampleMessages, setNodes, showToast])
 
   const handleGenerateResponderExample = useCallback(() => {
     if (!responderInstructions.trim()) {
