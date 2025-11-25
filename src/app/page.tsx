@@ -19,7 +19,8 @@ import {
   ChevronDown,
   Briefcase,
   Plus,
-  Linkedin
+  Linkedin,
+  Ban
 } from 'lucide-react'
 
 // Import our refactored components
@@ -31,6 +32,7 @@ import { SettingsTab } from '@/components/recruiter/SettingsTab'
 import { JobPostingRequiredModal } from '@/components/recruiter/JobPostingRequiredModal'
 import { LinkedInAccountsTab } from '@/components/recruiter/LinkedInAccountsTab'
 import { SandBoxTab } from '@/components/recruiter/sandbox/SandBoxTab'
+import { ExclusionsTab } from '@/components/recruiter/ExclusionsTab'
 import { AuthWrapper } from '@/components/auth/auth-wrapper';
 import { UserButton } from '@clerk/nextjs';
 import { useJobPostings } from '@/hooks/useJobPostings'
@@ -277,6 +279,7 @@ export default function HomePage() {
     },
     { id: 'sandbox', label: 'SandBox', icon: Zap, subItems: [] },
     { id: 'linkedin_accounts', label: 'Accounts', icon: Linkedin, subItems: [] },
+    { id: 'exclusions', label: 'Exclusions', icon: Ban, subItems: [] },
     { id: 'settings', label: 'Settings', icon: Settings, subItems: [] }
   ]
 
@@ -403,6 +406,8 @@ export default function HomePage() {
         return <SandBoxTab />
       case 'linkedin_accounts':
         return <LinkedInAccountsTab />
+      case 'exclusions':
+        return <ExclusionsTab />
       case 'settings':
         return <SettingsTab />
       default:
