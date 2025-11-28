@@ -50,7 +50,7 @@ async function uploadExclusionsCSV(file: File): Promise<ExclusionCandidatesRespo
     reader.readAsArrayBuffer(file)
   })
 
-  return fetchJson<ExclusionCandidatesResponse>(`${API_BASE_URL}/exclusion-list`, {
+  return fetchJson<ExclusionCandidatesResponse>(`${API_BASE_URL}/exclusion-list/`, {
     method: 'POST',
     body: JSON.stringify({
       field_titles: 'first_name, last_name',
