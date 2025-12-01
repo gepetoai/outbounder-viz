@@ -1231,6 +1231,7 @@ export function SearchTab({
                             variant="ghost"
                             size="sm"
                             onClick={() => removeLocation(index)}
+                            aria-label="Remove location"
                           >
                             <X className="h-4 w-4" />
                           </Button>
@@ -1416,6 +1417,7 @@ export function SearchTab({
                 <div className="space-y-1">
                   <div className="flex gap-2">
                     <Input
+                      data-testid="job-title-input"
                       placeholder="Add job title (comma-separated for multiple)..."
                       value={tempJobTitleInput}
                       onChange={(e) => setTempJobTitleInput(e.target.value)}
@@ -1719,6 +1721,7 @@ export function SearchTab({
                 <div className="flex items-center gap-3">
                   <div className="flex items-center space-x-2">
                     <Switch
+                      data-testid="tam-only-switch"
                       checked={tamOnly}
                       onCheckedChange={setTamOnly}
                     />
@@ -1809,6 +1812,7 @@ export function SearchTab({
                   </Popover>
                   <div className="flex items-center space-x-2">
                     <Switch
+                      data-testid="tam-only-switch"
                       checked={tamOnly}
                       onCheckedChange={setTamOnly}
                     />
