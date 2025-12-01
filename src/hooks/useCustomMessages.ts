@@ -93,6 +93,20 @@ export interface CustomMessageUpdate {
   generated_message: string
 }
 
+export interface GenerateSampleMessagesRequest {
+  job_description_id: number
+  linkedin_account_id: number
+  action_type: string
+  user_instructions: string
+  context_variables: Record<string, boolean>
+}
+
+export interface GenerateSampleMessagesResponse {
+  custom_message: string
+  custom_subject?: string
+  action_type?: string
+}
+
 // API functions
 async function generateCustomMessage(
   data: CustomMessagesGenerationCreate
@@ -147,6 +161,18 @@ async function updateCustomMessage(
   )
 }
 
+async function generateSampleMessages(
+  data: GenerateSampleMessagesRequest
+): Promise<GenerateSampleMessagesResponse> {
+  return fetchJson<GenerateSampleMessagesResponse>(
+    `${API_BASE_URL}/custom-messages-generation/generate-sample-messages`,
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }
+  )
+}
+
 // React Query hooks
 export function useGenerateCustomMessage() {
   return useMutation({
@@ -190,6 +216,15 @@ export function useUpdateCustomMessage() {
       updateCustomMessage(customMessageId, data),
     onError: (error) => {
       console.error('Failed to update custom message:', error)
+    },
+  })
+}
+
+export function useGenerateSampleMessages() {
+  return useMutation({
+    mutationFn: generateSampleMessages,
+    onError: (error) => {
+      console.error('Failed to generate sample messages:', error)
     },
   })
 }
