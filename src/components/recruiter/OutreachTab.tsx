@@ -345,18 +345,27 @@ BeginSequenceNode.displayName = 'BeginSequenceNode'
 const WaitNode = memo(({ data }: NodeProps) => {
   const waitValue = data.waitValue || 2
   const waitUnit = data.waitUnit || 'days'
+  const [inputValue, setInputValue] = useState<string>(String(waitValue))
   
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value
-    // Allow empty input for user to type
-    if (inputValue === '') return
+    const newValue = e.target.value
+    setInputValue(newValue)
     
-    // Parse and validate
-    const value = parseInt(inputValue)
+    if (newValue === '') return
+    
+    const value = parseInt(newValue)
     if (isNaN(value)) return
     
     const clampedValue = Math.min(Math.max(value, 1), 60)
     nodeHandlers.onWaitChange?.(data.nodeId, clampedValue, waitUnit)
+  }
+  
+  const handleBlur = () => {
+    const value = parseInt(inputValue)
+    if (isNaN(value) || value < 1) {
+      setInputValue('1')
+      nodeHandlers.onWaitChange?.(data.nodeId, 1, waitUnit)
+    }
   }
   
   const handleUnitChange = (unit: string) => {
@@ -377,8 +386,9 @@ const WaitNode = memo(({ data }: NodeProps) => {
           type="text"
           inputMode="numeric"
           pattern="[0-9]*"
-          value={waitValue}
+          value={inputValue}
           onChange={handleValueChange}
+          onBlur={handleBlur}
           className="h-7 w-16 px-3 py-0 text-xs leading-7 text-center border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-gray-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
         <Select
@@ -803,7 +813,8 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
       let lastNodeId = sourceNodeId
 
       // Create wait node if delay > 0 (delay is BEFORE the action)
-      if (def.delay_value > 0) {
+      // Skip wait node if source is begin-sequence
+      if (def.delay_value > 0 && sourceNodeId !== 'begin-sequence') {
         const waitNodeId = `wait-${waitCounter++}`
         const waitNode: Node = {
           id: waitNodeId,
@@ -858,7 +869,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
           edge.target = actionNode.id
           edge.id = `edge-${sourceNodeId}-${actionNode.id}`
         }
-      } else if (def.delay_value > 0) {
+      } else if (def.delay_value > 0 && sourceNodeId !== 'begin-sequence') {
         // Create edge from wait node to action node
         newEdges.push({
           id: `edge-${lastNodeId}-${actionNode.id}`,
@@ -868,7 +879,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
           style: { stroke: '#000', strokeWidth: 2 }
         })
       } else if (sourceNodeId === 'begin-sequence') {
-        // Edge from begin sequence to first action
+        // Edge from begin sequence to first action (no wait node)
         newEdges.push({
           id: `edge-begin-${actionNode.id}`,
           source: 'begin-sequence',
@@ -1771,70 +1782,110 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     }
     
     const parentNodeId = parentNode.id
+    const isBeginSequence = parentNodeId === 'begin-sequence'
 
     const newActionId = `action-${actionCount}`
-    const waitNodeId = `wait-${actionCount}`
     
     // Maintain the parent's X position (stay in same column)
     const parentX = parentNode.position.x
     
     // Calculate dynamic positions based on actual node heights
     const parentHeight = getNodeHeight(parentNode)
-    const waitNodeHeight = NODE_HEIGHTS.wait
     
-    // Calculate positions to ensure equal gaps
-    // Parent bottom is at: parentNode.position.y + parentHeight
-    // Wait node should start at: parent bottom + DESIRED_GAP
-    const waitY = parentNode.position.y + parentHeight + DESIRED_GAP
-    const [waitX, snappedWaitY] = snapToGrid(parentX, waitY)
+    let newActionNode: Node
+    let newEdges: Edge[]
+    let newNodes: Node[]
+    
+    if (isBeginSequence) {
+      // Skip wait node for begin-sequence - connect directly to action
+      const actionY = parentNode.position.y + parentHeight + DESIRED_GAP
+      const [actionX, snappedActionY] = snapToGrid(parentX, actionY)
 
-    // Position action node: wait node bottom + DESIRED_GAP
-    const actionY = waitY + waitNodeHeight + DESIRED_GAP
-    const [actionX, snappedActionY] = snapToGrid(parentX, actionY)
+      newActionNode = {
+        id: newActionId,
+        type: nodeType,
+        position: { x: actionX, y: snappedActionY },
+        data: {
+          nodeId: newActionId,
+          label: actionType.label,
+          actionType: actionType.id
+        },
+        draggable: false
+      }
 
-    const waitNode: Node = {
-      id: waitNodeId,
-      type: 'waitNode',
-      position: { x: waitX, y: snappedWaitY },
-      data: {
-        nodeId: waitNodeId,
-        waitValue: 2,
-        waitUnit: 'days'
-      },
-      draggable: false
-    }
+      const edgeToAction: Edge = {
+        id: `${parentNodeId}-${newActionId}`,
+        source: parentNodeId,
+        target: newActionId,
+        type: 'smoothstep',
+        animated: false,
+        style: { stroke: '#000', strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }
+      }
 
-    const newActionNode: Node = {
-      id: newActionId,
-      type: nodeType,
-      position: { x: actionX, y: snappedActionY },
-      data: {
-        nodeId: newActionId,
-        label: actionType.label,
-        actionType: actionType.id
-      },
-      draggable: false
-    }
+      newEdges = [edgeToAction]
+      newNodes = [newActionNode]
+    } else {
+      // Create wait node for other parents
+      const waitNodeId = `wait-${actionCount}`
+      const waitNodeHeight = NODE_HEIGHTS.wait
+      
+      // Calculate positions to ensure equal gaps
+      // Parent bottom is at: parentNode.position.y + parentHeight
+      // Wait node should start at: parent bottom + DESIRED_GAP
+      const waitY = parentNode.position.y + parentHeight + DESIRED_GAP
+      const [waitX, snappedWaitY] = snapToGrid(parentX, waitY)
 
-    // Create edges
-    const edgeToWait: Edge = {
-      id: `${parentNodeId}-${waitNodeId}`,
-      source: parentNodeId,
-      target: waitNodeId,
-      type: 'smoothstep',
-      animated: false,
-      style: { stroke: '#000', strokeWidth: 2 },
-      markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }
-    }
+      // Position action node: wait node bottom + DESIRED_GAP
+      const actionY = waitY + waitNodeHeight + DESIRED_GAP
+      const [actionX, snappedActionY] = snapToGrid(parentX, actionY)
 
-    const edgeToAction: Edge = {
-      id: `${waitNodeId}-${newActionId}`,
-      source: waitNodeId,
-      target: newActionId,
-      type: 'smoothstep',
-      animated: false,
-      style: { stroke: '#000', strokeWidth: 2 },
-      markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }
+      const waitNode: Node = {
+        id: waitNodeId,
+        type: 'waitNode',
+        position: { x: waitX, y: snappedWaitY },
+        data: {
+          nodeId: waitNodeId,
+          waitValue: 2,
+          waitUnit: 'days'
+        },
+        draggable: false
+      }
+
+      newActionNode = {
+        id: newActionId,
+        type: nodeType,
+        position: { x: actionX, y: snappedActionY },
+        data: {
+          nodeId: newActionId,
+          label: actionType.label,
+          actionType: actionType.id
+        },
+        draggable: false
+      }
+
+      const edgeToWait: Edge = {
+        id: `${parentNodeId}-${waitNodeId}`,
+        source: parentNodeId,
+        target: waitNodeId,
+        type: 'smoothstep',
+        animated: false,
+        style: { stroke: '#000', strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }
+      }
+
+      const edgeToAction: Edge = {
+        id: `${waitNodeId}-${newActionId}`,
+        source: waitNodeId,
+        target: newActionId,
+        type: 'smoothstep',
+        animated: false,
+        style: { stroke: '#000', strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#000' }
+      }
+
+      newEdges = [edgeToWait, edgeToAction]
+      newNodes = [waitNode, newActionNode]
     }
 
     // Mark parent node as having children
@@ -1849,9 +1900,9 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
         }
       }
       return n
-    }).concat([waitNode, newActionNode]))
+    }).concat(newNodes))
     
-    setEdges((eds) => [...eds, edgeToWait, edgeToAction])
+    setEdges((eds) => [...eds, ...newEdges])
     setActionCount(actionCount + 1)
     setShowActionMenu(false)
     console.log('Clearing pendingBranch and pendingParent after adding to main sequence')
@@ -2828,7 +2879,10 @@ Example response: Based on your instructions, the responder will handle incoming
                     {/* Multiple Sending Windows */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label>Sending Windows</Label>
+                        <div>
+                          <Label>Sending Windows</Label>
+                          <p className="text-xs text-gray-500 mt-0.5">Times are in UTC</p>
+                        </div>
                         <Button
                           onClick={handleAddTimeWindow}
                           variant="outline"
