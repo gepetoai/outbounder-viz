@@ -52,12 +52,13 @@ import { useJobPostings } from '@/hooks/useJobPostings'
 import { useShortlistedCandidates } from '@/hooks/useCandidates'
 import { useLinkedInAccounts } from '@/hooks/useLinkedInAccounts'
 import { useGenerateSampleMessages } from '@/hooks/useCustomMessages'
-import { createCampaign, getCampaignByJobDescription, startCampaign, pauseCampaign, resumeCampaign, updateCampaign, CampaignWithDetails, CampaignResponse } from '@/lib/search-api'
+import { getCampaignByJobDescription, CampaignWithDetails } from '@/lib/search-api'
+import { ApiError } from '@/lib/api-client'
+import { useStartCampaign, usePauseCampaign, useResumeCampaign, useCreateCampaign, useUpdateCampaign } from '@/hooks/useCampaigns'
 import { Checkbox } from '@/components/ui/checkbox'
-import { useToast } from '@/components/ui/toast'
-import { useQueryClient } from '@tanstack/react-query'
 import { getTimeZones } from '@vvo/tzdb'
 import { useToast } from '@/components/ui/toast'
+import { ErrorAlertDialog } from '@/components/ui/error-alert-dialog'
 
 interface SequencerTabProps {
   jobDescriptionId?: number | null
@@ -531,13 +532,46 @@ const nodeTypes = {
 
 function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox }: SequencerTabProps) {
   const reactFlowInstance = useReactFlow()
-  const queryClient = useQueryClient()
   const { showToast } = useToast()
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId || null)
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [errorTitle, setErrorTitle] = useState('Error')
   const { data: jobPostings, isLoading: isLoadingJobPostings } = useJobPostings()
   const { data: linkedInAccounts } = useLinkedInAccounts()
   const { mutate: generateSampleMessages, isPending: isGenerating, error: generateError } = useGenerateSampleMessages()
-  const { showToast } = useToast()
+  
+  // Campaign mutation hooks
+  const startCampaignMutation = useStartCampaign()
+  const pauseCampaignMutation = usePauseCampaign()
+  const resumeCampaignMutation = useResumeCampaign()
+  const createCampaignMutation = useCreateCampaign()
+  const updateCampaignMutation = useUpdateCampaign()
+  
+  // Combined loading state for all campaign mutations
+  const isCampaignLoading = 
+    startCampaignMutation.isPending ||
+    pauseCampaignMutation.isPending ||
+    resumeCampaignMutation.isPending ||
+    createCampaignMutation.isPending ||
+    updateCampaignMutation.isPending
+
+  // Reusable error handler for API errors
+  const handleApiError = useCallback((error: unknown, defaultMessage: string) => {
+    if (error instanceof ApiError && error.status === 400 && error.detail) {
+      setErrorMessage(error.detail)
+      setErrorTitle('Campaign Error')
+      setErrorDialogOpen(true)
+    } else if (error instanceof Error) {
+      setErrorMessage(error.message)
+      setErrorTitle('Error')
+      setErrorDialogOpen(true)
+    } else {
+      setErrorMessage(defaultMessage)
+      setErrorTitle('Error')
+      setErrorDialogOpen(true)
+    }
+  }, [])
 
   // Get approved candidates from API using the selected job ID (shortlisted = approved)
   const { 
@@ -548,7 +582,6 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   const approvedCount = approvedCandidatesData?.length || 0
   const [campaignStatus, setCampaignStatus] = useState<'draft' | 'paused' | 'running' | null>(null)
   const [selectedLinkedInAccountId, setSelectedLinkedInAccountId] = useState<number | null>(null)
-  const [isSavingCampaign, setIsSavingCampaign] = useState(false)
   const [currentCampaignId, setCurrentCampaignId] = useState<number | null>(null)
   const [showActionMenu, setShowActionMenu] = useState(false)
   const [pendingBranch, setPendingBranch] = useState<{ branch: string; parentId: string } | null>(null)
@@ -2739,45 +2772,46 @@ Example response: Based on your instructions, the responder will handle incoming
   ])
 
   // Handle saving/updating campaign
-  const handleSaveCampaign = useCallback(async () => {
+  const handleSaveCampaign = useCallback(() => {
     const payload = prepareCampaignPayload()
     if (!payload) {
       console.error('Invalid campaign payload')
       return
     }
-
-    setIsSavingCampaign(true)
-    try {
-      let response: CampaignResponse
-      if (currentCampaignId && campaignStatus === 'draft') {
-        // Update existing draft campaign
-        response = await updateCampaign(currentCampaignId, payload)
-        console.log('Campaign updated successfully:', response)
-      } else if (!currentCampaignId) {
-        // Create new campaign
-        response = await createCampaign(payload)
-        console.log('Campaign saved successfully:', response)
-        setCurrentCampaignId(response.id)
-      } else {
-        // Campaign exists but is not in draft - should not happen due to button disabled state
-        console.error('Cannot update campaign that is not in draft status')
-        return
-      }
-      
-      // Update campaign status after successful save/update
-      setCampaignStatus((response.status as 'draft' | 'paused' | 'running') || 'draft')
-
-      // Invalidate job postings cache so Sandbox tab sees the updated campaign
-      queryClient.invalidateQueries({ queryKey: ['jobPostings'] })
-
-      // You can add a success toast/notification here if needed
-    } catch (error) {
-      console.error('Failed to save/update campaign:', error)
-      // You can add an error toast/notification here if needed
-    } finally {
-      setIsSavingCampaign(false)
+    
+    if (currentCampaignId && campaignStatus === 'draft') {
+      // Update existing draft campaign
+      updateCampaignMutation.mutate(
+        { campaignId: currentCampaignId, data: payload },
+        {
+          onSuccess: (response) => {
+            console.log('Campaign updated successfully:', response)
+            setCampaignStatus((response.status as 'draft' | 'paused' | 'running') || 'draft')
+          },
+          onError: (error) => {
+            console.error('Failed to update campaign:', error)
+            handleApiError(error, 'Failed to update campaign')
+          },
+        }
+      )
+    } else if (!currentCampaignId) {
+      // Create new campaign
+      createCampaignMutation.mutate(payload, {
+        onSuccess: (response) => {
+          console.log('Campaign saved successfully:', response)
+          setCurrentCampaignId(response.id)
+          setCampaignStatus((response.status as 'draft' | 'paused' | 'running') || 'draft')
+        },
+        onError: (error) => {
+          console.error('Failed to create campaign:', error)
+          handleApiError(error, 'Failed to create campaign')
+        },
+      })
+    } else {
+      // Campaign exists but is not in draft - should not happen due to button disabled state
+      console.error('Cannot update campaign that is not in draft status')
     }
-  }, [prepareCampaignPayload, currentCampaignId, campaignStatus, queryClient])
+  }, [prepareCampaignPayload, currentCampaignId, campaignStatus, updateCampaignMutation, createCampaignMutation, handleApiError])
 
   return (
     <div className="space-y-6">
@@ -2914,7 +2948,8 @@ Example response: Based on your instructions, the responder will handle incoming
               </Button>
               {(() => {
                 const canUpdate = currentCampaignId !== null && campaignStatus === 'draft'
-                const isDisabled = isSavingCampaign || (currentCampaignId !== null && campaignStatus !== 'draft')
+                const isDisabled = isCampaignLoading || (currentCampaignId !== null && campaignStatus !== 'draft')
+                const isLoading = createCampaignMutation.isPending || updateCampaignMutation.isPending
                 
                 return (
                   <Button
@@ -2923,7 +2958,7 @@ Example response: Based on your instructions, the responder will handle incoming
                     variant="outline"
                     className="bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isSavingCampaign ? (
+                    {isLoading ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         {canUpdate ? 'Updating...' : 'Saving...'}
@@ -2941,47 +2976,66 @@ Example response: Based on your instructions, the responder will handle incoming
                 <span className="text-sm font-semibold text-gray-900">
                   {campaignStatus === 'running' ? 'Running' : campaignStatus === 'paused' ? 'Paused' : campaignStatus === 'draft' ? 'Draft' : 'Draft'}
                 </span>
-                <Switch
-                  checked={campaignStatus === 'running'}
-                  onCheckedChange={async (checked) => {
-                    // Only call API if campaign exists
-                    if (currentCampaignId) {
-                      const previousStatus = campaignStatus
-                      const newStatus = checked ? 'running' : 'paused'
-                      
-                      try {
+                <div className="flex items-center gap-2">
+                  {(startCampaignMutation.isPending || pauseCampaignMutation.isPending || resumeCampaignMutation.isPending) && (
+                    <Loader2 className="h-4 w-4 animate-spin text-gray-600" />
+                  )}
+                  <Switch
+                    checked={campaignStatus === 'running'}
+                    disabled={isCampaignLoading || !currentCampaignId}
+                    onCheckedChange={(checked) => {
+                      // Only call API if campaign exists
+                      if (currentCampaignId) {
+                        const previousStatus = campaignStatus
+                        const newStatus = checked ? 'running' : 'paused'
+                        
+                        const handleError = (error: unknown) => {
+                          console.error('Failed to update campaign status:', error)
+                          // Revert to previous status on error
+                          setCampaignStatus(previousStatus || 'draft')
+                          handleApiError(error, 'Failed to update campaign status')
+                        }
+                        
                         if (checked && previousStatus === 'paused') {
                           // Resuming campaign: paused -> running
-                          await resumeCampaign(currentCampaignId)
-                          setCampaignStatus('running')
+                          resumeCampaignMutation.mutate(currentCampaignId, {
+                            onSuccess: () => {
+                              setCampaignStatus('running')
+                            },
+                            onError: handleError,
+                          })
                         } else if (checked && previousStatus === 'draft') {
                           // Starting campaign: draft -> running
-                          await startCampaign(currentCampaignId)
-                          setCampaignStatus('running')
+                          startCampaignMutation.mutate(currentCampaignId, {
+                            onSuccess: () => {
+                              setCampaignStatus('running')
+                            },
+                            onError: handleError,
+                          })
                         } else if (!checked && previousStatus === 'running') {
                           // Pausing campaign: running -> paused
-                          await pauseCampaign(currentCampaignId)
-                          setCampaignStatus('paused')
+                          pauseCampaignMutation.mutate(currentCampaignId, {
+                            onSuccess: () => {
+                              setCampaignStatus('paused')
+                            },
+                            onError: handleError,
+                          })
                         } else {
                           // Just update local state if no API call needed
                           setCampaignStatus(newStatus)
                         }
-                      } catch (error) {
-                        console.error('Failed to update campaign status:', error)
-                        // Revert to previous status on error
-                        setCampaignStatus(previousStatus || 'draft')
+                      } else {
+                        // No campaign exists - prevent status changes
+                        if (!currentCampaignId) {
+                          console.error('Please save the campaign before changing status')
+                          return
+                        }
+                        setCampaignStatus(checked ? 'running' : 'draft')
                       }
-                    } else {
-                      // No campaign exists - prevent status changes
-                      if (!currentCampaignId) {
-                        console.error('Please save the campaign before changing status')
-                        return
-                      }
-                      setCampaignStatus(checked ? 'running' : 'draft')
-                    }
-                  }}
-                  className="scale-110"
-                />
+                    }}
+                    className="scale-110"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -3620,6 +3674,12 @@ Example response: Based on your instructions, the responder will handle incoming
         </DialogContent>
       </Dialog>
 
+      <ErrorAlertDialog
+        open={errorDialogOpen}
+        onOpenChange={setErrorDialogOpen}
+        message={errorMessage}
+        title={errorTitle}
+      />
     </div>
   )
 }
