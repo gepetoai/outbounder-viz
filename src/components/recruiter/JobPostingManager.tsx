@@ -221,14 +221,14 @@ export function JobPostingManager({ onSearchClick }: JobPostingManagerProps) {
                         <Pencil className="h-4 w-4 mr-1" />
                         Edit
                       </Button>
-                      <Button
+                      {/* <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleDeleteClick(job.id)}
                       >
                         <Trash2 className="h-4 w-4 mr-1" />
                         Delete
-                      </Button>
+                      </Button> */}
                       <Button
                         size="sm"
                         variant="outline"
