@@ -385,8 +385,7 @@ export function SandBoxTab() {
       {
         custom_messages_candidate_id: currentMessageId,
         feedbacks: feedbackItems.map(item => ({
-          content: item.text,
-          feedback_type: 'initial_message' as const
+          content: item.text
         }))
       },
       {
