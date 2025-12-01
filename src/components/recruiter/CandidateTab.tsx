@@ -201,9 +201,10 @@ export function CandidateTab({
     }
   }
 
-  const downloadApprovedCandidatesCSV = () => {
-    if (!shortlistedCandidates || shortlistedCandidates.length === 0) {
-      console.log('No approved candidates to download')
+  const downloadCandidatesCSV = () => {
+    const candidates = getCurrentCandidates()
+    if (candidates.length === 0) {
+      console.log('No candidates to download')
       return
     }
 
@@ -211,13 +212,12 @@ export function CandidateTab({
     const headers = ['First Name', 'Last Name', 'LinkedIn Profile URL']
     const csvContent = [
       headers.join(','),
-      ...shortlistedCandidates.map(candidate => {
-        const firstName = candidate.fk_candidate.first_name || ''
-        const lastName = candidate.fk_candidate.last_name || ''
-        const linkedinUrl = candidate.fk_candidate.raw_data.websites_linkedin
-          || (candidate.fk_candidate.linkedin_canonical_slug ? `https://linkedin.com/in/${candidate.fk_candidate.linkedin_canonical_slug}` : '')
-          || (candidate.fk_candidate.linkedin_shorthand_slug ? `https://linkedin.com/in/${candidate.fk_candidate.linkedin_shorthand_slug}` : '')
-        
+      ...candidates.map(candidate => {
+        const nameParts = candidate.name.split(' ')
+        const firstName = nameParts[0] || ''
+        const lastName = nameParts.slice(1).join(' ') || ''
+        const linkedinUrl = candidate.linkedinUrl || ''
+
         // Escape commas and quotes in CSV
         const escapeCSV = (str: string) => {
           if (str.includes(',') || str.includes('"') || str.includes('\n')) {
@@ -225,7 +225,7 @@ export function CandidateTab({
           }
           return str
         }
-        
+
         return [
           escapeCSV(firstName),
           escapeCSV(lastName),
@@ -239,11 +239,12 @@ export function CandidateTab({
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
-    
+
     // Get job title for filename
     const jobTitle = jobPostings?.find(job => job.id.toString() === selectedJobId)?.title || 'candidates'
-    const filename = `approved_${jobTitle.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
-    
+    const statusPrefix = viewMode === 'approved' ? 'approved' : viewMode === 'rejected' ? 'rejected' : 'to_review'
+    const filename = `${statusPrefix}_${jobTitle.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+
     link.setAttribute('download', filename)
     link.style.visibility = 'hidden'
     document.body.appendChild(link)
@@ -450,11 +451,11 @@ export function CandidateTab({
               </Button>
             </div>
 
-            {viewMode === 'approved' && shortlistedCandidates && shortlistedCandidates.length > 0 && viewType === 'single' && (
+            {viewMode === 'approved' && shortlistedCandidates && shortlistedCandidates.length > 0 && (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={downloadApprovedCandidatesCSV}
+                onClick={downloadCandidatesCSV}
                 className="flex items-center gap-2"
               >
                 <Download className="h-4 w-4" />
@@ -486,7 +487,7 @@ export function CandidateTab({
             onApprove={handleApprove}
             onReject={handleReject}
             onSendToReview={handleSendToReview}
-            onDownloadCSV={downloadApprovedCandidatesCSV}
+            onDownloadCSV={downloadCandidatesCSV}
             onMove={handleMoveClick}
             viewMode={viewMode}
             isApproving={approveCandidateMutation.isPending || approveCandidateFromRejectedMutation.isPending}
