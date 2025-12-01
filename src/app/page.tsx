@@ -291,6 +291,60 @@ export default function HomePage() {
   ]
 
   const handleSearchClick = (jobId: number) => {
+    // Reset all search state when creating a new search from job posting
+    setCurrentSearchId(null)
+    setSavedSearchIdForUpdate(null)
+    setSelectedSavedSearchId('')
+    setSearchTitle('')
+    setIsSearchModified(false)
+
+    // Reset the search form to initial state
+    setSearchParams({
+      education: '',
+      graduationYear: '',
+      geography: '',
+      radius: 25,
+      jobTitles: [],
+      skills: [],
+      exclusions: {
+        keywords: [],
+        excludeCompanies: [],
+        excludePeople: []
+      },
+      experienceLength: '',
+      titleMatch: false,
+      profilePhoto: false,
+      connections: undefined,
+      numExperiences: undefined,
+      graduationYearFrom: undefined,
+      graduationYearTo: undefined,
+      maxExperience: undefined,
+      department: 'none',
+      deptYears: undefined,
+      managementLevelExclusions: '',
+      recency: undefined,
+      timeInRole: undefined,
+      locations: [],
+      includeWorkLocation: false,
+      industryExclusions: [],
+      titleExclusions: [],
+      keywordExclusions: [],
+      companyExclusions: '',
+      maxJobDuration: undefined,
+      useExperienceFallback: false,
+      jobTitlesInclusions: [],
+      profileKeywordsInclusions: [],
+      industryInclusions: []
+    })
+
+    // Clear candidate state
+    setCandidateYield(0)
+    setTotalPopulation(0)
+    setStagingCandidates([])
+    setApprovedCandidates([])
+    setRejectedCandidates([])
+
+    // Set the new job ID and switch to search tab
     setCurrentJobDescriptionId(jobId)
     setRecruiterTab('search')
   }
