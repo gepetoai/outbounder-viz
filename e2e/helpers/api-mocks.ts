@@ -147,6 +147,74 @@ export async function mockSearchAPIs(page: Page) {
       })
     });
   });
+
+  // Mock: Get states for location dropdown
+  await page.route(url => url.pathname.includes('/job-description-searches-locations/location/states'), async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        { state_abbrev: 'NY', state_name: 'New York' },
+        { state_abbrev: 'CA', state_name: 'California' },
+        { state_abbrev: 'TX', state_name: 'Texas' },
+        { state_abbrev: 'FL', state_name: 'Florida' }
+      ])
+    });
+  });
+
+  // Mock: Get cities for a specific state
+  await page.route(url => url.pathname.includes('/job-description-searches-locations/location/cities/'), async (route) => {
+    const pathname = route.request().url();
+
+    // Extract state name from URL (e.g., /cities/New%20York)
+    if (pathname.includes('New%20York') || pathname.includes('New York')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { city: 'New York' },
+          { city: 'Buffalo' },
+          { city: 'Rochester' },
+          { city: 'Albany' }
+        ])
+      });
+    } else if (pathname.includes('California')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { city: 'San Francisco' },
+          { city: 'Los Angeles' },
+          { city: 'San Diego' },
+          { city: 'Sacramento' }
+        ])
+      });
+    } else {
+      // Default response for other states
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { city: 'City 1' },
+          { city: 'City 2' }
+        ])
+      });
+    }
+  });
+
+  // Mock: Get countries for location dropdown
+  await page.route(url => url.pathname.includes('/job-description-searches-locations/location/countries'), async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        { name: 'Canada', code: 'CA' },
+        { name: 'Germany', code: 'DE' },
+        { name: 'United Kingdom', code: 'GB' },
+        { name: 'France', code: 'FR' }
+      ])
+    });
+  });
 }
 
 /**
