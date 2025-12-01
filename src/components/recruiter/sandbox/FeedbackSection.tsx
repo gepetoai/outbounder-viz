@@ -18,7 +18,7 @@ interface FeedbackSectionProps {
   selectedFeedbackId?: string | null
   onAddFeedback?: (text: string) => void
   onRemoveFeedback?: (id: string) => void
-  feedbackType?: 'initial_message' | 'responder_message'
+  feedbackType?: 'initial_message' | 'responder_message' | 'InMail' | 'Send Message' | 'Responder'
   onRegenerate?: () => void
   isRegenerating?: boolean
   showRegenerateButton?: boolean
@@ -55,7 +55,9 @@ export function FeedbackSection({
       <div className="flex items-center justify-between">
         <Label className="text-sm font-medium">Feedback</Label>
         <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 font-medium">
-          {feedbackType === 'initial_message' ? 'Initial Message' : 'Responder Agent'}
+          {feedbackType === 'initial_message' ? 'Initial Message'
+            : feedbackType === 'responder_message' ? 'Responder Agent'
+            : feedbackType || 'Message'}
         </span>
       </div>
       <div className="flex-1 overflow-auto space-y-2">
