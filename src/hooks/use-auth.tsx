@@ -39,12 +39,28 @@ export function useAuth() {
         try {
           const token = await getToken()
           setAuthToken(token)
+          
+          // Store token in localStorage for Chrome extension access
+          // The extension looks for 'authToken' key first
+          if (token) {
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('authToken', token)
+            }
+          }
         } catch (error) {
           console.warn('Failed to get auth token:', error)
           setAuthToken(null)
+          // Clear localStorage token on error
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('authToken')
+          }
         }
       } else {
         setAuthToken(null)
+        // Clear localStorage token when signed out
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('authToken')
+        }
       }
     }
     updateAuthToken()
