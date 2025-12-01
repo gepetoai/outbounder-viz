@@ -543,6 +543,14 @@ export async function resumeCampaign(campaignId: number): Promise<CampaignRespon
   })
 }
 
+export async function updateCampaign(campaignId: number, data: CampaignPayload): Promise<CampaignResponse> {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+  return fetchJson<CampaignResponse>(`${API_BASE_URL}/campaigns/${campaignId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  })
+}
+
 export interface CampaignWithDetails extends CampaignResponse {
   campaign_sending_windows: Array<{
     window_start_time: string
