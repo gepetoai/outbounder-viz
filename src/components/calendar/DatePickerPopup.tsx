@@ -33,7 +33,7 @@ export function DatePickerPopup ({
     setTempRange(value)
   }, [value])
   
-  // Close on outside click
+  // Close on outside click and Escape key
   useEffect(() => {
     function handleClickOutside (event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -41,10 +41,18 @@ export function DatePickerPopup ({
       }
     }
     
+    function handleKeyDown (event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+      }
+    }
+    
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleKeyDown)
       return () => {
         document.removeEventListener('mousedown', handleClickOutside)
+        document.removeEventListener('keydown', handleKeyDown)
       }
     }
   }, [isOpen])
@@ -77,12 +85,14 @@ export function DatePickerPopup ({
   
   const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newMonth = new Date(currentMonth)
+    newMonth.setDate(1) 
     newMonth.setMonth(parseInt(e.target.value))
     setCurrentMonth(newMonth)
   }
   
   const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newMonth = new Date(currentMonth)
+    newMonth.setDate(1)
     newMonth.setFullYear(parseInt(e.target.value))
     setCurrentMonth(newMonth)
   }
