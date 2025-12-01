@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Switch } from '@/components/ui/switch'
 import {
   User,
   Building2,
@@ -60,22 +59,24 @@ export function SettingsTab() {
   })
 
   // Holidays state
-  interface CustomHoliday {
-    id: string
+  interface OrganizationHoliday {
+    id: number
     name: string
     date: Date
   }
 
-  // Predefined holidays from API
-  const [predefinedHolidays, setPredefinedHolidays] = useState<ApiHoliday[]>([])
-  const [selectedPredefinedHolidays, setSelectedPredefinedHolidays] = useState<number[]>([])
+  // All holidays associated with the organization (unified list)
+  const [organizationHolidays, setOrganizationHolidays] = useState<OrganizationHoliday[]>([])
+  
+  // All available holidays from the system (for selection)
+  const [availableHolidays, setAvailableHolidays] = useState<ApiHoliday[]>([])
 
   // Loading and error states
   const [isLoadingHolidays, setIsLoadingHolidays] = useState(true)
   const [holidaysError, setHolidaysError] = useState<string | null>(null)
   const [isSavingHolidays, setIsSavingHolidays] = useState(false)
 
-  // Fetch holidays function (can be called on mount and after creating custom holidays)
+  // Fetch holidays function (can be called on mount and after creating holidays)
   const fetchHolidaysData = async () => {
     try {
       setIsLoadingHolidays(true)
@@ -87,11 +88,19 @@ export function SettingsTab() {
         getOrganizationHolidays()
       ])
 
-      setPredefinedHolidays(allHolidays)
+      setAvailableHolidays(allHolidays)
 
-      // Extract the selected holiday IDs from organization holidays
-      const selectedIds = orgHolidays.map(oh => oh.fk_holiday_id)
-      setSelectedPredefinedHolidays(selectedIds)
+      // Get all holidays associated with the organization
+      const orgHolidayIds = new Set(orgHolidays.map(oh => oh.fk_holiday_id))
+      const orgHols = allHolidays
+        .filter(h => orgHolidayIds.has(h.id))
+        .map(h => ({
+          id: h.id,
+          name: h.name,
+          date: new Date(h.date)
+        }))
+
+      setOrganizationHolidays(orgHols)
     } catch (error) {
       console.error('Error fetching holidays:', error)
       setHolidaysError(error instanceof Error ? error.message : 'Failed to load holidays')
@@ -105,14 +114,11 @@ export function SettingsTab() {
     fetchHolidaysData()
   }, [])
 
-  // Custom holidays added by organization
-  const [customHolidays, setCustomHolidays] = useState<CustomHoliday[]>([])
-
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [editingCustomHoliday, setEditingCustomHoliday] = useState<CustomHoliday | null>(null)
-  const [customHolidayName, setCustomHolidayName] = useState('')
-  const [showCustomHolidayForm, setShowCustomHolidayForm] = useState(false)
-  const [showCustomHolidaySection, setShowCustomHolidaySection] = useState(false)
+  const [editingHoliday, setEditingHoliday] = useState<OrganizationHoliday | null>(null)
+  const [holidayName, setHolidayName] = useState('')
+  const [showHolidayForm, setShowHolidayForm] = useState(false)
+  const [showHolidaySection, setShowHolidaySection] = useState(false)
 
   const handleProfileChange = (field: string, value: string) => {
     setProfileData(prev => ({ ...prev, [field]: value }))
@@ -145,72 +151,86 @@ export function SettingsTab() {
     console.log('Uploading photo')
   }
 
-  const togglePredefinedHoliday = (holidayId: number) => {
-    setSelectedPredefinedHolidays(prev =>
-      prev.includes(holidayId)
-        ? prev.filter(id => id !== holidayId)
-        : [...prev, holidayId]
-    )
-  }
-
-  const handleDateSelect = (date: Date) => {
-    // Check if this date already has a custom holiday
-    const existingCustomHoliday = customHolidays.find(h =>
-      h.date.toDateString() === date.toDateString()
-    )
-
-    if (existingCustomHoliday) {
-      // Edit existing custom holiday
-      setEditingCustomHoliday(existingCustomHoliday)
-      setCustomHolidayName(existingCustomHoliday.name)
-      setSelectedDate(date)
-      setShowCustomHolidayForm(true)
+  const toggleHoliday = (holidayId: number) => {
+    const isSelected = organizationHolidays.some(h => h.id === holidayId)
+    
+    if (isSelected) {
+      // Remove holiday from organization
+      setOrganizationHolidays(prev => prev.filter(h => h.id !== holidayId))
     } else {
-      // Add new custom holiday
-      setEditingCustomHoliday(null)
-      setCustomHolidayName('')
-      setSelectedDate(date)
-      setShowCustomHolidayForm(true)
+      // Add holiday to organization
+      const holiday = availableHolidays.find(h => h.id === holidayId)
+      if (holiday) {
+        setOrganizationHolidays(prev => [...prev, {
+          id: holiday.id,
+          name: holiday.name,
+          date: new Date(holiday.date)
+        }])
+      }
     }
   }
 
-  const handleSaveCustomHoliday = async () => {
-    if (!selectedDate || !customHolidayName.trim()) return
+  const handleDateSelect = (date: Date) => {
+    // Check if this date already has a holiday
+    const existingHoliday = organizationHolidays.find(h =>
+      h.date.toDateString() === date.toDateString()
+    )
+
+    if (existingHoliday) {
+      // Edit existing holiday
+      setEditingHoliday(existingHoliday)
+      setHolidayName(existingHoliday.name)
+      setSelectedDate(date)
+      setShowHolidayForm(true)
+    } else {
+      // Add new holiday
+      setEditingHoliday(null)
+      setHolidayName('')
+      setSelectedDate(date)
+      setShowHolidayForm(true)
+    }
+  }
+
+  const handleSaveHoliday = async () => {
+    if (!selectedDate || !holidayName.trim()) return
 
     try {
       setIsSavingHolidays(true)
       setHolidaysError(null)
 
-      // Format date as YYYY-MM-DD for API
-      const formattedDate = selectedDate.toISOString().split('T')[0]
+      // Format date as YYYY-MM-DD for API using local date components
+      const year = selectedDate.getFullYear()
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
+      const day = String(selectedDate.getDate()).padStart(2, '0')
+      const formattedDate = `${year}-${month}-${day}`
 
-      if (editingCustomHoliday) {
-        // Update existing custom holiday (local state only for now)
+      if (editingHoliday) {
+        // Update existing holiday (local state only for now)
         // TODO: Implement update endpoint if needed
-        setCustomHolidays(prev => prev.map(h =>
-          h.id === editingCustomHoliday.id
-            ? { ...h, name: customHolidayName, date: selectedDate }
+        setOrganizationHolidays(prev => prev.map(h =>
+          h.id === editingHoliday.id
+            ? { ...h, name: holidayName, date: selectedDate }
             : h
         ))
-        showToast('Custom holiday updated', 'success')
+        showToast('Holiday updated', 'success')
       } else {
-        // Create new custom holiday via API
-        await createCustomHoliday(customHolidayName, formattedDate)
+        // Create new holiday via API
+        await createCustomHoliday(holidayName, formattedDate)
 
         // Refetch all holidays to get the updated list
         await fetchHolidaysData()
 
-        showToast('Custom holiday created successfully', 'success')
+        showToast('Holiday created successfully', 'success')
       }
 
       // Reset form
-      setShowCustomHolidayForm(false)
+      setShowHolidayForm(false)
       setSelectedDate(null)
-      setEditingCustomHoliday(null)
-      setCustomHolidayName('')
+      setEditingHoliday(null)
+      setHolidayName('')
     } catch (error) {
-      console.error('Error saving custom holiday:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to save custom holiday'
+      console.error('Error saving holiday:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save holiday'
       setHolidaysError(errorMessage)
       showToast(errorMessage, 'error')
     } finally {
@@ -218,16 +238,16 @@ export function SettingsTab() {
     }
   }
 
-  const handleDeleteCustomHoliday = (holidayId: string) => {
-    setCustomHolidays(prev => prev.filter(h => h.id !== holidayId))
+  const handleDeleteHoliday = (holidayId: number) => {
+    setOrganizationHolidays(prev => prev.filter(h => h.id !== holidayId))
   }
 
-  const handleCancelCustomHolidayForm = () => {
-    setShowCustomHolidayForm(false)
-    setShowCustomHolidaySection(false)
+  const handleCancelHolidayForm = () => {
+    setShowHolidayForm(false)
+    setShowHolidaySection(false)
     setSelectedDate(null)
-    setEditingCustomHoliday(null)
-    setCustomHolidayName('')
+    setEditingHoliday(null)
+    setHolidayName('')
   }
 
   const handleSaveAllHolidays = async () => {
@@ -235,8 +255,12 @@ export function SettingsTab() {
       setIsSavingHolidays(true)
       setHolidaysError(null)
 
-      // Upsert organization holidays
-      await upsertOrganizationHolidays(selectedPredefinedHolidays)
+      // Upsert organization holidays with all selected holiday IDs
+      const holidayIds = organizationHolidays.map(h => h.id)
+      await upsertOrganizationHolidays(holidayIds)
+
+      // Refetch to ensure we have the latest data
+      await fetchHolidaysData()
 
       showToast('Holidays saved successfully', 'success')
     } catch (error) {
@@ -394,24 +418,33 @@ export function SettingsTab() {
             Select common holidays or add custom dates. Campaign actions will not be scheduled on these days.
           </p>
 
-          {/* Common Holidays Section */}
+          {/* Available Holidays Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-medium text-sm text-gray-700">Common Holidays</h3>
-              {!isLoadingHolidays && predefinedHolidays.length > 0 && (
+              <h3 className="font-medium text-sm text-gray-700">Available Holidays</h3>
+              {!isLoadingHolidays && availableHolidays.length > 0 && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    if (selectedPredefinedHolidays.length === predefinedHolidays.length) {
-                      setSelectedPredefinedHolidays([])
+                    const allSelected = availableHolidays.every(h => 
+                      organizationHolidays.some(oh => oh.id === h.id)
+                    )
+                    if (allSelected) {
+                      setOrganizationHolidays([])
                     } else {
-                      setSelectedPredefinedHolidays(predefinedHolidays.map(h => h.id))
+                      setOrganizationHolidays(availableHolidays.map(h => ({
+                        id: h.id,
+                        name: h.name,
+                        date: new Date(h.date)
+                      })))
                     }
                   }}
                   className="text-xs"
                 >
-                  {selectedPredefinedHolidays.length === predefinedHolidays.length ? 'Deselect All' : 'Select All'}
+                  {availableHolidays.every(h => organizationHolidays.some(oh => oh.id === h.id)) 
+                    ? 'Deselect All' 
+                    : 'Select All'}
                 </Button>
               )}
             </div>
@@ -432,30 +465,33 @@ export function SettingsTab() {
               </div>
             )}
 
-            {/* Holidays List */}
+            {/* Available Holidays List */}
             {!isLoadingHolidays && !holidaysError && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {predefinedHolidays.map((holiday) => (
-                    <label
-                      key={holiday.id}
-                      htmlFor={`holiday-${holiday.id}`}
-                      className="flex items-center gap-4 p-3 rounded-lg border hover:bg-gray-50 transition-colors cursor-pointer"
-                    >
-                      <Checkbox
-                        id={`holiday-${holiday.id}`}
-                        checked={selectedPredefinedHolidays.includes(holiday.id)}
-                        onCheckedChange={() => togglePredefinedHoliday(holiday.id)}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{holiday.name}</p>
-                        <p className="text-xs text-gray-500">{holiday.date}</p>
-                      </div>
-                    </label>
-                  ))}
+                  {availableHolidays.map((holiday) => {
+                    const isSelected = organizationHolidays.some(oh => oh.id === holiday.id)
+                    return (
+                      <label
+                        key={holiday.id}
+                        htmlFor={`holiday-${holiday.id}`}
+                        className="flex items-center gap-4 p-3 rounded-lg border hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        <Checkbox
+                          id={`holiday-${holiday.id}`}
+                          checked={isSelected}
+                          onCheckedChange={() => toggleHoliday(holiday.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm">{holiday.name}</p>
+                          <p className="text-xs text-gray-500">{holiday.date}</p>
+                        </div>
+                      </label>
+                    )
+                  })}
                 </div>
                 <p className="text-xs text-gray-500">
-                  {selectedPredefinedHolidays.length} common {selectedPredefinedHolidays.length === 1 ? 'holiday' : 'holidays'} selected
+                  {organizationHolidays.length} {organizationHolidays.length === 1 ? 'holiday' : 'holidays'} selected
                 </p>
               </>
             )}
@@ -463,27 +499,27 @@ export function SettingsTab() {
 
           <div className="border-t" />
 
-          {/* Custom Holidays Section */}
+          {/* Organization Holidays Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-medium text-sm text-gray-700">Holidays</h3>
-              {!showCustomHolidaySection && (
+              <h3 className="font-medium text-sm text-gray-700">Your Organization Holidays</h3>
+              {!showHolidaySection && (
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setShowCustomHolidaySection(true)}
+                  onClick={() => setShowHolidaySection(true)}
                   className="bg-white hover:bg-gray-50"
                 >
                   <Plus className="h-4 w-4 mr-1" />
-                  Add Holiday
+                  Add Custom Holiday
                 </Button>
               )}
             </div>
 
-            {/* Custom Holidays List */}
-            {customHolidays.length > 0 && (
+            {/* Organization Holidays List */}
+            {organizationHolidays.length > 0 && (
               <div className="space-y-2">
-                {customHolidays
+                {organizationHolidays
                   .sort((a, b) => a.date.getTime() - b.date.getTime())
                   .map((holiday) => (
                     <div
@@ -499,11 +535,11 @@ export function SettingsTab() {
                           size="sm"
                           variant="ghost"
                           onClick={() => {
-                            setEditingCustomHoliday(holiday)
-                            setCustomHolidayName(holiday.name)
+                            setEditingHoliday(holiday)
+                            setHolidayName(holiday.name)
                             setSelectedDate(holiday.date)
-                            setShowCustomHolidayForm(true)
-                            setShowCustomHolidaySection(true)
+                            setShowHolidayForm(true)
+                            setShowHolidaySection(true)
                           }}
                           className="h-8 w-8 p-0 hover:bg-gray-100"
                         >
@@ -512,7 +548,7 @@ export function SettingsTab() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleDeleteCustomHoliday(holiday.id)}
+                          onClick={() => handleDeleteHoliday(holiday.id)}
                           className="h-8 w-8 p-0 hover:bg-red-50"
                         >
                           <X className="h-4 w-4 text-red-600" />
@@ -524,18 +560,18 @@ export function SettingsTab() {
             )}
 
             {/* Calendar & Form - Only show when button clicked */}
-            {showCustomHolidaySection && (
+            {showHolidaySection && (
               <div className="border rounded-lg p-4 bg-gray-50 space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium text-sm">
-                    {showCustomHolidayForm ? (editingCustomHoliday ? 'Edit Custom Holiday' : 'Add Custom Holiday') : 'Select a Date'}
+                    {showHolidayForm ? (editingHoliday ? 'Edit Holiday' : 'Add Holiday') : 'Select a Date'}
                   </h4>
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={() => {
-                      setShowCustomHolidaySection(false)
-                      handleCancelCustomHolidayForm()
+                      setShowHolidaySection(false)
+                      handleCancelHolidayForm()
                     }}
                     className="h-6 w-6 p-0"
                   >
@@ -546,12 +582,12 @@ export function SettingsTab() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Calendar */}
                   <div>
-                    <p className="text-xs text-gray-500 mb-3">Click on a date to add a custom holiday</p>
+                    <p className="text-xs text-gray-500 mb-3">Click on a date to add a holiday</p>
                     <CalendarGrid
                       selectedRange={{ start: null, end: null }}
                       onDateSelect={handleDateSelect}
-                      events={customHolidays.map(h => ({
-                        id: h.id,
+                      events={organizationHolidays.map(h => ({
+                        id: h.id.toString(),
                         title: h.name,
                         startDate: h.date,
                         endDate: h.date,
@@ -562,14 +598,14 @@ export function SettingsTab() {
                   </div>
 
                   {/* Holiday Form - Only show after date selected */}
-                  {showCustomHolidayForm && (
+                  {showHolidayForm && (
                     <div className="space-y-3">
                       <div className="space-y-2">
-                        <Label htmlFor="customHolidayName">Holiday Name</Label>
+                        <Label htmlFor="holidayName">Holiday Name</Label>
                         <Input
-                          id="customHolidayName"
-                          value={customHolidayName}
-                          onChange={(e) => setCustomHolidayName(e.target.value)}
+                          id="holidayName"
+                          value={holidayName}
+                          onChange={(e) => setHolidayName(e.target.value)}
                           placeholder="e.g., Company Founders Day"
                           autoFocus
                         />
@@ -585,20 +621,20 @@ export function SettingsTab() {
                       <div className="flex gap-2">
                         <Button
                           size="sm"
-                          onClick={() => {
-                            handleSaveCustomHoliday()
-                            setShowCustomHolidaySection(false)
+                          onClick={async () => {
+                            await handleSaveHoliday()
+                            setShowHolidaySection(false)
                           }}
-                          disabled={!customHolidayName.trim() || !selectedDate}
+                          disabled={!holidayName.trim() || !selectedDate}
                           className="flex-1 bg-gray-800 hover:bg-gray-700 text-white"
                         >
                           <Save className="h-4 w-4 mr-1" />
-                          {editingCustomHoliday ? 'Update' : 'Add'}
+                          {editingHoliday ? 'Update' : 'Add'}
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={handleCancelCustomHolidayForm}
+                          onClick={handleCancelHolidayForm}
                           className="bg-white hover:bg-gray-50"
                         >
                           Cancel
@@ -607,7 +643,7 @@ export function SettingsTab() {
                     </div>
                   )}
 
-                  {!showCustomHolidayForm && (
+                  {!showHolidayForm && (
                     <div className="flex items-center justify-center text-sm text-gray-500">
                       Click a date on the calendar to continue
                     </div>
@@ -637,7 +673,7 @@ export function SettingsTab() {
             </Button>
           </div>
         </CardContent>
-      </Card>``
+      </Card>
 
       {/* Password Change */}
       <Card>
