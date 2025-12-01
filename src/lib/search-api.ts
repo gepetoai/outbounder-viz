@@ -610,3 +610,10 @@ export async function getCampaignByJobDescription(jobDescriptionId: number): Pro
     throw error
   }
 }
+
+export async function deleteCampaign(campaignId: number): Promise<void> {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+  return fetchJson<void>(`${API_BASE_URL}/campaigns/${campaignId}`, {
+    method: 'DELETE'
+  })
+}

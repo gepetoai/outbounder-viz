@@ -54,11 +54,12 @@ import { useLinkedInAccounts } from '@/hooks/useLinkedInAccounts'
 import { useGenerateSampleMessages } from '@/hooks/useCustomMessages'
 import { getCampaignByJobDescription, CampaignWithDetails } from '@/lib/search-api'
 import { ApiError } from '@/lib/api-client'
-import { useStartCampaign, usePauseCampaign, useResumeCampaign, useCreateCampaign, useUpdateCampaign } from '@/hooks/useCampaigns'
+import { useStartCampaign, usePauseCampaign, useResumeCampaign, useCreateCampaign, useUpdateCampaign, useDeleteCampaign } from '@/hooks/useCampaigns'
 import { Checkbox } from '@/components/ui/checkbox'
 import { getTimeZones } from '@vvo/tzdb'
 import { useToast } from '@/components/ui/toast'
 import { ErrorAlertDialog } from '@/components/ui/error-alert-dialog'
+import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog'
 
 interface SequencerTabProps {
   jobDescriptionId?: number | null
@@ -547,6 +548,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   const resumeCampaignMutation = useResumeCampaign()
   const createCampaignMutation = useCreateCampaign()
   const updateCampaignMutation = useUpdateCampaign()
+  const deleteCampaignMutation = useDeleteCampaign()
   
   // Combined loading state for all campaign mutations
   const isCampaignLoading = 
@@ -554,7 +556,8 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     pauseCampaignMutation.isPending ||
     resumeCampaignMutation.isPending ||
     createCampaignMutation.isPending ||
-    updateCampaignMutation.isPending
+    updateCampaignMutation.isPending ||
+    deleteCampaignMutation.isPending
 
   // Reusable error handler for API errors
   const handleApiError = useCallback((error: unknown, defaultMessage: string) => {
@@ -694,6 +697,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [nodeToDelete, setNodeToDelete] = useState<string | null>(null)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [showDeleteCampaignConfirm, setShowDeleteCampaignConfirm] = useState(false)
 
   // Panel resize state
   const [panelWidth, setPanelWidth] = useState(() => {
@@ -2813,6 +2817,33 @@ Example response: Based on your instructions, the responder will handle incoming
     }
   }, [prepareCampaignPayload, currentCampaignId, campaignStatus, updateCampaignMutation, createCampaignMutation, handleApiError])
 
+  // Handle deleting campaign
+  const handleDeleteCampaign = useCallback(() => {
+    if (!currentCampaignId) {
+      console.error('No campaign to delete')
+      return
+    }
+
+    deleteCampaignMutation.mutate(currentCampaignId, {
+      onSuccess: () => {
+        console.log('Campaign deleted successfully')
+        // Reset campaign state
+        setCurrentCampaignId(null)
+        setCampaignStatus(null)
+        // Reset to begin sequence
+        setNodes([createBeginSequenceNode()])
+        setEdges([])
+        setActionCount(0)
+        setShowDeleteCampaignConfirm(false)
+        showToast('Campaign deleted successfully', 'success', 3000)
+      },
+      onError: (error) => {
+        console.error('Failed to delete campaign:', error)
+        handleApiError(error, 'Failed to delete campaign')
+      },
+    })
+  }, [currentCampaignId, deleteCampaignMutation, setNodes, setEdges, createBeginSequenceNode, showToast, handleApiError])
+
   return (
     <div className="space-y-6">
       {/* Job Posting Selector */}
@@ -3036,6 +3067,18 @@ Example response: Based on your instructions, the responder will handle incoming
                     className="scale-110"
                   />
                 </div>
+                {currentCampaignId && (
+                  <Button
+                    onClick={() => setShowDeleteCampaignConfirm(true)}
+                    disabled={isCampaignLoading}
+                    variant="outline"
+                    size="sm"
+                    aria-label="Delete campaign"
+                    className="ml-2 bg-white hover:bg-red-50 hover:border-red-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -3673,6 +3716,17 @@ Example response: Based on your instructions, the responder will handle incoming
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Campaign Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={showDeleteCampaignConfirm}
+        onOpenChange={setShowDeleteCampaignConfirm}
+        title="Delete Campaign"
+        description="Are you sure you want to delete this campaign? This will permanently remove the campaign and all its associated data. This action cannot be undone."
+        onConfirm={handleDeleteCampaign}
+        isLoading={deleteCampaignMutation.isPending}
+        confirmText="Delete Campaign"
+      />
 
       <ErrorAlertDialog
         open={errorDialogOpen}
