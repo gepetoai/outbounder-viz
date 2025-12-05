@@ -2594,10 +2594,11 @@ Example response: Based on your instructions, the responder will handle incoming
             // Build json_metadata for send_message and send_inmail actions
             let jsonMetadata: Record<string, unknown> | null = null
             if (mappedActionType === 'send_message' || mappedActionType === 'send_inmail') {
-              // Store generation parameters instead of actual message
+              // Store generation parameters and message text
               jsonMetadata = {
                 user_instructions: currentNode.data.userInstructions || '',
-                context_variables: currentNode.data.contextVariables || {}
+                context_variables: currentNode.data.contextVariables || {},
+                message_text: currentNode.data.messageText || ''
               }
               // Add subject_line for InMail only
               if (mappedActionType === 'send_inmail' && currentNode.data.subjectText) {
