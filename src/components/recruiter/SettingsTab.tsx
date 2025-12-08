@@ -46,13 +46,13 @@ export function SettingsTab() {
     atsConnected: false,
     atsName: ''
   })
-  
+
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   })
-  
+
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
@@ -68,7 +68,7 @@ export function SettingsTab() {
 
   // All holidays associated with the organization (unified list)
   const [organizationHolidays, setOrganizationHolidays] = useState<OrganizationHoliday[]>([])
-  
+
   // All available holidays from the system (for selection)
   const [availableHolidays, setAvailableHolidays] = useState<ApiHoliday[]>([])
 
@@ -154,7 +154,7 @@ export function SettingsTab() {
 
   const toggleHoliday = (holidayId: number) => {
     const isSelected = organizationHolidays.some(h => h.id === holidayId)
-    
+
     if (isSelected) {
       // Remove holiday from organization
       setOrganizationHolidays(prev => prev.filter(h => h.id !== holidayId))
@@ -172,24 +172,10 @@ export function SettingsTab() {
   }
 
   const handleDateSelect = (date: Date) => {
-    // Check if this date already has a holiday
-    const existingHoliday = organizationHolidays.find(h =>
-      h.date.toDateString() === date.toDateString()
-    )
-
-    if (existingHoliday) {
-      // Edit existing holiday
-      setEditingHoliday(existingHoliday)
-      setHolidayName(existingHoliday.name)
-      setSelectedDate(date)
-      setShowHolidayForm(true)
-    } else {
-      // Add new holiday
-      setEditingHoliday(null)
-      setHolidayName('')
-      setSelectedDate(date)
-      setShowHolidayForm(true)
-    }
+    setEditingHoliday(null)
+    setHolidayName('')
+    setSelectedDate(date)
+    setShowHolidayForm(true)
   }
 
   const handleSaveHoliday = async () => {
@@ -286,9 +272,9 @@ export function SettingsTab() {
               <Camera className="h-8 w-8 text-gray-400" />
             </div>
             <div>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="bg-white hover:bg-gray-50"
                 onClick={handlePhotoUpload}
               >
@@ -343,9 +329,9 @@ export function SettingsTab() {
                 onChange={(e) => handleProfileChange('linkedinUrl', e.target.value)}
                 placeholder="https://linkedin.com/in/yourprofile"
               />
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="bg-white hover:bg-gray-50"
               >
                 <Link className="h-4 w-4 mr-2" />
@@ -354,7 +340,7 @@ export function SettingsTab() {
             </div>
           </div>
 
-          <Button 
+          <Button
             onClick={handleSaveProfile}
             className="bg-white hover:bg-gray-50 text-gray-800 border border-gray-300"
           >
@@ -378,7 +364,7 @@ export function SettingsTab() {
               <h3 className="font-medium">Connect to ATS</h3>
               <p className="text-sm text-gray-500">Integrate with your Applicant Tracking System</p>
             </div>
-            <Button 
+            <Button
               variant={profileData.atsConnected ? "default" : "outline"}
               onClick={handleAtsConnect}
               className={profileData.atsConnected ? "bg-green-600 hover:bg-green-700" : "bg-white hover:bg-gray-50"}
@@ -386,7 +372,7 @@ export function SettingsTab() {
               {profileData.atsConnected ? 'Connected' : 'Connect'}
             </Button>
           </div>
-          
+
           {profileData.atsConnected && (
             <div className="space-y-2">
               <Label htmlFor="atsName">ATS Name</Label>
@@ -423,7 +409,7 @@ export function SettingsTab() {
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    const allSelected = availableHolidays.every(h => 
+                    const allSelected = availableHolidays.every(h =>
                       organizationHolidays.some(oh => oh.id === h.id)
                     )
                     if (allSelected) {
@@ -438,8 +424,8 @@ export function SettingsTab() {
                   }}
                   className="text-xs"
                 >
-                  {availableHolidays.every(h => organizationHolidays.some(oh => oh.id === h.id)) 
-                    ? 'Deselect All' 
+                  {availableHolidays.every(h => organizationHolidays.some(oh => oh.id === h.id))
+                    ? 'Deselect All'
                     : 'Select All'}
                 </Button>
               )}
@@ -746,7 +732,7 @@ export function SettingsTab() {
             </div>
           </div>
 
-          <Button 
+          <Button
             onClick={handleSavePassword}
             className="bg-white hover:bg-gray-50 text-gray-800 border border-gray-300"
           >
