@@ -202,34 +202,65 @@ export function CandidateTab({
   }
 
   const downloadCandidatesCSV = () => {
-    const candidates = getCurrentCandidates()
-    if (candidates.length === 0) {
+    // Get the appropriate data based on view mode
+    const getCandidatesData = () => {
+      switch (viewMode) {
+        case 'approved':
+          return (shortlistedCandidates || []).map(item => ({
+            firstName: item.fk_candidate.first_name || '',
+            lastName: item.fk_candidate.last_name || '',
+            linkedinUrl: item.fk_candidate.raw_data.websites_linkedin
+              || (item.fk_candidate.linkedin_canonical_slug ? `https://linkedin.com/in/${item.fk_candidate.linkedin_canonical_slug}` : '')
+              || (item.fk_candidate.linkedin_shorthand_slug ? `https://linkedin.com/in/${item.fk_candidate.linkedin_shorthand_slug}` : ''),
+            createdAt: item.created_at || ''
+          }))
+        case 'rejected':
+          return (rejectedCandidatesFromAPI || []).map(item => ({
+            firstName: item.fk_candidate.first_name || '',
+            lastName: item.fk_candidate.last_name || '',
+            linkedinUrl: item.fk_candidate.raw_data.websites_linkedin
+              || (item.fk_candidate.linkedin_canonical_slug ? `https://linkedin.com/in/${item.fk_candidate.linkedin_canonical_slug}` : '')
+              || (item.fk_candidate.linkedin_shorthand_slug ? `https://linkedin.com/in/${item.fk_candidate.linkedin_shorthand_slug}` : ''),
+            createdAt: item.created_at || ''
+          }))
+        case 'review':
+        default:
+          return (enrichedCandidates || []).map(item => ({
+            firstName: item.first_name || '',
+            lastName: item.last_name || '',
+            linkedinUrl: item.raw_data.websites_linkedin
+              || (item.linkedin_canonical_slug ? `https://linkedin.com/in/${item.linkedin_canonical_slug}` : '')
+              || (item.linkedin_shorthand_slug ? `https://linkedin.com/in/${item.linkedin_shorthand_slug}` : ''),
+            createdAt: item.created_at || ''
+          }))
+      }
+    }
+
+    const candidatesData = getCandidatesData()
+
+    if (candidatesData.length === 0) {
       console.log('No candidates to download')
       return
     }
 
+    // Escape commas and quotes in CSV
+    const escapeCSV = (str: string) => {
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`
+      }
+      return str
+    }
+
     // Create CSV content
-    const headers = ['First Name', 'Last Name', 'LinkedIn Profile URL']
+    const headers = ['First Name', 'Last Name', 'LinkedIn Profile URL', 'Created At']
     const csvContent = [
       headers.join(','),
-      ...candidates.map(candidate => {
-        const nameParts = candidate.name.split(' ')
-        const firstName = nameParts[0] || ''
-        const lastName = nameParts.slice(1).join(' ') || ''
-        const linkedinUrl = candidate.linkedinUrl || ''
-
-        // Escape commas and quotes in CSV
-        const escapeCSV = (str: string) => {
-          if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-            return `"${str.replace(/"/g, '""')}"`
-          }
-          return str
-        }
-
+      ...candidatesData.map(candidate => {
         return [
-          escapeCSV(firstName),
-          escapeCSV(lastName),
-          escapeCSV(linkedinUrl)
+          escapeCSV(candidate.firstName),
+          escapeCSV(candidate.lastName),
+          escapeCSV(candidate.linkedinUrl),
+          escapeCSV(candidate.createdAt)
         ].join(',')
       })
     ].join('\n')
@@ -240,7 +271,7 @@ export function CandidateTab({
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
 
-    // Get job title for filename
+    // Get job title and status prefix for filename
     const jobTitle = jobPostings?.find(job => job.id.toString() === selectedJobId)?.title || 'candidates'
     const statusPrefix = viewMode === 'approved' ? 'approved' : viewMode === 'rejected' ? 'rejected' : 'to_review'
     const filename = `${statusPrefix}_${jobTitle.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
@@ -451,7 +482,7 @@ export function CandidateTab({
               </Button>
             </div>
 
-            {viewMode === 'approved' && shortlistedCandidates && shortlistedCandidates.length > 0 && (
+            {getCurrentCandidates().length > 0 && viewType === 'single' && (
               <Button
                 size="sm"
                 variant="outline"
