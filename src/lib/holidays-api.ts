@@ -87,13 +87,13 @@ export async function createCustomHoliday(
  * Update an organization holiday
  * Requires authentication
  *
- * @param organizationHolidayId - ID of the organization holiday to update
+ * @param holidayId - ID of the holiday to update
  * @param name - Name of the holiday
  * @param date - Date of the holiday in YYYY-MM-DD format
  * @returns Organization holiday association
  */
 export async function updateOrganizationHoliday(
-  organizationHolidayId: number,
+  holidayId: number,
   name: string,
   date: string
 ): Promise<OrganizationHoliday> {
@@ -102,7 +102,7 @@ export async function updateOrganizationHoliday(
     {
       method: 'PUT',
       body: JSON.stringify({
-        id: organizationHolidayId,
+        id: holidayId,
         name,
         date,
       }),

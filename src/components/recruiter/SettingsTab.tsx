@@ -207,8 +207,6 @@ export function SettingsTab() {
 
       let message = ''
       if (editingHoliday) {
-        // Update existing holiday (local state only for now)
-        // TODO: Implement update endpoint if needed
         await updateOrganizationHoliday(editingHoliday.id, holidayName, formattedDate)
         message = 'Holiday updated successfully'
       } else {
