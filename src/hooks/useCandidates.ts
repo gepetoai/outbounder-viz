@@ -10,7 +10,6 @@ import {
   rejectCandidateFromShortlisted,
   bulkDeleteShortlistedCandidates,
   bulkDeleteRejectedCandidates,
-  EnrichedCandidateResponse
 } from '@/lib/search-api'
 
 export function useApproveCandidate() {
@@ -62,15 +61,16 @@ export function useRejectCandidate() {
 export function useShortlistedCandidates(
   jobDescriptionId: number | null | undefined,
   offset: number = 0,
-  limit: number = 25
+  limit: number = 25,
+  search?: string
 ) {
   return useQuery({
-    queryKey: ['shortlistedCandidates', jobDescriptionId, offset, limit],
+    queryKey: ['shortlistedCandidates', jobDescriptionId, offset, limit, search],
     queryFn: () => {
       if (!jobDescriptionId) {
         throw new Error('Job description ID is required')
       }
-      return getShortlistedCandidates(jobDescriptionId, offset, limit)
+      return getShortlistedCandidates(jobDescriptionId, offset, limit, search)
     },
     enabled: !!jobDescriptionId,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -80,15 +80,16 @@ export function useShortlistedCandidates(
 export function useRejectedCandidates(
   jobDescriptionId: number | null | undefined,
   offset: number = 0,
-  limit: number = 25
+  limit: number = 25,
+  search?: string
 ) {
   return useQuery({
-    queryKey: ['rejectedCandidates', jobDescriptionId, offset, limit],
+    queryKey: ['rejectedCandidates', jobDescriptionId, offset, limit, search],
     queryFn: () => {
       if (!jobDescriptionId) {
         throw new Error('Job description ID is required')
       }
-      return getRejectedCandidates(jobDescriptionId, offset, limit)
+      return getRejectedCandidates(jobDescriptionId, offset, limit, search)
     },
     enabled: !!jobDescriptionId,
     staleTime: 1000 * 60 * 5, // 5 minutes
