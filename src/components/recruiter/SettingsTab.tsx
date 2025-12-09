@@ -31,7 +31,8 @@ import {
   getOrganizationHolidays,
   upsertOrganizationHolidays,
   createCustomHoliday,
-  type Holiday as ApiHoliday
+  type Holiday as ApiHoliday,
+  updateOrganizationHoliday
 } from '@/lib/holidays-api'
 
 export function SettingsTab() {
@@ -204,24 +205,19 @@ export function SettingsTab() {
       const day = String(selectedDate.getDate()).padStart(2, '0')
       const formattedDate = `${year}-${month}-${day}`
 
+      let message = ''
       if (editingHoliday) {
-        // Update existing holiday (local state only for now)
-        // TODO: Implement update endpoint if needed
-        setOrganizationHolidays(prev => prev.map(h =>
-          h.id === editingHoliday.id
-            ? { ...h, name: holidayName, date: selectedDate }
-            : h
-        ))
-        showToast('Holiday updated', 'success')
+        await updateOrganizationHoliday(editingHoliday.id, holidayName, formattedDate)
+        message = 'Holiday updated successfully'
       } else {
         // Create new holiday via API
         await createCustomHoliday(holidayName, formattedDate)
-
-        // Refetch all holidays to get the updated list
-        await fetchHolidaysData()
-
-        showToast('Holiday created successfully', 'success')
+        message = 'Holiday created successfully'
       }
+
+      // Refetch all holidays to get the updated list
+      await fetchHolidaysData()
+      showToast(message, 'success')
 
       // Reset form
       setShowHolidayForm(false)

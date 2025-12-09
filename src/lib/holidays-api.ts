@@ -84,6 +84,33 @@ export async function createCustomHoliday(
 }
 
 /**
+ * Update an organization holiday
+ * Requires authentication
+ *
+ * @param holidayId - ID of the holiday to update
+ * @param name - Name of the holiday
+ * @param date - Date of the holiday in YYYY-MM-DD format
+ * @returns Organization holiday association
+ */
+export async function updateOrganizationHoliday(
+  holidayId: number,
+  name: string,
+  date: string
+): Promise<OrganizationHoliday> {
+  return fetchJson<OrganizationHoliday>(
+    `${API_BASE_URL}/organization-holidays/update-holiday`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({
+        id: holidayId,
+        name,
+        date,
+      }),
+    }
+  )
+} 
+
+/**
  * Upsert (insert or skip if exists) organization holidays
  * Requires authentication
  *
