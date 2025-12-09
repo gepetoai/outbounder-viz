@@ -582,7 +582,7 @@ function SequencerTabInner({ jobDescriptionId: initialJobId, onNavigateToSandbox
     isLoading: isLoadingCandidates,
     error: candidatesError 
   } = useShortlistedCandidates(selectedJobId)
-  const approvedCount = approvedCandidatesData?.length || 0
+  const approvedCount = approvedCandidatesData?.total_count || 0
   const [campaignStatus, setCampaignStatus] = useState<'draft' | 'paused' | 'running' | null>(null)
   const [selectedLinkedInAccountId, setSelectedLinkedInAccountId] = useState<number | null>(null)
   const [currentCampaignId, setCurrentCampaignId] = useState<number | null>(null)
