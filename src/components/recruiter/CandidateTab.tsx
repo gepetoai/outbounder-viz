@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { X, Check, Briefcase, Download, ThumbsUp, ThumbsDown, User, Table as TableIcon, RotateCcw } from 'lucide-react'
-import { useCandidatesForReview, useMoveCandidates } from '@/hooks/useSearch'
+import { X, Check, Briefcase, Download, ThumbsUp, ThumbsDown, User, Table as TableIcon, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useMoveCandidates, useCandidatesForReview } from '@/hooks/useSearch'
 import {
   useApproveCandidate,
   useRejectCandidate,
@@ -16,8 +16,9 @@ import {
   useSendToReviewFromShortlisted,
   useSendToReviewFromRejected
 } from '@/hooks/useCandidates'
+import { usePaginatedCandidates } from '@/hooks/usePaginatedCandidates'
 import { useJobPostings } from '@/hooks/useJobPostings'
-import { mapEnrichedCandidateToCandidate, type Candidate } from '@/lib/utils'
+import { type Candidate } from '@/lib/utils'
 import { CandidateCard } from './CandidateCard'
 import { CandidateDetailPanel } from './CandidateDetailPanel'
 import { CandidateTableView } from './CandidateTableView'
@@ -39,8 +40,15 @@ export function CandidateTab({
   const [currentCandidateIndex, setCurrentCandidateIndex] = useState(0)
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false)
   const [candidatesToMove, setCandidatesToMove] = useState<string[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
 
   const { showToast } = useToast()
+
+  // Reset pagination when job or view mode changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedJobId, viewMode])
 
   // Reset candidate index when job or view mode changes
   useEffect(() => {
@@ -55,10 +63,22 @@ export function CandidateTab({
   // Fetch job postings for dropdown
   const { data: jobPostings, isLoading: isLoadingJobs } = useJobPostings()
 
-  // Fetch candidates from API if we have a job description ID
-  const { data: enrichedCandidates, isLoading: isFetchingCandidates, error: candidatesError } = useCandidatesForReview(
-    isValidJobId(selectedJobId) ? parseInt(selectedJobId) : null
-  )
+  // Calculate offset for pagination
+  const offset = (currentPage - 1) * pageSize
+
+  // Fetch paginated candidates for current view mode
+  const {
+    candidates,
+    totalCount,
+    isLoading: isFetchingCandidates,
+    error: candidatesError,
+    rawCandidates
+  } = usePaginatedCandidates({
+    viewMode,
+    jobDescriptionId: isValidJobId(selectedJobId) ? parseInt(selectedJobId) : null,
+    offset,
+    limit: pageSize
+  })
 
   // API mutation hooks
   const approveCandidateMutation = useApproveCandidate()
@@ -69,20 +89,32 @@ export function CandidateTab({
   const sendToReviewFromShortlistedMutation = useSendToReviewFromShortlisted()
   const sendToReviewFromRejectedMutation = useSendToReviewFromRejected()
 
-  // Fetch approved and rejected candidates for counts
-  const { data: shortlistedCandidates } = useShortlistedCandidates(
-    selectedJobId ? parseInt(selectedJobId) : null
+  // Get total counts for progress indicators (fetch separately to show all counts)
+  const { data: allReviewResponse } = useCandidatesForReview(
+    isValidJobId(selectedJobId) ? parseInt(selectedJobId) : null,
+    0,
+    1 // Just need count, so limit to 1
   )
-  const { data: rejectedCandidatesFromAPI } = useRejectedCandidates(
-    selectedJobId ? parseInt(selectedJobId) : null
+  const { data: allShortlistedResponse } = useShortlistedCandidates(
+    isValidJobId(selectedJobId) ? parseInt(selectedJobId) : null,
+    0,
+    1
   )
+  const { data: allRejectedResponse } = useRejectedCandidates(
+    isValidJobId(selectedJobId) ? parseInt(selectedJobId) : null,
+    0,
+    1
+  )
+
+  const reviewTotalCount = allReviewResponse?.total_count || 0
+  const shortlistedTotalCount = allShortlistedResponse?.total_count || 0
+  const rejectedTotalCount = allRejectedResponse?.total_count || 0
 
   const moveToNextCandidate = () => {
     // Don't increment the index - when the candidate is removed from the list by React Query,
     // the same index will automatically show the next candidate
     // Only decrement if we were at the last candidate and it's being removed
-    const reviewCandidates = (enrichedCandidates || []).map(mapEnrichedCandidateToCandidate)
-    if (currentCandidateIndex >= reviewCandidates.length - 1 && currentCandidateIndex > 0) {
+    if (currentCandidateIndex >= candidates.length - 1 && currentCandidateIndex > 0) {
       // We're removing the last candidate, so go back one to show the new last candidate
       setCurrentCandidateIndex(currentCandidateIndex - 1)
     }
@@ -91,13 +123,10 @@ export function CandidateTab({
 
   // Reset index if it's out of bounds after a candidate is removed
   useEffect(() => {
-    if (viewMode === 'review') {
-      const reviewCandidates = (enrichedCandidates || []).map(mapEnrichedCandidateToCandidate)
-      if (reviewCandidates.length > 0 && currentCandidateIndex >= reviewCandidates.length) {
-        setCurrentCandidateIndex(Math.max(0, reviewCandidates.length - 1))
-      }
+    if (candidates.length > 0 && currentCandidateIndex >= candidates.length) {
+      setCurrentCandidateIndex(Math.max(0, candidates.length - 1))
     }
-  }, [enrichedCandidates, currentCandidateIndex, viewMode])
+  }, [candidates, currentCandidateIndex])
 
   const handleApprove = async (candidateId: string) => {
     if (!selectedJobId) return
@@ -170,9 +199,8 @@ export function CandidateTab({
   }
 
   const handleSkip = () => {
-    const reviewCandidates = (enrichedCandidates || []).map(mapEnrichedCandidateToCandidate)
     // Loop back to the beginning if we're at the last candidate
-    if (currentCandidateIndex >= reviewCandidates.length - 1) {
+    if (currentCandidateIndex >= candidates.length - 1) {
       setCurrentCandidateIndex(0)
     } else {
       setCurrentCandidateIndex(currentCandidateIndex + 1)
@@ -202,20 +230,17 @@ export function CandidateTab({
   }
 
   const downloadCandidatesCSV = () => {
-    // Get the appropriate data based on view mode
+    // Get the appropriate data based on view mode using rawCandidates
     const getCandidatesData = () => {
+      if (!rawCandidates || rawCandidates.length === 0) {
+        return []
+      }
+
       switch (viewMode) {
         case 'approved':
-          return (shortlistedCandidates || []).map(item => ({
-            firstName: item.fk_candidate.first_name || '',
-            lastName: item.fk_candidate.last_name || '',
-            linkedinUrl: item.fk_candidate.raw_data.websites_linkedin
-              || (item.fk_candidate.linkedin_canonical_slug ? `https://linkedin.com/in/${item.fk_candidate.linkedin_canonical_slug}` : '')
-              || (item.fk_candidate.linkedin_shorthand_slug ? `https://linkedin.com/in/${item.fk_candidate.linkedin_shorthand_slug}` : ''),
-            createdAt: item.created_at || ''
-          }))
         case 'rejected':
-          return (rejectedCandidatesFromAPI || []).map(item => ({
+          // For approved/rejected, rawCandidates contains items with fk_candidate
+          return rawCandidates.map((item: any) => ({
             firstName: item.fk_candidate.first_name || '',
             lastName: item.fk_candidate.last_name || '',
             linkedinUrl: item.fk_candidate.raw_data.websites_linkedin
@@ -225,7 +250,8 @@ export function CandidateTab({
           }))
         case 'review':
         default:
-          return (enrichedCandidates || []).map(item => ({
+          // For review, rawCandidates contains EnrichedCandidateResponse directly
+          return rawCandidates.map((item: any) => ({
             firstName: item.first_name || '',
             lastName: item.last_name || '',
             linkedinUrl: item.raw_data.websites_linkedin
@@ -283,17 +309,26 @@ export function CandidateTab({
     document.body.removeChild(link)
   }
 
-  // Helper function to get current candidates based on view mode
-  const getCurrentCandidates = () => {
-    switch (viewMode) {
-      case 'approved':
-        return (shortlistedCandidates || []).map(item => mapEnrichedCandidateToCandidate(item.fk_candidate))
-      case 'rejected':
-        return (rejectedCandidatesFromAPI || []).map(item => mapEnrichedCandidateToCandidate(item.fk_candidate))
-      case 'review':
-      default:
-        return (enrichedCandidates || []).map(mapEnrichedCandidateToCandidate)
+  // Calculate pagination info
+  const totalPages = Math.ceil(totalCount / pageSize) || 1
+  const startIndex = offset
+  const endIndex = Math.min(offset + candidates.length, totalCount)
+
+  const handlePageChange = (direction: 'next' | 'prev') => {
+    if (direction === 'next' && currentPage < totalPages) {
+      setCurrentPage(prev => prev + 1)
+    } else if (direction === 'prev' && currentPage > 1) {
+      setCurrentPage(prev => prev - 1)
     }
+  }
+
+  const handlePageClick = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize)
+    setCurrentPage(1) // Reset to first page when changing page size
   }
 
   // Helper function to get the title for current view
@@ -374,46 +409,40 @@ export function CandidateTab({
       {/* Progress Indicators */}
       <div className="grid grid-cols-3 gap-6">
         {/* Remaining Candidates */}
-        <div 
-          className={`border p-4 rounded-lg cursor-pointer transition-all hover:shadow-md ${
-            viewMode === 'review' 
-              ? 'bg-blue-50 border-blue-300' 
+        <div
+          className={`border p-4 rounded-lg cursor-pointer transition-all hover:shadow-md ${viewMode === 'review'
+              ? 'bg-blue-50 border-blue-300'
               : 'bg-white border-gray-300 hover:border-gray-400'
-          }`}
+            }`}
           onClick={() => setViewMode('review')}
         >
           <div className="text-center">
-            <div className={`text-3xl font-bold mb-1 ${
-              viewMode === 'review' ? 'text-blue-900' : 'text-gray-900'
-            }`}>
-              {enrichedCandidates?.length || 0}
+            <div className={`text-3xl font-bold mb-1 ${viewMode === 'review' ? 'text-blue-900' : 'text-gray-900'
+              }`}>
+              {reviewTotalCount}
             </div>
-            <div className={`text-xs font-medium uppercase tracking-wider ${
-              viewMode === 'review' ? 'text-blue-700' : 'text-gray-600'
-            }`}>
+            <div className={`text-xs font-medium uppercase tracking-wider ${viewMode === 'review' ? 'text-blue-700' : 'text-gray-600'
+              }`}>
               To Review
             </div>
           </div>
         </div>
 
         {/* Approved Progress */}
-        <div 
-          className={`p-4 relative overflow-hidden rounded-lg cursor-pointer transition-all hover:shadow-md ${
-            viewMode === 'approved' 
-              ? 'bg-green-50 border-green-300 border' 
+        <div
+          className={`p-4 relative overflow-hidden rounded-lg cursor-pointer transition-all hover:shadow-md ${viewMode === 'approved'
+              ? 'bg-green-50 border-green-300 border'
               : 'bg-gray-200 border-gray-300 border'
-          }`}
+            }`}
           onClick={() => setViewMode('approved')}
         >
           <div className="relative z-10 text-center">
-            <div className={`text-3xl font-bold mb-1 ${
-              viewMode === 'approved' ? 'text-green-900' : 'text-gray-900'
-            }`}>
-              {shortlistedCandidates?.length ?? 0}/{jobPostings?.find(job => job.id.toString() === selectedJobId)?.target_candidates_count ?? 500}
+            <div className={`text-3xl font-bold mb-1 ${viewMode === 'approved' ? 'text-green-900' : 'text-gray-900'
+              }`}>
+              {shortlistedTotalCount}/{jobPostings?.find(job => job.id.toString() === selectedJobId)?.target_candidates_count ?? 500}
             </div>
-            <div className={`text-xs font-medium uppercase tracking-wider ${
-              viewMode === 'approved' ? 'text-green-700' : 'text-gray-600'
-            }`}>
+            <div className={`text-xs font-medium uppercase tracking-wider ${viewMode === 'approved' ? 'text-green-700' : 'text-gray-600'
+              }`}>
               Approved
             </div>
           </div>
@@ -421,32 +450,28 @@ export function CandidateTab({
           {/* Progress Bar */}
           <div className="absolute bottom-0 left-0 right-0 h-2 bg-gray-300 rounded-b-lg">
             <div
-              className={`h-full transition-all duration-500 ease-out rounded-b-lg ${
-                viewMode === 'approved' ? 'bg-green-600' : 'bg-gray-900'
-              }`}
-              style={{ width: `${Math.min(((shortlistedCandidates?.length ?? 0) / (jobPostings?.find(job => job.id.toString() === selectedJobId)?.target_candidates_count ?? 500)) * 100, 100)}%` }}
+              className={`h-full transition-all duration-500 ease-out rounded-b-lg ${viewMode === 'approved' ? 'bg-green-600' : 'bg-gray-900'
+                }`}
+              style={{ width: `${Math.min((shortlistedTotalCount / (jobPostings?.find(job => job.id.toString() === selectedJobId)?.target_candidates_count ?? 500)) * 100, 100)}%` }}
             />
           </div>
         </div>
 
         {/* Rejected Candidates */}
-        <div 
-          className={`border p-4 rounded-lg cursor-pointer transition-all hover:shadow-md ${
-            viewMode === 'rejected' 
-              ? 'bg-red-50 border-red-300' 
+        <div
+          className={`border p-4 rounded-lg cursor-pointer transition-all hover:shadow-md ${viewMode === 'rejected'
+              ? 'bg-red-50 border-red-300'
               : 'bg-white border-gray-300 hover:border-gray-400'
-          }`}
+            }`}
           onClick={() => setViewMode('rejected')}
         >
           <div className="text-center">
-            <div className={`text-3xl font-bold mb-1 ${
-              viewMode === 'rejected' ? 'text-red-900' : 'text-gray-900'
-            }`}>
-              {rejectedCandidatesFromAPI?.length ?? 0}
+            <div className={`text-3xl font-bold mb-1 ${viewMode === 'rejected' ? 'text-red-900' : 'text-gray-900'
+              }`}>
+              {rejectedTotalCount}
             </div>
-            <div className={`text-xs font-medium uppercase tracking-wider ${
-              viewMode === 'rejected' ? 'text-red-700' : 'text-gray-600'
-            }`}>
+            <div className={`text-xs font-medium uppercase tracking-wider ${viewMode === 'rejected' ? 'text-red-700' : 'text-gray-600'
+              }`}>
               Rejected
             </div>
           </div>
@@ -458,9 +483,16 @@ export function CandidateTab({
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">{getViewTitle()}</h2>
           <div className="flex items-center gap-4">
-            <div className="text-sm text-gray-600">
-              {getCurrentCandidates().length} candidate{getCurrentCandidates().length !== 1 ? 's' : ''}
-            </div>
+            {viewType === 'table' && (
+              <div className="text-sm text-gray-600">
+                Showing {startIndex + 1} to {endIndex} of {totalCount} candidate{totalCount !== 1 ? 's' : ''}
+              </div>
+            )}
+            {viewType === 'single' && (
+              <div className="text-sm text-gray-600">
+                {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}
+              </div>
+            )}
 
             {/* View Type Toggle */}
             <div className="flex items-center border rounded-lg overflow-hidden">
@@ -482,7 +514,7 @@ export function CandidateTab({
               </Button>
             </div>
 
-            {getCurrentCandidates().length > 0 && viewType === 'single' && (
+            {candidates.length > 0 && viewType === 'single' && (
               <Button
                 size="sm"
                 variant="outline"
@@ -506,24 +538,104 @@ export function CandidateTab({
             <p className="text-sm">Choose a job posting from the dropdown above to start reviewing candidates.</p>
           </div>
         </div>
-      ) : getCurrentCandidates().length > 0 && (getCurrentCandidates()[currentCandidateIndex] || viewType === 'table') ? (
+      ) : candidates.length > 0 && (candidates[currentCandidateIndex] || viewType === 'table') ? (
         viewType === 'table' ? (
           /* Table View for All Modes */
-          <CandidateTableView
-            candidates={getCurrentCandidates()}
-            onCandidateClick={(candidate) => {
-              setSelectedCandidate(candidate)
-              setIsProfilePanelOpen(true)
-            }}
-            onApprove={handleApprove}
-            onReject={handleReject}
-            onSendToReview={handleSendToReview}
-            onDownloadCSV={downloadCandidatesCSV}
-            onMove={handleMoveClick}
-            viewMode={viewMode}
-            isApproving={approveCandidateMutation.isPending || approveCandidateFromRejectedMutation.isPending}
-            isRejecting={rejectCandidateMutation.isPending || rejectCandidateFromShortlistedMutation.isPending}
-          />
+          <>
+            <CandidateTableView
+              candidates={candidates}
+              onCandidateClick={(candidate) => {
+                setSelectedCandidate(candidate)
+                setIsProfilePanelOpen(true)
+              }}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              onSendToReview={handleSendToReview}
+              onDownloadCSV={downloadCandidatesCSV}
+              onMove={handleMoveClick}
+              viewMode={viewMode}
+              isApproving={approveCandidateMutation.isPending || approveCandidateFromRejectedMutation.isPending}
+              isRejecting={rejectCandidateMutation.isPending || rejectCandidateFromShortlistedMutation.isPending}
+            />
+            {/* Pagination Controls - Show for all modes */}
+            {totalCount > 0 && candidates.length > 0 && (
+              <div className="flex items-center justify-between border-t pt-4">
+                <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <span>
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Show:</span>
+                    <Select
+                      value={pageSize.toString()}
+                      onValueChange={(value) => handlePageSizeChange(parseInt(value))}
+                    >
+                      <SelectTrigger className="w-20 h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                        <SelectItem value="250">250</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="text-sm text-gray-600">per page</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange('prev')}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+
+                  {/* Page Numbers */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                      // Show first page, last page, current page, and pages around current
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <Button
+                            key={page}
+                            variant={currentPage === page ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => handlePageClick(page)}
+                            className="min-w-[2.5rem]"
+                          >
+                            {page}
+                          </Button>
+                        )
+                      } else if (page === currentPage - 2 || page === currentPage + 2) {
+                        return (
+                          <span key={page} className="px-2 text-muted-foreground">
+                            ...
+                          </span>
+                        )
+                      }
+                      return null
+                    })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange('next')}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         ) : viewMode === 'review' ? (
           /* Single Card Review Mode */
           <div className="space-y-6">
@@ -531,8 +643,8 @@ export function CandidateTab({
             <div className="flex justify-center">
               <div className="w-full max-w-sm">
                 <CandidateCard
-                  key={getCurrentCandidates()[currentCandidateIndex].id}
-                  candidate={getCurrentCandidates()[currentCandidateIndex]}
+                  key={candidates[currentCandidateIndex].id}
+                  candidate={candidates[currentCandidateIndex]}
                   variant="detailed"
                   showActions={false}
                   onApprove={handleApprove}
@@ -552,7 +664,7 @@ export function CandidateTab({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => handleReject(getCurrentCandidates()[currentCandidateIndex].id)}
+                onClick={() => handleReject(candidates[currentCandidateIndex].id)}
                 disabled={rejectCandidateMutation.isPending || approveCandidateMutation.isPending}
                 className="h-8 text-xs"
               >
@@ -572,7 +684,7 @@ export function CandidateTab({
 
               <Button
                 size="sm"
-                onClick={() => handleApprove(getCurrentCandidates()[currentCandidateIndex].id)}
+                onClick={() => handleApprove(candidates[currentCandidateIndex].id)}
                 disabled={approveCandidateMutation.isPending || rejectCandidateMutation.isPending}
                 className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
               >
@@ -583,14 +695,14 @@ export function CandidateTab({
 
             {/* Progress Indicator */}
             <div className="text-center text-sm text-gray-600 font-medium">
-              Candidate {currentCandidateIndex + 1} of {getCurrentCandidates().length}
+              Candidate {currentCandidateIndex + 1} of {candidates.length}
             </div>
           </div>
         ) : (
           /* Grid View for Approved/Rejected */
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {getCurrentCandidates().map((candidate) => (
+              {candidates.map((candidate) => (
                 <div key={candidate.id} className="space-y-2">
                   <CandidateCard
                     candidate={candidate}
@@ -677,14 +789,14 @@ export function CandidateTab({
           <div className="text-gray-500">
             <Check className="h-12 w-12 mx-auto mb-4" />
             <h3 className="text-lg font-semibold">
-              {viewMode === 'review' ? 'All candidates reviewed!' : 
-               viewMode === 'approved' ? 'No approved candidates yet' :
-               'No rejected candidates yet'}
+              {viewMode === 'review' ? 'All candidates reviewed!' :
+                viewMode === 'approved' ? 'No approved candidates yet' :
+                  'No rejected candidates yet'}
             </h3>
             <p className="text-sm">
               {viewMode === 'review' ? 'You\'ve reviewed all candidates in your queue.' :
-               viewMode === 'approved' ? 'Approved candidates will appear here.' :
-               'Rejected candidates will appear here.'}
+                viewMode === 'approved' ? 'Approved candidates will appear here.' :
+                  'Rejected candidates will appear here.'}
             </p>
           </div>
         </div>
