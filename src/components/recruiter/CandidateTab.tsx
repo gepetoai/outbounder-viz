@@ -27,6 +27,7 @@ import { CandidateTableView } from './CandidateTableView'
 import { MoveCandidatesModal } from './MoveCandidatesModal'
 import { useToast } from '@/components/ui/toast'
 import { Pagination } from '@/components/ui/pagination'
+import { EnrichedCandidateResponse, RejectedCandidate, ShortlistedCandidate } from '@/lib/search-api'
 
 interface CandidateTabProps {
   jobDescriptionId?: number | null
@@ -265,25 +266,31 @@ export function CandidateTab({
         case 'approved':
         case 'rejected':
           // For approved/rejected, rawCandidates contains items with fk_candidate
-          return rawCandidates.map((item: any) => ({
-            firstName: item.fk_candidate.first_name || '',
-            lastName: item.fk_candidate.last_name || '',
-            linkedinUrl: item.fk_candidate.raw_data.websites_linkedin
-              || (item.fk_candidate.linkedin_canonical_slug ? `https://linkedin.com/in/${item.fk_candidate.linkedin_canonical_slug}` : '')
-              || (item.fk_candidate.linkedin_shorthand_slug ? `https://linkedin.com/in/${item.fk_candidate.linkedin_shorthand_slug}` : ''),
-            createdAt: item.created_at || ''
-          }))
+          return rawCandidates.map((item: EnrichedCandidateResponse | ShortlistedCandidate | RejectedCandidate) => {
+            const candidate = item as ShortlistedCandidate | RejectedCandidate
+            return {
+              firstName: candidate.fk_candidate.first_name || '',
+              lastName: candidate.fk_candidate.last_name || '',
+              linkedinUrl: candidate.fk_candidate.raw_data.websites_linkedin
+                || (candidate.fk_candidate.linkedin_canonical_slug ? `https://linkedin.com/in/${candidate.fk_candidate.linkedin_canonical_slug}` : '')
+                || (candidate.fk_candidate.linkedin_shorthand_slug ? `https://linkedin.com/in/${candidate.fk_candidate.linkedin_shorthand_slug}` : ''),
+              createdAt: candidate.created_at || ''
+            }
+          })
         case 'review':
         default:
           // For review, rawCandidates contains EnrichedCandidateResponse directly
-          return rawCandidates.map((item: any) => ({
-            firstName: item.first_name || '',
-            lastName: item.last_name || '',
-            linkedinUrl: item.raw_data.websites_linkedin
-              || (item.linkedin_canonical_slug ? `https://linkedin.com/in/${item.linkedin_canonical_slug}` : '')
-              || (item.linkedin_shorthand_slug ? `https://linkedin.com/in/${item.linkedin_shorthand_slug}` : ''),
-            createdAt: item.created_at || ''
-          }))
+          return rawCandidates.map((item: EnrichedCandidateResponse | ShortlistedCandidate | RejectedCandidate) => {
+            const candidate = item as EnrichedCandidateResponse
+            return {
+              firstName: candidate.first_name || '',
+              lastName: candidate.last_name || '',
+              linkedinUrl: candidate.raw_data.websites_linkedin
+                || (candidate.linkedin_canonical_slug ? `https://linkedin.com/in/${candidate.linkedin_canonical_slug}` : '')
+                || (candidate.linkedin_shorthand_slug ? `https://linkedin.com/in/${candidate.linkedin_shorthand_slug}` : ''),
+              createdAt: candidate.created_at || ''
+            }
+          })
       }
     }
 
@@ -428,8 +435,8 @@ export function CandidateTab({
         {/* Remaining Candidates */}
         <div
           className={`border p-4 rounded-lg cursor-pointer transition-all hover:shadow-md ${viewMode === 'review'
-              ? 'bg-blue-50 border-blue-300'
-              : 'bg-white border-gray-300 hover:border-gray-400'
+            ? 'bg-blue-50 border-blue-300'
+            : 'bg-white border-gray-300 hover:border-gray-400'
             }`}
           onClick={() => setViewMode('review')}
         >
@@ -448,8 +455,8 @@ export function CandidateTab({
         {/* Approved Progress */}
         <div
           className={`p-4 relative overflow-hidden rounded-lg cursor-pointer transition-all hover:shadow-md ${viewMode === 'approved'
-              ? 'bg-green-50 border-green-300 border'
-              : 'bg-gray-200 border-gray-300 border'
+            ? 'bg-green-50 border-green-300 border'
+            : 'bg-gray-200 border-gray-300 border'
             }`}
           onClick={() => setViewMode('approved')}
         >
@@ -477,8 +484,8 @@ export function CandidateTab({
         {/* Rejected Candidates */}
         <div
           className={`border p-4 rounded-lg cursor-pointer transition-all hover:shadow-md ${viewMode === 'rejected'
-              ? 'bg-red-50 border-red-300'
-              : 'bg-white border-gray-300 hover:border-gray-400'
+            ? 'bg-red-50 border-red-300'
+            : 'bg-white border-gray-300 hover:border-gray-400'
             }`}
           onClick={() => setViewMode('rejected')}
         >
@@ -501,51 +508,51 @@ export function CandidateTab({
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">{getViewTitle()}</h2>
             <div className="flex items-center gap-4">
-            {viewType === 'table' && (
-              <div className="text-sm text-gray-600">
-                Showing {startIndex + 1} to {endIndex} of {totalCount} candidate{totalCount !== 1 ? 's' : ''}
-              </div>
-            )}
-            {viewType === 'single' && (
-              <div className="text-sm text-gray-600">
-                {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}
-              </div>
-            )}
+              {viewType === 'table' && (
+                <div className="text-sm text-gray-600">
+                  Showing {startIndex + 1} to {endIndex} of {totalCount} candidate{totalCount !== 1 ? 's' : ''}
+                </div>
+              )}
+              {viewType === 'single' && (
+                <div className="text-sm text-gray-600">
+                  {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}
+                </div>
+              )}
 
-            {/* View Type Toggle */}
-            <div className="flex items-center border rounded-lg overflow-hidden">
-              <Button
-                size="sm"
-                variant={viewType === 'single' ? 'default' : 'ghost'}
-                onClick={() => setViewType('single')}
-                className="rounded-none h-8 px-3"
-              >
-                <User className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant={viewType === 'table' ? 'default' : 'ghost'}
-                onClick={() => setViewType('table')}
-                className="rounded-none h-8 px-3"
-              >
-                <TableIcon className="h-4 w-4" />
-              </Button>
-            </div>
+              {/* View Type Toggle */}
+              <div className="flex items-center border rounded-lg overflow-hidden">
+                <Button
+                  size="sm"
+                  variant={viewType === 'single' ? 'default' : 'ghost'}
+                  onClick={() => setViewType('single')}
+                  className="rounded-none h-8 px-3"
+                >
+                  <User className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewType === 'table' ? 'default' : 'ghost'}
+                  onClick={() => setViewType('table')}
+                  className="rounded-none h-8 px-3"
+                >
+                  <TableIcon className="h-4 w-4" />
+                </Button>
+              </div>
 
-            {candidates.length > 0 && viewType === 'single' && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={downloadCandidatesCSV}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Download CSV
-              </Button>
-            )}
+              {candidates.length > 0 && viewType === 'single' && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={downloadCandidatesCSV}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Download CSV
+                </Button>
+              )}
             </div>
           </div>
-          
+
           {/* Search Input */}
           <div className="max-w-md">
             <div className="relative">
