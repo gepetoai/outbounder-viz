@@ -351,12 +351,16 @@ export async function getCandidatesByJobDescription(jobDescriptionId: number): P
 export async function getCandidatesForReview(
   jobDescriptionId: number,
   offset: number = 0,
-  limit: number = 25
+  limit: number = 25,
+  search?: string
 ): Promise<PaginatedCandidatesResponse<EnrichedCandidateResponse>> {
   const params = new URLSearchParams({
     offset: offset.toString(),
     limit: limit.toString(),
   })
+  if (search && search.trim()) {
+    params.append('search', search.trim())
+  }
   return fetchJson<PaginatedCandidatesResponse<EnrichedCandidateResponse>>(
     `${API_BASE_URL}/candidate-generation/job-description/${jobDescriptionId}/review?${params}`,
     {
@@ -420,12 +424,16 @@ export interface PaginatedCandidatesResponse<T> {
 export async function getShortlistedCandidates(
   jobDescriptionId: number,
   offset: number = 0,
-  limit: number = 25
+  limit: number = 25,
+  search?: string
 ): Promise<PaginatedCandidatesResponse<ShortlistedCandidate>> {
   const params = new URLSearchParams({
     offset: offset.toString(),
     limit: limit.toString(),
   })
+  if (search && search.trim()) {
+    params.append('search', search.trim())
+  }
   return fetchJson<PaginatedCandidatesResponse<ShortlistedCandidate>>(
     `${API_BASE_URL}/job-description-shortlisted-candidate/${jobDescriptionId}?${params}`,
     {
@@ -437,12 +445,16 @@ export async function getShortlistedCandidates(
 export async function getRejectedCandidates(
   jobDescriptionId: number,
   offset: number = 0,
-  limit: number = 25
+  limit: number = 25,
+  search?: string
 ): Promise<PaginatedCandidatesResponse<RejectedCandidate>> {
   const params = new URLSearchParams({
     offset: offset.toString(),
     limit: limit.toString(),
   })
+  if (search && search.trim()) {
+    params.append('search', search.trim())
+  }
   return fetchJson<PaginatedCandidatesResponse<RejectedCandidate>>(
     `${API_BASE_URL}/job-description-rejected-candidate/${jobDescriptionId}?${params}`,
     {
