@@ -411,8 +411,10 @@ export interface RejectedCandidate {
 }
 
 export interface PaginatedCandidatesResponse<T> {
-  candidates: T[]
-  total_count: number
+  items: T[]
+  total: number
+  limit: number
+  offset: number
 }
 
 export async function getShortlistedCandidates(
