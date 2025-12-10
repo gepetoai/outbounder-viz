@@ -110,15 +110,16 @@ export function useCandidatesByJobDescription(jobDescriptionId: number | null | 
 export function useCandidatesForReview(
   jobDescriptionId: number | null | undefined,
   offset: number = 0,
-  limit: number = 25
+  limit: number = 25,
+  search?: string
 ) {
   return useQuery<PaginatedCandidatesResponse<EnrichedCandidateResponse>, Error>({
-    queryKey: ['candidates', 'review', jobDescriptionId, offset, limit],
+    queryKey: ['candidates', 'review', jobDescriptionId, offset, limit, search],
     queryFn: () => {
       if (!jobDescriptionId) {
         throw new Error('Job description ID is required')
       }
-      return getCandidatesForReview(jobDescriptionId, offset, limit)
+      return getCandidatesForReview(jobDescriptionId, offset, limit, search)
     },
     enabled: !!jobDescriptionId,
     staleTime: 1000 * 60 * 5, // 5 minutes

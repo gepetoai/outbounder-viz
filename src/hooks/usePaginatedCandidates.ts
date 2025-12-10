@@ -9,6 +9,7 @@ interface UsePaginatedCandidatesParams {
   jobDescriptionId: number | null | undefined
   offset: number
   limit: number
+  search?: string
 }
 
 interface UsePaginatedCandidatesResult {
@@ -31,24 +32,28 @@ export function usePaginatedCandidates({
   jobDescriptionId,
   offset,
   limit,
+  search,
 }: UsePaginatedCandidatesParams): UsePaginatedCandidatesResult {
   // Fetch candidates based on view mode
   const reviewQuery = useCandidatesForReview(
     viewMode === 'review' ? jobDescriptionId : null,
     offset,
-    limit
+    limit,
+    search
   )
   
   const shortlistedQuery = useShortlistedCandidates(
     viewMode === 'approved' ? jobDescriptionId : null,
     offset,
-    limit
+    limit,
+    search
   )
   
   const rejectedQuery = useRejectedCandidates(
     viewMode === 'rejected' ? jobDescriptionId : null,
     offset,
-    limit
+    limit,
+    search
   )
 
   // Determine which query to use based on view mode
