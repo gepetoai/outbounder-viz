@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useCandidatesForReview } from './useSearch'
 import { useShortlistedCandidates, useRejectedCandidates } from './useCandidates'
 import { mapEnrichedCandidateToCandidate, type Candidate } from '@/lib/utils'
-import type { EnrichedCandidateResponse } from '@/lib/search-api'
+import type { EnrichedCandidateResponse, RejectedCandidate, ShortlistedCandidate, PaginatedCandidatesResponse } from '@/lib/search-api'
 
 interface UsePaginatedCandidatesParams {
   viewMode: 'review' | 'approved' | 'rejected'
@@ -16,7 +16,7 @@ interface UsePaginatedCandidatesResult {
   totalCount: number
   isLoading: boolean
   error: Error | null
-  rawCandidates: EnrichedCandidateResponse[] | any[] // For review mode, returns EnrichedCandidateResponse[], for others returns ShortlistedCandidate[] or RejectedCandidate[]
+  rawCandidates: EnrichedCandidateResponse[] | RejectedCandidate[] | ShortlistedCandidate[] // For review mode, returns EnrichedCandidateResponse[], for others returns RejectedCandidate[] or ShortlistedCandidate[]
 }
 
 /**
@@ -72,10 +72,10 @@ export function usePaginatedCandidates({
 
     switch (viewMode) {
       case 'review': {
-        const response = activeQuery.data as { candidates: EnrichedCandidateResponse[], total_count: number } | undefined
-        const rawCandidates = response?.candidates || []
+        const response = activeQuery.data as PaginatedCandidatesResponse<EnrichedCandidateResponse> | undefined
+        const rawCandidates = response?.items || []
         const candidates = rawCandidates.map(mapEnrichedCandidateToCandidate)
-        const totalCount = response?.total_count || 0
+        const totalCount = response?.total || 0
         
         return {
           candidates,
@@ -87,12 +87,12 @@ export function usePaginatedCandidates({
       }
       
       case 'approved': {
-        const response = activeQuery.data as { candidates: any[], total_count: number } | undefined
-        const rawCandidates = response?.candidates || []
-        const candidates = rawCandidates.map((item: any) => 
+        const response = activeQuery.data as PaginatedCandidatesResponse<ShortlistedCandidate> | undefined
+        const rawCandidates = response?.items || []
+        const candidates = rawCandidates.map((item: ShortlistedCandidate) => 
           mapEnrichedCandidateToCandidate(item.fk_candidate)
         )
-        const totalCount = response?.total_count || 0
+        const totalCount = response?.total || 0
         
         return {
           candidates,
@@ -104,12 +104,12 @@ export function usePaginatedCandidates({
       }
       
       case 'rejected': {
-        const response = activeQuery.data as { candidates: any[], total_count: number } | undefined
-        const rawCandidates = response?.candidates || []
-        const candidates = rawCandidates.map((item: any) => 
+        const response = activeQuery.data as PaginatedCandidatesResponse<RejectedCandidate> | undefined
+        const rawCandidates = response?.items || []
+        const candidates = rawCandidates.map((item: RejectedCandidate) => 
           mapEnrichedCandidateToCandidate(item.fk_candidate)
         )
-        const totalCount = response?.total_count || 0
+        const totalCount = response?.total || 0
         
         return {
           candidates,
