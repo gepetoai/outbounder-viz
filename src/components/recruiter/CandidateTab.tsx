@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { X, Check, Briefcase, Download, ThumbsUp, ThumbsDown, User, Table as TableIcon, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react'
+import { X, Check, Briefcase, Download, ThumbsUp, ThumbsDown, User, Table as TableIcon, RotateCcw } from 'lucide-react'
 import { useMoveCandidates, useCandidatesForReview } from '@/hooks/useSearch'
 import {
   useApproveCandidate,
@@ -24,6 +24,7 @@ import { CandidateDetailPanel } from './CandidateDetailPanel'
 import { CandidateTableView } from './CandidateTableView'
 import { MoveCandidatesModal } from './MoveCandidatesModal'
 import { useToast } from '@/components/ui/toast'
+import { Pagination } from '@/components/ui/pagination'
 
 interface CandidateTabProps {
   jobDescriptionId?: number | null
@@ -106,9 +107,9 @@ export function CandidateTab({
     1
   )
 
-  const reviewTotalCount = allReviewResponse?.total_count || 0
-  const shortlistedTotalCount = allShortlistedResponse?.total_count || 0
-  const rejectedTotalCount = allRejectedResponse?.total_count || 0
+  const reviewTotalCount = allReviewResponse?.total || 0
+  const shortlistedTotalCount = allShortlistedResponse?.total || 0
+  const rejectedTotalCount = allRejectedResponse?.total || 0
 
   const moveToNextCandidate = () => {
     // Don't increment the index - when the candidate is removed from the list by React Query,
@@ -314,15 +315,7 @@ export function CandidateTab({
   const startIndex = offset
   const endIndex = Math.min(offset + candidates.length, totalCount)
 
-  const handlePageChange = (direction: 'next' | 'prev') => {
-    if (direction === 'next' && currentPage < totalPages) {
-      setCurrentPage(prev => prev + 1)
-    } else if (direction === 'prev' && currentPage > 1) {
-      setCurrentPage(prev => prev - 1)
-    }
-  }
-
-  const handlePageClick = (page: number) => {
+  const handlePageChange = (page: number) => {
     setCurrentPage(page)
   }
 
@@ -559,81 +552,16 @@ export function CandidateTab({
             />
             {/* Pagination Controls - Show for all modes */}
             {totalCount > 0 && candidates.length > 0 && (
-              <div className="flex items-center justify-between border-t pt-4">
-                <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <span>
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Show:</span>
-                    <Select
-                      value={pageSize.toString()}
-                      onValueChange={(value) => handlePageSizeChange(parseInt(value))}
-                    >
-                      <SelectTrigger className="w-20 h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="25">25</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                        <SelectItem value="100">100</SelectItem>
-                        <SelectItem value="250">250</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span className="text-sm text-gray-600">per page</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange('prev')}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-
-                  {/* Page Numbers */}
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                      // Show first page, last page, current page, and pages around current
-                      if (
-                        page === 1 ||
-                        page === totalPages ||
-                        (page >= currentPage - 1 && page <= currentPage + 1)
-                      ) {
-                        return (
-                          <Button
-                            key={page}
-                            variant={currentPage === page ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => handlePageClick(page)}
-                            className="min-w-[2.5rem]"
-                          >
-                            {page}
-                          </Button>
-                        )
-                      } else if (page === currentPage - 2 || page === currentPage + 2) {
-                        return (
-                          <span key={page} className="px-2 text-muted-foreground">
-                            ...
-                          </span>
-                        )
-                      }
-                      return null
-                    })}
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange('next')}
-                    disabled={currentPage === totalPages}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                totalCount={totalCount}
+                startIndex={startIndex}
+                endIndex={endIndex}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+              />
             )}
           </>
         ) : viewMode === 'review' ? (
