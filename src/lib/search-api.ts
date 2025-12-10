@@ -348,10 +348,21 @@ export async function getCandidatesByJobDescription(jobDescriptionId: number): P
   })
 }
 
-export async function getCandidatesForReview(jobDescriptionId: number): Promise<EnrichedCandidateResponse[]> {
-  return fetchJson<EnrichedCandidateResponse[]>(`${API_BASE_URL}/candidate-generation/job-description/${jobDescriptionId}/review`, {
-    method: 'GET'
+export async function getCandidatesForReview(
+  jobDescriptionId: number,
+  offset: number = 0,
+  limit: number = 25
+): Promise<PaginatedCandidatesResponse<EnrichedCandidateResponse>> {
+  const params = new URLSearchParams({
+    offset: offset.toString(),
+    limit: limit.toString(),
   })
+  return fetchJson<PaginatedCandidatesResponse<EnrichedCandidateResponse>>(
+    `${API_BASE_URL}/candidate-generation/job-description/${jobDescriptionId}/review?${params}`,
+    {
+      method: 'GET'
+    }
+  )
 }
 
 export interface ApproveRejectCandidateRequest {
@@ -399,16 +410,45 @@ export interface RejectedCandidate {
   fk_candidate: EnrichedCandidateResponse
 }
 
-export async function getShortlistedCandidates(jobDescriptionId: number): Promise<ShortlistedCandidate[]> {
-  return fetchJson<ShortlistedCandidate[]>(`${API_BASE_URL}/job-description-shortlisted-candidate/${jobDescriptionId}`, {
-    method: 'GET'
-  })
+export interface PaginatedCandidatesResponse<T> {
+  items: T[]
+  total: number
+  limit: number
+  offset: number
 }
 
-export async function getRejectedCandidates(jobDescriptionId: number): Promise<RejectedCandidate[]> {
-  return fetchJson<RejectedCandidate[]>(`${API_BASE_URL}/job-description-rejected-candidate/${jobDescriptionId}`, {
-    method: 'GET'
+export async function getShortlistedCandidates(
+  jobDescriptionId: number,
+  offset: number = 0,
+  limit: number = 25
+): Promise<PaginatedCandidatesResponse<ShortlistedCandidate>> {
+  const params = new URLSearchParams({
+    offset: offset.toString(),
+    limit: limit.toString(),
   })
+  return fetchJson<PaginatedCandidatesResponse<ShortlistedCandidate>>(
+    `${API_BASE_URL}/job-description-shortlisted-candidate/${jobDescriptionId}?${params}`,
+    {
+      method: 'GET'
+    }
+  )
+}
+
+export async function getRejectedCandidates(
+  jobDescriptionId: number,
+  offset: number = 0,
+  limit: number = 25
+): Promise<PaginatedCandidatesResponse<RejectedCandidate>> {
+  const params = new URLSearchParams({
+    offset: offset.toString(),
+    limit: limit.toString(),
+  })
+  return fetchJson<PaginatedCandidatesResponse<RejectedCandidate>>(
+    `${API_BASE_URL}/job-description-rejected-candidate/${jobDescriptionId}?${params}`,
+    {
+      method: 'GET'
+    }
+  )
 }
 
 export interface MoveCandidatesRequest {
