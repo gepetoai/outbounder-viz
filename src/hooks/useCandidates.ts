@@ -21,14 +21,11 @@ export function useApproveCandidate() {
     onSuccess: (_, variables) => {
       console.log('Candidate approved successfully:', variables.fk_candidate_id)
 
-      // Optimistically update the review candidates cache by removing the approved candidate
-      queryClient.setQueryData<EnrichedCandidateResponse[]>(
-        ['candidates', 'review', variables.fk_job_description_id],
-        (oldData) => {
-          if (!oldData) return oldData
-          return oldData.filter(candidate => candidate.id !== variables.fk_candidate_id)
-        }
-      )
+      // Invalidate all review candidates queries (with pagination) to refetch updated data
+      queryClient.invalidateQueries({ 
+        queryKey: ['candidates', 'review', variables.fk_job_description_id],
+        refetchType: 'active' 
+      })
 
       // Invalidate shortlisted candidates to show updated count
       queryClient.invalidateQueries({ queryKey: ['shortlistedCandidates'], refetchType: 'active' })
@@ -47,14 +44,11 @@ export function useRejectCandidate() {
     onSuccess: (_, variables) => {
       console.log('Candidate rejected successfully:', variables.fk_candidate_id)
 
-      // Optimistically update the review candidates cache by removing the rejected candidate
-      queryClient.setQueryData<EnrichedCandidateResponse[]>(
-        ['candidates', 'review', variables.fk_job_description_id],
-        (oldData) => {
-          if (!oldData) return oldData
-          return oldData.filter(candidate => candidate.id !== variables.fk_candidate_id)
-        }
-      )
+      // Invalidate all review candidates queries (with pagination) to refetch updated data
+      queryClient.invalidateQueries({ 
+        queryKey: ['candidates', 'review', variables.fk_job_description_id],
+        refetchType: 'active' 
+      })
 
       // Invalidate rejected candidates to show updated count
       queryClient.invalidateQueries({ queryKey: ['rejectedCandidates'], refetchType: 'active' })
@@ -65,28 +59,36 @@ export function useRejectCandidate() {
   })
 }
 
-export function useShortlistedCandidates(jobDescriptionId: number | null | undefined) {
+export function useShortlistedCandidates(
+  jobDescriptionId: number | null | undefined,
+  offset: number = 0,
+  limit: number = 25
+) {
   return useQuery({
-    queryKey: ['shortlistedCandidates', jobDescriptionId],
+    queryKey: ['shortlistedCandidates', jobDescriptionId, offset, limit],
     queryFn: () => {
       if (!jobDescriptionId) {
         throw new Error('Job description ID is required')
       }
-      return getShortlistedCandidates(jobDescriptionId)
+      return getShortlistedCandidates(jobDescriptionId, offset, limit)
     },
     enabled: !!jobDescriptionId,
     staleTime: 1000 * 60 * 5, // 5 minutes
   })
 }
 
-export function useRejectedCandidates(jobDescriptionId: number | null | undefined) {
+export function useRejectedCandidates(
+  jobDescriptionId: number | null | undefined,
+  offset: number = 0,
+  limit: number = 25
+) {
   return useQuery({
-    queryKey: ['rejectedCandidates', jobDescriptionId],
+    queryKey: ['rejectedCandidates', jobDescriptionId, offset, limit],
     queryFn: () => {
       if (!jobDescriptionId) {
         throw new Error('Job description ID is required')
       }
-      return getRejectedCandidates(jobDescriptionId)
+      return getRejectedCandidates(jobDescriptionId, offset, limit)
     },
     enabled: !!jobDescriptionId,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -139,6 +141,11 @@ export function useSendToReviewFromShortlisted() {
       // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: ['candidates'] })
       queryClient.invalidateQueries({ queryKey: ['shortlistedCandidates'] })
+      // Invalidate review candidates to show the candidates that were sent back
+      queryClient.invalidateQueries({ 
+        queryKey: ['candidates', 'review', variables.fk_job_description_id],
+        refetchType: 'active' 
+      })
     },
     onError: (error) => {
       console.error('Failed to send candidates to review from shortlisted:', error)
@@ -156,6 +163,11 @@ export function useSendToReviewFromRejected() {
       // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: ['candidates'] })
       queryClient.invalidateQueries({ queryKey: ['rejectedCandidates'] })
+      // Invalidate review candidates to show the candidates that were sent back
+      queryClient.invalidateQueries({ 
+        queryKey: ['candidates', 'review', variables.fk_job_description_id],
+        refetchType: 'active' 
+      })
     },
     onError: (error) => {
       console.error('Failed to send candidates to review from rejected:', error)
