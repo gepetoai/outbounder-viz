@@ -19,6 +19,7 @@ interface CandidateTableViewProps {
   viewMode: 'review' | 'approved' | 'rejected'
   isApproving?: boolean
   isRejecting?: boolean
+  isDownloadingCSV?: boolean
 }
 
 export function CandidateTableView({
@@ -31,7 +32,8 @@ export function CandidateTableView({
   onMove,
   viewMode,
   isApproving = false,
-  isRejecting = false
+  isRejecting = false,
+  isDownloadingCSV = false
 }: CandidateTableViewProps) {
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set())
 
@@ -170,11 +172,11 @@ export function CandidateTableView({
                 size="sm"
                 variant="outline"
                 onClick={onDownloadCSV}
-                disabled={candidates.length === 0}
+                disabled={candidates.length === 0 || isDownloadingCSV}
                 className="h-7 px-3 py-0 text-xs bg-white border-gray-300 text-gray-800 hover:bg-gray-100 disabled:opacity-50"
               >
                 <Download className="h-4 w-4 mr-1" />
-                Download
+                {isDownloadingCSV ? 'Downloading...' : 'Download'}
               </Button>
             </div>
           </div>
