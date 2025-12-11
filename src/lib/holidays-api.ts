@@ -9,6 +9,7 @@ export interface Holiday {
   id: number
   name: string
   date: string // YYYY-MM-DD format
+  is_global: boolean
   created_at: string
   updated_at: string
 }
