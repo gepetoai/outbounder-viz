@@ -64,6 +64,7 @@ export function SettingsTab() {
     id: number
     name: string
     date: Date
+    is_global: boolean
   }
 
   // All holidays associated with the organization (unified list)
@@ -98,7 +99,8 @@ export function SettingsTab() {
         .map(h => ({
           id: h.id,
           name: h.name,
-          date: new Date(h.date)
+          date: new Date(h.date),
+          is_global: h.is_global
         }))
 
       setOrganizationHolidays(orgHols)
@@ -165,7 +167,8 @@ export function SettingsTab() {
         setOrganizationHolidays(prev => [...prev, {
           id: holiday.id,
           name: holiday.name,
-          date: new Date(holiday.date)
+          date: new Date(holiday.date),
+          is_global: holiday.is_global
         }])
       }
     }
@@ -418,7 +421,8 @@ export function SettingsTab() {
                       setOrganizationHolidays(availableHolidays.map(h => ({
                         id: h.id,
                         name: h.name,
-                        date: new Date(h.date)
+                        date: new Date(h.date),
+                        is_global: h.is_global
                       })))
                     }
                   }}
@@ -512,30 +516,34 @@ export function SettingsTab() {
                         <p className="font-medium text-sm">{holiday.name}</p>
                         <p className="text-xs text-gray-500">{formatDate(holiday.date)}</p>
                       </div>
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setEditingHoliday(holiday)
-                            setHolidayName(holiday.name)
-                            setSelectedDate(holiday.date)
-                            setShowHolidayForm(true)
-                            setShowHolidaySection(true)
-                          }}
-                          className="h-8 w-8 p-0 hover:bg-gray-100"
-                        >
-                          <Edit2 className="h-4 w-4 text-gray-600" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeleteHoliday(holiday.id)}
-                          className="h-8 w-8 p-0 hover:bg-red-50"
-                        >
-                          <X className="h-4 w-4 text-red-600" />
-                        </Button>
-                      </div>
+                      {
+                        !holiday.is_global && (
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingHoliday(holiday)
+                                setHolidayName(holiday.name)
+                                setSelectedDate(holiday.date)
+                                setShowHolidayForm(true)
+                                setShowHolidaySection(true)
+                              }}
+                              className="h-8 w-8 p-0 hover:bg-gray-100"
+                            >
+                              <Edit2 className="h-4 w-4 text-gray-600" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteHoliday(holiday.id)}
+                              className="h-8 w-8 p-0 hover:bg-red-50"
+                            >
+                              <X className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </div>
+                        )
+                      }
                     </div>
                   ))}
               </div>
