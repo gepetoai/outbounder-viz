@@ -16,6 +16,7 @@ import {
   useSendToReviewFromShortlisted,
   useSendToReviewFromRejected
 } from '@/hooks/useCandidates'
+import { CandidateStatus, downloadCandidatesCSV as downloadCandidatesCSVFromAPI } from '@/lib/search-api'
 import { usePaginatedCandidates } from '@/hooks/usePaginatedCandidates'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useDebounce } from '@/hooks/useDebounce'
@@ -27,11 +28,12 @@ import { CandidateTableView } from './CandidateTableView'
 import { MoveCandidatesModal } from './MoveCandidatesModal'
 import { useToast } from '@/components/ui/toast'
 import { Pagination } from '@/components/ui/pagination'
-import { EnrichedCandidateResponse, RejectedCandidate, ShortlistedCandidate } from '@/lib/search-api'
 
 interface CandidateTabProps {
   jobDescriptionId?: number | null
 }
+
+type ViewMode = 'review' | 'approved' | 'rejected'
 
 export function CandidateTab({
   jobDescriptionId
@@ -39,7 +41,7 @@ export function CandidateTab({
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState<string>(jobDescriptionId?.toString() || '')
-  const [viewMode, setViewMode] = useState<'review' | 'approved' | 'rejected'>('review')
+  const [viewMode, setViewMode] = useState<ViewMode>('review')
   const [viewType, setViewType] = useState<'single' | 'table'>('single')
   const [currentCandidateIndex, setCurrentCandidateIndex] = useState(0)
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false)
@@ -47,6 +49,7 @@ export function CandidateTab({
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
   const [searchTerm, setSearchTerm] = useState('')
+  const [isDownloadingCSV, setIsDownloadingCSV] = useState(false)
 
   const { showToast } = useToast()
 
@@ -86,8 +89,7 @@ export function CandidateTab({
     candidates,
     totalCount,
     isLoading: isFetchingCandidates,
-    error: candidatesError,
-    rawCandidates
+    error: candidatesError
   } = usePaginatedCandidates({
     viewMode,
     jobDescriptionId: isValidJobId(selectedJobId) ? parseInt(selectedJobId) : null,
@@ -255,90 +257,52 @@ export function CandidateTab({
     }
   }
 
-  const downloadCandidatesCSV = () => {
-    // Get the appropriate data based on view mode using rawCandidates
-    const getCandidatesData = () => {
-      if (!rawCandidates || rawCandidates.length === 0) {
-        return []
-      }
-
-      switch (viewMode) {
-        case 'approved':
-        case 'rejected':
-          // For approved/rejected, rawCandidates contains items with fk_candidate
-          return rawCandidates.map((item: EnrichedCandidateResponse | ShortlistedCandidate | RejectedCandidate) => {
-            const candidate = item as ShortlistedCandidate | RejectedCandidate
-            return {
-              firstName: candidate.fk_candidate.first_name || '',
-              lastName: candidate.fk_candidate.last_name || '',
-              linkedinUrl: candidate.fk_candidate.raw_data.websites_linkedin
-                || (candidate.fk_candidate.linkedin_canonical_slug ? `https://linkedin.com/in/${candidate.fk_candidate.linkedin_canonical_slug}` : '')
-                || (candidate.fk_candidate.linkedin_shorthand_slug ? `https://linkedin.com/in/${candidate.fk_candidate.linkedin_shorthand_slug}` : ''),
-              createdAt: candidate.created_at || ''
-            }
-          })
-        case 'review':
-        default:
-          // For review, rawCandidates contains EnrichedCandidateResponse directly
-          return rawCandidates.map((item: EnrichedCandidateResponse | ShortlistedCandidate | RejectedCandidate) => {
-            const candidate = item as EnrichedCandidateResponse
-            return {
-              firstName: candidate.first_name || '',
-              lastName: candidate.last_name || '',
-              linkedinUrl: candidate.raw_data.websites_linkedin
-                || (candidate.linkedin_canonical_slug ? `https://linkedin.com/in/${candidate.linkedin_canonical_slug}` : '')
-                || (candidate.linkedin_shorthand_slug ? `https://linkedin.com/in/${candidate.linkedin_shorthand_slug}` : ''),
-              createdAt: candidate.created_at || ''
-            }
-          })
-      }
-    }
-
-    const candidatesData = getCandidatesData()
-
-    if (candidatesData.length === 0) {
-      console.log('No candidates to download')
+  const downloadCandidatesCSV = async () => {
+    if (!isValidJobId(selectedJobId)) {
+      showToast('Please select a valid job description', 'error')
       return
     }
 
-    // Escape commas and quotes in CSV
-    const escapeCSV = (str: string) => {
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        return `"${str.replace(/"/g, '""')}"`
-      }
-      return str
+    // Map viewMode to candidate_status enum values
+    const candidateStatusMap: Record<ViewMode, CandidateStatus> = {
+      review: 'review',
+      approved: 'shortlisted',
+      rejected: 'rejected'
     }
 
-    // Create CSV content
-    const headers = ['First Name', 'Last Name', 'LinkedIn Profile URL', 'Created At']
-    const csvContent = [
-      headers.join(','),
-      ...candidatesData.map(candidate => {
-        return [
-          escapeCSV(candidate.firstName),
-          escapeCSV(candidate.lastName),
-          escapeCSV(candidate.linkedinUrl),
-          escapeCSV(candidate.createdAt)
-        ].join(',')
-      })
-    ].join('\n')
+    const candidateStatus = candidateStatusMap[viewMode]
 
-    // Create and download file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
+    setIsDownloadingCSV(true)
 
-    // Get job title and status prefix for filename
-    const jobTitle = jobPostings?.find(job => job.id.toString() === selectedJobId)?.title || 'candidates'
-    const statusPrefix = viewMode === 'approved' ? 'approved' : viewMode === 'rejected' ? 'rejected' : 'to_review'
-    const filename = `${statusPrefix}_${jobTitle.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+    try {
+      const blob = await downloadCandidatesCSVFromAPI(
+        parseInt(selectedJobId),
+        candidateStatus
+      )
 
-    link.setAttribute('download', filename)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+      // Generate filename based on API response pattern: job_description_{id}_{status}.csv
+      const statusPrefix = viewMode === 'approved' ? 'shortlisted' : viewMode === 'rejected' ? 'rejected' : 'review'
+      const filename = `job_description_${selectedJobId}_${statusPrefix}.csv`
+
+      // Create download link
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.setAttribute('href', url)
+      link.setAttribute('download', filename)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      showToast('CSV downloaded successfully', 'success')
+    } catch (error) {
+      console.error('Failed to download CSV:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to download CSV'
+      showToast(errorMessage, 'error')
+    } finally {
+      setIsDownloadingCSV(false)
+    }
   }
 
   // Calculate pagination info
@@ -544,10 +508,11 @@ export function CandidateTab({
                   size="sm"
                   variant="outline"
                   onClick={downloadCandidatesCSV}
+                  disabled={isDownloadingCSV}
                   className="flex items-center gap-2"
                 >
                   <Download className="h-4 w-4" />
-                  Download CSV
+                  {isDownloadingCSV ? 'Downloading...' : 'Download CSV'}
                 </Button>
               )}
             </div>
@@ -605,6 +570,7 @@ export function CandidateTab({
               viewMode={viewMode}
               isApproving={approveCandidateMutation.isPending || approveCandidateFromRejectedMutation.isPending}
               isRejecting={rejectCandidateMutation.isPending || rejectCandidateFromShortlistedMutation.isPending}
+              isDownloadingCSV={isDownloadingCSV}
             />
             {/* Pagination Controls - Show for all modes */}
             {totalCount > 0 && candidates.length > 0 && (
