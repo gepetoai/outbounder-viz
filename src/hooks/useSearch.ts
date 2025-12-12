@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createSearch, updateSearchName, updateSearch, updateQuery, runSearch, getSavedSearchesByJobDescription, enrichCandidates, getCandidatesByJobDescription, getCandidatesForReview, moveCandidates, SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse, CandidatesByJobDescriptionResponse, EnrichedCandidateResponse, MoveCandidatesRequest, MoveCandidatesResponse, PaginatedCandidatesResponse } from '@/lib/search-api'
+import { createSearch, updateSearchName, updateSearch, updateQuery, runSearch, getSavedSearchesByJobDescription, enrichCandidates, getCandidatesByJobDescription, getCandidatesForReview, moveCandidates, SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse, CandidatesByJobDescriptionResponse, EnrichedCandidateResponse, MoveCandidatesRequest, MoveCandidatesResponse, PaginatedCandidatesResponse, downloadCandidatesCSV, CandidateStatus } from '@/lib/search-api'
 
 export function useCreateSearch() {
   const queryClient = useQueryClient()
@@ -142,6 +142,18 @@ export function useMoveCandidates() {
     },
     onError: (error) => {
       console.error('Failed to move candidates:', error)
+    }
+  })
+}
+
+export const useDownloadCandidatesCSV = () => {
+  return useMutation<Blob, Error, { jobDescriptionId: number; candidateStatus: CandidateStatus }>({
+    mutationFn: ({ jobDescriptionId, candidateStatus }) => downloadCandidatesCSV(jobDescriptionId, candidateStatus),
+    onSuccess: (data) => {
+      console.log('Candidates CSV downloaded successfully:', data)
+    },
+    onError: (error) => {
+      console.error('Failed to download candidates CSV:', error)
     }
   })
 }
