@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { X, Check, Briefcase, Download, ThumbsUp, ThumbsDown, User, Table as TableIcon, RotateCcw, Search } from 'lucide-react'
-import { useMoveCandidates, useCandidatesForReview } from '@/hooks/useSearch'
+import { useMoveCandidates, useCandidatesForReview, useDownloadCandidatesCSV } from '@/hooks/useSearch'
 import {
   useApproveCandidate,
   useRejectCandidate,
@@ -16,7 +16,7 @@ import {
   useSendToReviewFromShortlisted,
   useSendToReviewFromRejected
 } from '@/hooks/useCandidates'
-import { CandidateStatus, downloadCandidatesCSV as downloadCandidatesCSVFromAPI } from '@/lib/search-api'
+import { CandidateStatus } from '@/lib/search-api'
 import { usePaginatedCandidates } from '@/hooks/usePaginatedCandidates'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useDebounce } from '@/hooks/useDebounce'
@@ -49,7 +49,6 @@ export function CandidateTab({
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
   const [searchTerm, setSearchTerm] = useState('')
-  const [isDownloadingCSV, setIsDownloadingCSV] = useState(false)
 
   const { showToast } = useToast()
 
@@ -97,6 +96,8 @@ export function CandidateTab({
     limit: pageSize,
     search: debouncedSearch || undefined
   })
+
+  const { mutateAsync: downloadCandidatesCSVMutation, isPending: isDownloadingCSV } = useDownloadCandidatesCSV()
 
   // Clamp pagination when totalCount changes to ensure offset stays within available pages
   useEffect(() => {
@@ -272,13 +273,11 @@ export function CandidateTab({
 
     const candidateStatus = candidateStatusMap[viewMode]
 
-    setIsDownloadingCSV(true)
-
     try {
-      const blob = await downloadCandidatesCSVFromAPI(
-        parseInt(selectedJobId),
+      const blob = await downloadCandidatesCSVMutation({
+        jobDescriptionId: parseInt(selectedJobId),
         candidateStatus
-      )
+      })
 
       // Generate filename based on API response pattern: job_description_{id}_{status}.csv
       const statusPrefix = viewMode === 'approved' ? 'shortlisted' : viewMode === 'rejected' ? 'rejected' : 'review'
@@ -300,8 +299,6 @@ export function CandidateTab({
       console.error('Failed to download CSV:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to download CSV'
       showToast(errorMessage, 'error')
-    } finally {
-      setIsDownloadingCSV(false)
     }
   }
 
