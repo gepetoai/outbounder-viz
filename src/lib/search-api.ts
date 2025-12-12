@@ -529,6 +529,47 @@ export async function bulkDeleteRejectedCandidates(data: BulkCandidateRequest): 
   }
 }
 
+export type CandidateStatus = 'review' | 'shortlisted' | 'rejected'
+
+/**
+ * Download candidates CSV for a job description based on status
+ * @param jobDescriptionId - ID of the job description
+ * @param candidateStatus - Status of candidates ('review', 'shortlisted', or 'rejected')
+ * @returns Promise that resolves to a Blob containing the CSV data
+ */
+export async function downloadCandidatesCSV(
+  jobDescriptionId: number,
+  candidateStatus: CandidateStatus
+): Promise<Blob> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/candidate-generation/job-description/${jobDescriptionId}/${candidateStatus}/csv`,
+    {
+      method: 'GET'
+    }
+  )
+
+  if (!response.ok) {
+    let errorDetail: string | undefined
+    try {
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        const errorBody = await response.json()
+        errorDetail = errorBody.detail || errorBody.message || errorBody.error
+      }
+    } catch {
+      // If parsing fails, ignore and use default error message
+    }
+
+    const errorMessage = errorDetail
+      ? `Failed to download CSV: ${response.status} ${response.statusText} - ${errorDetail}`
+      : `Failed to download CSV: ${response.status} ${response.statusText}`
+
+    throw new Error(errorMessage)
+  }
+
+  return response.blob()
+}
+
 export interface CampaignPayload {
   name: string
   status: 'draft' | 'paused' | 'running'
