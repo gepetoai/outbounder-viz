@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createSearch, updateSearchName, updateSearch, updateQuery, runSearch, getSavedSearchesByJobDescription, enrichCandidates, getCandidatesByJobDescription, getCandidatesForReview, moveCandidates, SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse, CandidatesByJobDescriptionResponse, EnrichedCandidateResponse, MoveCandidatesRequest, MoveCandidatesResponse } from '@/lib/search-api'
+import { createSearch, updateSearchName, updateSearch, updateQuery, runSearch, getSavedSearchesByJobDescription, enrichCandidates, getCandidatesByJobDescription, getCandidatesForReview, moveCandidates, SearchRequest, SearchResponse, SavedSearch, EnrichedCandidatesApiResponse, CandidatesByJobDescriptionResponse, EnrichedCandidateResponse, MoveCandidatesRequest, MoveCandidatesResponse, PaginatedCandidatesResponse } from '@/lib/search-api'
 
 export function useCreateSearch() {
   const queryClient = useQueryClient()
@@ -107,14 +107,18 @@ export function useCandidatesByJobDescription(jobDescriptionId: number | null | 
   })
 }
 
-export function useCandidatesForReview(jobDescriptionId: number | null | undefined) {
-  return useQuery<EnrichedCandidateResponse[], Error>({
-    queryKey: ['candidates', 'review', jobDescriptionId],
+export function useCandidatesForReview(
+  jobDescriptionId: number | null | undefined,
+  offset: number = 0,
+  limit: number = 25
+) {
+  return useQuery<PaginatedCandidatesResponse<EnrichedCandidateResponse>, Error>({
+    queryKey: ['candidates', 'review', jobDescriptionId, offset, limit],
     queryFn: () => {
       if (!jobDescriptionId) {
         throw new Error('Job description ID is required')
       }
-      return getCandidatesForReview(jobDescriptionId)
+      return getCandidatesForReview(jobDescriptionId, offset, limit)
     },
     enabled: !!jobDescriptionId,
     staleTime: 1000 * 60 * 5, // 5 minutes
