@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { X, Check, Briefcase, Download, ThumbsUp, ThumbsDown, User, Table as TableIcon, RotateCcw } from 'lucide-react'
+import { X, Check, Briefcase, Download, ThumbsUp, ThumbsDown, User, Table as TableIcon, RotateCcw, Search } from 'lucide-react'
 import { useMoveCandidates, useCandidatesForReview } from '@/hooks/useSearch'
 import {
   useApproveCandidate,
@@ -18,7 +18,9 @@ import {
 } from '@/hooks/useCandidates'
 import { usePaginatedCandidates } from '@/hooks/usePaginatedCandidates'
 import { useJobPostings } from '@/hooks/useJobPostings'
+import { useDebounce } from '@/hooks/useDebounce'
 import { type Candidate } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
 import { CandidateCard } from './CandidateCard'
 import { CandidateDetailPanel } from './CandidateDetailPanel'
 import { CandidateTableView } from './CandidateTableView'
@@ -43,18 +45,29 @@ export function CandidateTab({
   const [candidatesToMove, setCandidatesToMove] = useState<string[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
+  const [searchTerm, setSearchTerm] = useState('')
 
   const { showToast } = useToast()
 
-  // Reset pagination when job or view mode changes
+  // Debounce search term to avoid excessive API calls
+  const debouncedSearch = useDebounce(searchTerm, 300)
+
+  // Reset pagination and search when job or view mode changes
   useEffect(() => {
     setCurrentPage(1)
+    setSearchTerm('')
   }, [selectedJobId, viewMode])
 
   // Reset candidate index when job or view mode changes
   useEffect(() => {
     setCurrentCandidateIndex(0)
   }, [selectedJobId, viewMode])
+
+  // Reset or clamp pagination when search filter changes
+  useEffect(() => {
+    // Reset to page 1 when search changes
+    setCurrentPage(1)
+  }, [debouncedSearch])
 
   // Helper function to check if selectedJobId is a valid job ID
   const isValidJobId = (jobId: string) => {
@@ -78,8 +91,19 @@ export function CandidateTab({
     viewMode,
     jobDescriptionId: isValidJobId(selectedJobId) ? parseInt(selectedJobId) : null,
     offset,
-    limit: pageSize
+    limit: pageSize,
+    search: debouncedSearch || undefined
   })
+
+  // Clamp pagination when totalCount changes to ensure offset stays within available pages
+  useEffect(() => {
+    if (totalCount > 0) {
+      const maxPage = Math.max(1, Math.ceil(totalCount / pageSize))
+      if (currentPage > maxPage) {
+        setCurrentPage(maxPage)
+      }
+    }
+  }, [totalCount, pageSize, currentPage])
 
   // API mutation hooks
   const approveCandidateMutation = useApproveCandidate()
@@ -471,11 +495,12 @@ export function CandidateTab({
         </div>
       </div>
 
-      {/* View Title */}
+      {/* View Title and Search */}
       {selectedJobId && (
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">{getViewTitle()}</h2>
-          <div className="flex items-center gap-4">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">{getViewTitle()}</h2>
+            <div className="flex items-center gap-4">
             {viewType === 'table' && (
               <div className="text-sm text-gray-600">
                 Showing {startIndex + 1} to {endIndex} of {totalCount} candidate{totalCount !== 1 ? 's' : ''}
@@ -518,6 +543,30 @@ export function CandidateTab({
                 Download CSV
               </Button>
             )}
+            </div>
+          </div>
+          
+          {/* Search Input */}
+          <div className="max-w-md">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search by candidate name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
